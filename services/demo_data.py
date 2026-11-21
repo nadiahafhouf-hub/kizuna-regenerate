@@ -35,20 +35,63 @@ def _read(path: Path):
 
 # ───────────────────────────────── Parcelles ─────────────────────────────────
 
-def _parcel_records():
+def _demo_records():
     return _read(DEMO / "parcels.json")
 
 
+def _db_record(parcel):
+    """Parcelle créée par un agriculteur (core.Parcel) → même format que parcels.json."""
+    return {"id": parcel.parcelle_id, "name": parcel.nom or parcel.parcelle_id,
+            "farmer": parcel.agriculteur or "—", "region": parcel.region,
+            "land_profile": None, "db": True, "irrigation_status": "PENDING",
+            "season": {"water_saved_m3": 0, "solar_kwh": 0}}
+
+
+def _parcel_records(with_profile_only=True):
+    """Parcelles de démo (JSON) + parcelles créées dans l'application (base de données)."""
+    from core.models import Parcel
+    recs = _demo_records()
+    ids = {r["id"] for r in recs}
+    qs = Parcel.objects.exclude(parcelle_id__in=ids).order_by("-created_at")
+    if with_profile_only:
+        qs = qs.filter(profils__isnull=False).distinct()
+    return [_db_record(p) for p in qs] + recs
+
+
 def _record(pid):
-    for p in _parcel_records():
+    for p in _demo_records():
         if p["id"] == pid:
             return p
+    from core.models import Parcel
+    obj = Parcel.objects.filter(parcelle_id=pid).first()
+    if obj:
+        return _db_record(obj)
     raise Http404(f"Unknown parcel {pid}")
 
 
+def is_db_parcel(pid) -> bool:
+    return bool(_record(pid).get("db"))
+
+
+def has_profile(pid) -> bool:
+    rec = _record(pid)
+    if not rec.get("db"):
+        return True
+    from diagnostics.models import LandProfile
+    return LandProfile.objects.filter(parcel__parcelle_id=pid).exists()
+
+
 def land_profile(pid) -> dict:
-    """LandProfile (contrat du bloc 1). Remplacé plus tard par diagnostics.contract.latest_for."""
-    return _read(FIXTURES / _record(pid)["land_profile"])
+    """LandProfile (contrat du bloc 1) : fichier de démo, ou dernier profil calculé par le
+    pipeline du bloc 1 (diagnostics.pipeline.construire_land_profile) pour les parcelles en base."""
+    rec = _record(pid)
+    if rec.get("db"):
+        from diagnostics.models import LandProfile
+        lp = LandProfile.objects.filter(parcel__parcelle_id=pid).order_by("-created_at").first()
+        if lp is None:
+            raise Http404(f"No soil diagnostic yet for {pid}")
+        return lp.data
+    return _read(FIXTURES / rec["land_profile"])
 
 
 def _deg(lat):
@@ -491,19 +534,41 @@ def _hash(prev, event) -> str:
     return hashlib.sha256((prev + _canonical(core)).encode("utf-8")).hexdigest()
 
 
+def _events_from_profile(pid) -> list[dict]:
+    """Parcelle créée dans l'application : un événement DIAGNOSTIC par LandProfile calculé."""
+    from diagnostics.models import LandProfile
+    events = []
+    for lp in LandProfile.objects.filter(parcel__parcelle_id=pid).order_by("created_at"):
+        d = lp.data
+        cells = {c: sum(1 for x in d["cases"] if x["couleur"] == c) for c in COLORS}
+        mesures = sum(1 for x in d["cases"] if x["source"] == "capteur")
+        cd = max(x["Cd_mg_kg"] for x in d["cases"])
+        ce = max(x["CE_dS_m"] for x in d["cases"])
+        events.append({
+            "type": "DIAGNOSTIC" if not events else "ANALYSIS",
+            "date": d["date_mesure"],
+            "title": "Soil diagnostic" if not events else "New soil analysis",
+            "summary": f"{len(d['cases'])} cells, {mesures} measured points. Max Cd {cd} mg/kg, max EC {ce} dS/m.",
+            "data": {"cd_max": cd, "ce_max": ce, "cells": cells},
+        })
+    if not events:
+        raise Http404("No soil diagnostic yet")
+    return events
+
+
 def passport(pid, tampered=False) -> dict:
     """Chaîne de hash locale : hash_n = sha256(hash_{n-1} + JSON canonique de l'événement).
     `tampered=True` modifie un événement APRÈS scellement pour la démo /verify."""
-    events = copy.deepcopy(_read(DEMO / "passport_events.json")[pid])
+    events = copy.deepcopy(_read(DEMO / "passport_events.json").get(pid) or _events_from_profile(pid))
     prev = GENESIS_HASH
     for ev in events:
         ev["prev_hash"] = prev
         ev["hash"] = _hash(prev, ev)
         prev = ev["hash"]
-    if tampered and len(events) > 1:
+    if tampered and events:
         # quelqu'un « améliore » l'ancienne analyse : la chaîne doit le détecter
         events[0]["data"]["cd_max"] = 0.8
-        events[0]["summary"] = "9 cells measured. Max Cd 0.8 mg/kg."
+        events[0]["summary"] = "Max Cd 0.8 mg/kg (edited after sealing)."
     # vérification : recalcul de chaque hash à partir des données stockées
     prev, intact = GENESIS_HASH, True
     for ev in events:

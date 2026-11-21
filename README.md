@@ -123,3 +123,14 @@ git pull origin main         # récupérer les changements communs
 git push origin bloc-1
 ```
 Fusion dans `main` par pull request. Les clés API restent dans `.env`, jamais dans le code.
+
+## Bloc 1 — modèles et données
+
+- Notebook : [`notebooks/bloc1_modele.ipynb`](notebooks/bloc1_modele.ipynb) (déjà exécuté, résultats et graphiques inclus).
+  Pour le relancer : `pip install notebook` puis ouvrir le notebook ; chemin des données via la variable
+  `LUCAS_HM_XLSX` (par défaut `~/Downloads/HeavyMetals.xlsx`).
+- `python manage.py bloc1_train_cd <HeavyMetals.xlsx>` : entraîne le modèle « risque Cd ≥ 1 mg/kg à partir d'un
+  relevé XRF » (LUCAS Heavy Metals 2009, ESDAC). Le `.joblib` n'est pas versionné : à lancer sur chaque poste.
+- `python manage.py bloc1_experiment` : courbe erreur IDW vs nombre de points (fixtures/bloc1/experience_capteurs.json).
+- `python manage.py bloc1_extract_lucas <LUCAS_TOPSOIL_v1.xlsx>` : extrait des sols méditerranéens calcaires.
+- Parcours agriculteur : `/parcels/new/` → plan des capteurs → saisie des relevés → diagnostic.

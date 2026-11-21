@@ -1,0 +1,141 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}{{ T.plan.title }} · {{ parcel.id }}{% endblock %}
+{% block head %}
+<style>@media print { header, nav, .no-print, [aria-label="{{ T.chat.open }}"] { display: none !important; } main { padding-top: 0 !important; } }</style>
+{% endblock %}
+{% block content %}
+{{ plan_data|json_script:"plan-data" }}
+{{ experience|json_script:"exp-data" }}
+
+<section class="reveal flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+  <div>
+    <p class="flex items-center gap-1.5 text-sm font-medium text-olive-600"><i data-lucide="map" class="h-4 w-4"></i>{{ parcel.id }} · {{ parcel.name }}</p>
+    <h1 class="mt-1 text-3xl font-bold tracking-tight text-olive-900 sm:text-4xl">{{ T.plan.title }}</h1>
+    <p class="mt-1 max-w-2xl text-muted">{{ T.plan.subtitle }}</p>
+  </div>
+  <div class="no-print flex flex-wrap gap-2">
+    <button type="button" onclick="window.print()" class="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-3 font-semibold text-olive-800 shadow-soft ring-1 ring-sand-200 hover:shadow-lift">
+      <i data-lucide="printer" class="h-4 w-4"></i>{{ T.plan.print }}
+    </button>
+    {% if is_db %}
+    <a href="{% url 'diagnostics:readings' parcel.id %}" class="inline-flex items-center gap-2 rounded-xl bg-olive-700 px-5 py-3 font-semibold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-olive-800">
+      <i data-lucide="clipboard-pen-line" class="h-4 w-4"></i>{{ T.plan.enter_readings }}
+    </a>
+    {% endif %}
+  </div>
+</section>
+
+{% if not is_db %}
+<p class="no-print mt-4 flex flex-wrap items-center gap-2 rounded-xl bg-sun-50 px-4 py-3 text-sm text-sun-700 ring-1 ring-sun-300/60">
+  <i data-lucide="info" class="h-4 w-4"></i>{{ T.plan.demo_notice }}
+  <a href="{% url 'new_parcel' %}" class="font-semibold underline">{{ T.newparcel.button }}</a>
+</p>
+{% endif %}
+
+<section class="mt-6 grid grid-cols-3 gap-3 sm:gap-4">
+  {% include "components/kpi_card.html" with icon="grid-3x3" label=T.plan.cells_title value=plan.nb_cases unit="" hint=size_hint tone="olive" %}
+  {% include "components/kpi_card.html" with icon="crosshair" label=T.plan.survey_points value=plan.points|length unit="" hint="XRF + pH/EC" tone="sun" delay=60 %}
+  {% include "components/kpi_card.html" with icon="radio-tower" label=T.plan.stations value=plan.stations|length unit="" hint="ESP32" tone="water" delay=120 %}
+</section>
+
+<section class="mt-6 grid gap-6 lg:grid-cols-3">
+  <div class="reveal overflow-hidden rounded-2xl bg-white shadow-soft ring-1 ring-sand-200 lg:col-span-2">
+    <div id="plan-map" class="h-[380px] sm:h-[520px]"></div>
+  </div>
+  <div class="space-y-4">
+    <div class="reveal rounded-2xl bg-white p-5 shadow-soft ring-1 ring-sand-200">
+      <p class="flex items-center gap-2 font-semibold"><span class="grid h-6 w-6 place-items-center rounded-full bg-sun-500 text-[11px] font-bold text-white">P</span>{{ T.plan.survey_points }}</p>
+      <p class="mt-1 text-sm text-muted">{{ T.plan.survey_hint }}</p>
+      {% if plan.renfort %}<p class="mt-2 text-xs text-olive-800"><i data-lucide="wind" class="mr-1 inline h-3.5 w-3.5"></i>{{ T.plan.extra_point }} <b>{{ plan.renfort.source }}</b> ({{ plan.renfort.distance_km }} km)</p>{% endif %}
+    </div>
+    <div class="reveal rounded-2xl bg-white p-5 shadow-soft ring-1 ring-sand-200" style="animation-delay: 80ms">
+      <p class="flex items-center gap-2 font-semibold"><span class="grid h-6 w-6 place-items-center rounded-md bg-water-600 text-[11px] font-bold text-white">S</span>{{ T.plan.stations }}</p>
+      <p class="mt-1 text-sm text-muted">{{ T.plan.stations_hint }}</p>
+    </div>
+  </div>
+</section>
+
+<section class="mt-6 grid gap-6 lg:grid-cols-2">
+  <div class="reveal overflow-hidden rounded-2xl bg-white shadow-soft ring-1 ring-sand-200">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-sand-50 text-left text-xs uppercase tracking-wide text-muted">
+          <tr><th class="px-4 py-3">{{ T.plan.point }}</th><th class="px-4 py-3">{{ T.plan.cell }}</th><th class="px-4 py-3">{{ T.plan.gps }}</th><th class="px-4 py-3"></th></tr>
+        </thead>
+        <tbody class="divide-y divide-sand-100">
+          {% for q in plan.points %}
+          <tr><td class="px-4 py-2.5 font-semibold">{{ q.id }}</td><td class="px-4 py-2.5 tabular-nums">{{ q.ligne }}, {{ q.col }}</td>
+              <td class="px-4 py-2.5 font-mono text-xs">{{ q.lat|floatformat:6 }}, {{ q.lon|floatformat:6 }}</td>
+              <td class="px-4 py-2.5 text-xs {% if q.role == 'renfort' %}font-semibold text-zorange{% else %}text-muted{% endif %}">{% if q.role == 'renfort' %}{{ T.plan.role_renfort }}{% else %}{{ T.plan.role_grille }}{% endif %}</td></tr>
+          {% endfor %}
+          {% for s in plan.stations %}
+          <tr class="bg-water-50/50"><td class="px-4 py-2.5 font-semibold text-water-700">{{ s.id }}</td><td class="px-4 py-2.5 tabular-nums">{{ s.ligne }}, {{ s.col }}</td>
+              <td class="px-4 py-2.5 font-mono text-xs">{{ s.lat|floatformat:6 }}, {{ s.lon|floatformat:6 }}</td><td class="px-4 py-2.5 text-xs text-water-700">ESP32</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% if experience %}
+  <div class="reveal rounded-2xl bg-white p-5 shadow-soft ring-1 ring-sand-200 sm:p-6" style="animation-delay: 120ms">
+    {% include "components/section_header.html" with title=T.plan.why_title hint=T.plan.why_hint icon="chart-line" tone="sun" %}
+    <div class="mb-2 flex flex-wrap gap-4 text-xs font-medium">
+      <span class="flex items-center gap-1.5"><span class="h-2.5 w-6 rounded-full bg-zgreen"></span>{{ T.plan.why_correct }}</span>
+      <span class="flex items-center gap-1.5"><span class="h-2.5 w-6 rounded-full bg-zred"></span>{{ T.plan.why_missed }}</span>
+      <span class="flex items-center gap-1.5"><span class="h-3 w-0.5 bg-ink"></span>{{ T.plan.why_rule }} ({{ experience.recommande }})</span>
+    </div>
+    <div class="relative h-64"><canvas id="exp-chart"></canvas></div>
+    <p class="mt-2 text-xs text-muted">{{ experience.largeur_m }} × {{ experience.longueur_m }} m · {{ experience.nb_cases }} {{ T.plan.nb_cells }}</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="{% vstatic 'js/map.js' %}"></script>
+<script>
+(function () {
+  const d = JSON.parse(document.getElementById("plan-data").textContent);
+  const p = d.plan, [lat0, lon0] = d.origin, t = d.taille;
+  const mLat = 1 / 111320, mLon = 1 / (111320 * Math.cos(lat0 * Math.PI / 180));
+  const south = lat0 - p.longueur_m * mLat, east = lon0 + p.largeur_m * mLon;
+  const map = satelliteMap("plan-map", { maxZoom: 21 });
+  L.rectangle([[south, lon0], [lat0, east]], { color: "#F5CB5C", weight: 3, fill: false }).addTo(map);
+  for (let x = t; x < p.largeur_m; x += t) L.polyline([[lat0, lon0 + x * mLon], [south, lon0 + x * mLon]], { color: "#fff", weight: 1, opacity: 0.85 }).addTo(map);
+  for (let y = t; y < p.longueur_m; y += t) L.polyline([[lat0 - y * mLat, lon0], [lat0 - y * mLat, east]], { color: "#fff", weight: 1, opacity: 0.85 }).addTo(map);
+  const pin = (label, bg, square) => L.divIcon({ className: "", iconSize: [26, 26], iconAnchor: [13, 13],
+    html: `<div style="width:26px;height:26px;display:grid;place-items:center;border-radius:${square ? "6px" : "999px"};background:${bg};color:#fff;font:700 11px 'DM Sans',sans-serif;border:2px solid #fff;box-shadow:0 4px 10px rgba(0,0,0,.35)">${label}</div>` });
+  p.points.forEach((q) => L.marker([q.lat, q.lon], { icon: pin(q.id, q.role === "renfort" ? "#B85C0E" : "#E8A916") }).addTo(map)
+    .bindTooltip(`${q.id} · ${q.lat.toFixed(6)}, ${q.lon.toFixed(6)}`));
+  p.stations.forEach((s) => {
+    const off = 0.25 * t * mLon;  // décalée pour ne pas cacher un point de relevé
+    L.marker([s.lat, s.lon + off], { icon: pin(s.id, "#1F6FA8", true) }).addTo(map).bindTooltip(`${s.id} · ESP32`);
+  });
+  map.fitBounds([[south, lon0], [lat0, east]], { padding: [40, 40], maxZoom: 20 });
+  setTimeout(() => { map.invalidateSize(); map.fitBounds([[south, lon0], [lat0, east]], { padding: [40, 40], maxZoom: 20 }); }, 250);
+
+  const ex = JSON.parse(document.getElementById("exp-data").textContent);
+  if (ex && window.Chart) {
+    const ns = ex.courbe.map((r) => r.n);
+    Chart.defaults.font.family = "'DM Sans', system-ui, sans-serif";
+    new Chart(document.getElementById("exp-chart"), {
+      type: "line",
+      data: { labels: ns, datasets: [
+        { label: UI.plan.why_correct, data: ex.courbe.map((r) => r.couleur_correcte_pct), borderColor: "#23774A", backgroundColor: "rgba(35,119,74,.08)", fill: true, tension: .3, pointRadius: ns.map((n) => n === ex.recommande ? 6 : 2), pointBackgroundColor: "#23774A" },
+        { label: UI.plan.why_missed, data: ex.courbe.map((r) => r.rouges_manques_pct), borderColor: "#B83227", tension: .3, pointRadius: 2, yAxisID: "y2" },
+      ] },
+      options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
+        plugins: { legend: { display: false }, tooltip: { backgroundColor: "#1E2316", callbacks: { title: (i) => `${i[0].label} points`, label: (c) => ` ${c.dataset.label}: ${c.parsed.y}%` } } },
+        scales: { x: { title: { display: true, text: "points" }, grid: { display: false } },
+                  y: { min: 70, max: 100, title: { display: true, text: "%" }, grid: { color: "#F3EDE1" } },
+                  y2: { position: "right", min: 0, max: 20, grid: { display: false } } } },
+      plugins: [{ id: "rule", afterDraw(c) { const i = ns.indexOf(ex.recommande); if (i < 0) return;
+        const x = c.scales.x.getPixelForValue(i), { top, bottom } = c.chartArea, g = c.ctx;
+        g.save(); g.strokeStyle = "#1E2316"; g.setLineDash([4, 4]); g.beginPath(); g.moveTo(x, top); g.lineTo(x, bottom); g.stroke(); g.restore(); } }],
+    });
+  }
+})();
+</script>
+{% endblock %}

@@ -5,7 +5,17 @@
   let selected = null;
   const cellLayers = {};
 
-  const baseStyle = (f) => ({ color: "#FFFFFF", weight: 1.5, fillColor: ZONE_HEX[f.properties.couleur], fillOpacity: 0.55 });
+  let showConfidence = false;
+  // Calque « confiance » : les cases interpolées loin des points deviennent pâles et en pointillés
+  const baseStyle = (f) => {
+    const conf = f.properties.confiance;
+    if (showConfidence && conf !== undefined) {
+      return { color: "#FFFFFF", weight: f.properties.source === "capteur" ? 2.5 : 1.5,
+               dashArray: f.properties.source === "capteur" ? null : "4 4",
+               fillColor: ZONE_HEX[f.properties.couleur], fillOpacity: 0.12 + 0.68 * conf };
+    }
+    return { color: "#FFFFFF", weight: 1.5, fillColor: ZONE_HEX[f.properties.couleur], fillOpacity: 0.55 };
+  };
 
   function select(layer) {
     if (selected) grid.resetStyle(selected);
@@ -25,7 +35,8 @@
       const p = f.properties;
       cellLayers[`${p.ligne}-${p.col}`] = layer;
       const z = UI.zone[p.couleur];
-      layer.bindTooltip(`${ZONE_ICON_SVG[p.couleur]} <b>${z.label}</b> · ${UI.diagnostic.row} ${p.ligne}, ${UI.diagnostic.col} ${p.col}${p.zone ? " · " + p.zone : ""}`,
+      const conf = p.niveau_confiance ? `<br>${UI.diagnostic.confidence}: ${UI.diagnostic.confidence_levels[p.niveau_confiance]} (${Math.round(p.confiance * 100)}%)` : "";
+      layer.bindTooltip(`${ZONE_ICON_SVG[p.couleur]} <b>${z.label}</b> · ${UI.diagnostic.row} ${p.ligne}, ${UI.diagnostic.col} ${p.col}${p.zone ? " · " + p.zone : ""}${conf}`,
                         { sticky: true, direction: "top", opacity: 0.95 });
       layer.on({
         click: () => select(layer),
@@ -44,6 +55,12 @@
   data.sensors.forEach(addSensor);
 
   zoneLegend(map, UI.zone, "bottomleft");
+
+  const toggle = document.getElementById("conf-toggle");
+  if (toggle) toggle.addEventListener("change", () => {
+    showConfidence = toggle.checked;
+    grid.eachLayer((l) => { if (l !== selected) grid.resetStyle(l); });
+  });
   map.fitBounds(data.bounds, { padding: [30, 30] });
 
   // Fermeture du panneau

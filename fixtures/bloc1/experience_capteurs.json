@@ -1,0 +1,240 @@
+{
+ "champs_par_point": 120,
+ "seed": 42,
+ "tailles": [
+  {
+   "largeur_m": 30,
+   "longueur_m": 30,
+   "nb_cases": 9,
+   "recommande": 5,
+   "courbe": [
+    {
+     "n": 3,
+     "couleur_correcte_pct": 86.0,
+     "rouges_manques_pct": 7.2,
+     "cd_rmse": 3.96,
+     "cd_erreur_relative_pct": 18.9
+    },
+    {
+     "n": 4,
+     "couleur_correcte_pct": 89.4,
+     "rouges_manques_pct": 4.2,
+     "cd_rmse": 2.93,
+     "cd_erreur_relative_pct": 15.5
+    },
+    {
+     "n": 5,
+     "couleur_correcte_pct": 92.3,
+     "rouges_manques_pct": 4.4,
+     "cd_rmse": 2.97,
+     "cd_erreur_relative_pct": 14.5
+    },
+    {
+     "n": 6,
+     "couleur_correcte_pct": 92.2,
+     "rouges_manques_pct": 4.3,
+     "cd_rmse": 3.27,
+     "cd_erreur_relative_pct": 12.8
+    },
+    {
+     "n": 8,
+     "couleur_correcte_pct": 92.9,
+     "rouges_manques_pct": 3.8,
+     "cd_rmse": 1.99,
+     "cd_erreur_relative_pct": 11.0
+    }
+   ]
+  },
+  {
+   "largeur_m": 50,
+   "longueur_m": 50,
+   "nb_cases": 25,
+   "recommande": 7,
+   "courbe": [
+    {
+     "n": 3,
+     "couleur_correcte_pct": 82.8,
+     "rouges_manques_pct": 10.4,
+     "cd_rmse": 4.46,
+     "cd_erreur_relative_pct": 25.0
+    },
+    {
+     "n": 4,
+     "couleur_correcte_pct": 80.6,
+     "rouges_manques_pct": 14.5,
+     "cd_rmse": 2.42,
+     "cd_erreur_relative_pct": 22.2
+    },
+    {
+     "n": 5,
+     "couleur_correcte_pct": 83.7,
+     "rouges_manques_pct": 9.4,
+     "cd_rmse": 2.7,
+     "cd_erreur_relative_pct": 20.4
+    },
+    {
+     "n": 6,
+     "couleur_correcte_pct": 85.2,
+     "rouges_manques_pct": 6.8,
+     "cd_rmse": 3.03,
+     "cd_erreur_relative_pct": 19.0
+    },
+    {
+     "n": 7,
+     "couleur_correcte_pct": 86.8,
+     "rouges_manques_pct": 6.7,
+     "cd_rmse": 2.55,
+     "cd_erreur_relative_pct": 16.4
+    },
+    {
+     "n": 8,
+     "couleur_correcte_pct": 87.9,
+     "rouges_manques_pct": 6.4,
+     "cd_rmse": 2.07,
+     "cd_erreur_relative_pct": 16.5
+    },
+    {
+     "n": 10,
+     "couleur_correcte_pct": 88.6,
+     "rouges_manques_pct": 5.6,
+     "cd_rmse": 2.11,
+     "cd_erreur_relative_pct": 13.8
+    },
+    {
+     "n": 12,
+     "couleur_correcte_pct": 87.7,
+     "rouges_manques_pct": 6.0,
+     "cd_rmse": 1.75,
+     "cd_erreur_relative_pct": 14.4
+    },
+    {
+     "n": 16,
+     "couleur_correcte_pct": 90.8,
+     "rouges_manques_pct": 4.9,
+     "cd_rmse": 1.78,
+     "cd_erreur_relative_pct": 13.1
+    },
+    {
+     "n": 20,
+     "couleur_correcte_pct": 91.6,
+     "rouges_manques_pct": 4.4,
+     "cd_rmse": 1.9,
+     "cd_erreur_relative_pct": 11.6
+    },
+    {
+     "n": 25,
+     "couleur_correcte_pct": 92.9,
+     "rouges_manques_pct": 3.6,
+     "cd_rmse": 1.16,
+     "cd_erreur_relative_pct": 10.4
+    }
+   ]
+  },
+  {
+   "largeur_m": 100,
+   "longueur_m": 100,
+   "nb_cases": 100,
+   "recommande": 25,
+   "courbe": [
+    {
+     "n": 3,
+     "couleur_correcte_pct": 76.8,
+     "rouges_manques_pct": 14.6,
+     "cd_rmse": 2.86,
+     "cd_erreur_relative_pct": 28.0
+    },
+    {
+     "n": 4,
+     "couleur_correcte_pct": 77.5,
+     "rouges_manques_pct": 11.7,
+     "cd_rmse": 2.68,
+     "cd_erreur_relative_pct": 28.6
+    },
+    {
+     "n": 5,
+     "couleur_correcte_pct": 80.9,
+     "rouges_manques_pct": 8.6,
+     "cd_rmse": 3.06,
+     "cd_erreur_relative_pct": 25.4
+    },
+    {
+     "n": 6,
+     "couleur_correcte_pct": 78.0,
+     "rouges_manques_pct": 12.2,
+     "cd_rmse": 2.46,
+     "cd_erreur_relative_pct": 25.3
+    },
+    {
+     "n": 8,
+     "couleur_correcte_pct": 81.1,
+     "rouges_manques_pct": 9.7,
+     "cd_rmse": 2.24,
+     "cd_erreur_relative_pct": 22.2
+    },
+    {
+     "n": 10,
+     "couleur_correcte_pct": 83.9,
+     "rouges_manques_pct": 8.8,
+     "cd_rmse": 2.3,
+     "cd_erreur_relative_pct": 20.7
+    },
+    {
+     "n": 12,
+     "couleur_correcte_pct": 84.6,
+     "rouges_manques_pct": 8.7,
+     "cd_rmse": 1.9,
+     "cd_erreur_relative_pct": 18.9
+    },
+    {
+     "n": 16,
+     "couleur_correcte_pct": 85.9,
+     "rouges_manques_pct": 8.8,
+     "cd_rmse": 2.38,
+     "cd_erreur_relative_pct": 17.4
+    },
+    {
+     "n": 20,
+     "couleur_correcte_pct": 86.4,
+     "rouges_manques_pct": 6.4,
+     "cd_rmse": 1.65,
+     "cd_erreur_relative_pct": 15.7
+    },
+    {
+     "n": 25,
+     "couleur_correcte_pct": 86.7,
+     "rouges_manques_pct": 7.4,
+     "cd_rmse": 1.7,
+     "cd_erreur_relative_pct": 15.4
+    },
+    {
+     "n": 30,
+     "couleur_correcte_pct": 87.4,
+     "rouges_manques_pct": 6.0,
+     "cd_rmse": 1.48,
+     "cd_erreur_relative_pct": 14.6
+    },
+    {
+     "n": 36,
+     "couleur_correcte_pct": 88.4,
+     "rouges_manques_pct": 5.2,
+     "cd_rmse": 1.49,
+     "cd_erreur_relative_pct": 13.9
+    },
+    {
+     "n": 45,
+     "couleur_correcte_pct": 89.7,
+     "rouges_manques_pct": 4.3,
+     "cd_rmse": 1.52,
+     "cd_erreur_relative_pct": 13.2
+    },
+    {
+     "n": 60,
+     "couleur_correcte_pct": 90.7,
+     "rouges_manques_pct": 3.9,
+     "cd_rmse": 1.33,
+     "cd_erreur_relative_pct": 12.3
+    }
+   ]
+  }
+ ]
+}
