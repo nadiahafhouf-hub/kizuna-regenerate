@@ -6,7 +6,8 @@ Conversion metres -> degres (approximation locale, suffisante pour quelques cent
 import math
 
 M_PAR_DEGRE_LAT = 111320.0
-COULEUR_ZONE = {"ROUGE": "#c0392b", "ORANGE": "#d68910", "VERT": "#1e8449"}
+COULEUR_ZONE = {"ROUGE": "#B83227", "ORANGE": "#B85C0E", "VERT": "#23774A"}   # memes couleurs que static/js/map.js
+AFFICHAGE_MAX = 5
 
 
 def convertisseur(lat0, lon0):
@@ -42,7 +43,8 @@ def geojson_plan(reco):
                               alimentaire=z["alimentaire"] if z else None))
         if not z:
             continue
-        n = max(1, int(t // z["espacement_m"]))
+        n_reel = max(1, int(t // z["espacement_m"]))
+        n = min(n_reel, AFFICHAGE_MAX)       # carte lisible : au plus 5 x 5 symboles par case
         pas = t / n
         for i in range(n):
             y = y0 + pas * (i + 0.5)
@@ -50,7 +52,8 @@ def geojson_plan(reco):
             feats.append(_feature("LineString", [pt(x0 + 0.4, y), pt(x0 + t - 0.2, y)], kind="goutte", zone_id=z["id"]))
             for j in range(n):
                 feats.append(_feature("Point", pt(x0 + pas * (j + 0.5), y), kind="plante", zone_id=z["id"],
-                                      culture=z["culture"], hex=z["couleur_plante"], alimentaire=z["alimentaire"]))
+                                      culture=z["culture"], hex=z["couleur_plante"], alimentaire=z["alimentaire"],
+                                      arbre=z["espacement_m"] >= 3, couleur=z["couleur"]))
         if z["collecte_drainage"]:
             feats.append(_feature("LineString", [pt(x0 + 0.3, y0 + t - 0.5), pt(x0 + t - 0.3, y0 + t - 0.5)],
                                   kind="drainage", zone_id=z["id"]))
@@ -58,22 +61,24 @@ def geojson_plan(reco):
     # equipements a l'ouest de la parcelle : conduite principale, vannes, reservoir, pompe, panneaux
     xm = -1.5
     feats.append(_feature("LineString", [pt(xm, 0), pt(xm, H)], kind="conduite"))
-    pas_v = min(2.5, H / max(1, len(reco["zones"]) + 1))
+    pas_v = min(2.5, (H - 4) / max(1, len(reco["zones"]) + 1))
     for k, z in enumerate(reco["zones"]):
-        feats.append(_feature("Point", pt(xm, pas_v * (k + 1)), kind="vanne", zone_id=z["id"],
+        feats.append(_feature("Point", pt(xm, 4 + pas_v * (k + 1)), kind="vanne", zone_id=z["id"], couleur=z["couleur"],
                               hex=COULEUR_ZONE.get(z["couleur"], "#666"), besoin_litres_jour=z["besoin_litres_jour"]))
-    feats.append(_feature("Point", pt(-6, 3), kind="reservoir", nom="Reservoir sureleve"))
-    feats.append(_feature("LineString", [pt(-6, 3), pt(xm, 3)], kind="conduite"))
-    feats.append(_feature("Point", pt(-6, H / 2), kind="pompe", nom="Pompe (nappe)"))
-    feats.append(_feature("LineString", [pt(-6, H / 2), pt(-6, 3)], kind="conduite"))
-    feats.append(_feature("Point", pt(-6, H - 3), kind="panneaux", nom="Panneaux solaires"))
+    feats.append(_feature("Point", pt(-7, 2), kind="reservoir", nom="Reservoir sureleve"))
+    feats.append(_feature("LineString", [pt(-7, 2), pt(xm, 2)], kind="conduite"))
+    feats.append(_feature("Point", pt(-7, H / 2), kind="pompe", nom="Pompe (nappe)"))
+    feats.append(_feature("LineString", [pt(-7, H / 2), pt(-7, 2)], kind="conduite"))
+    feats.append(_feature("Point", pt(-7, H - 3), kind="panneaux", nom="Panneaux solaires"))
 
     # etiquettes de zone (centre des cases de la zone)
     for z in reco["zones"]:
         if not z["cases"]:
             continue
-        cx = sum((c + 0.5) * t for (_, c) in z["cases"]) / len(z["cases"])
-        cy = sum((l + 0.5) * t for (l, _) in z["cases"]) / len(z["cases"])
+        mx = sum((c + 0.5) * t for (_, c) in z["cases"]) / len(z["cases"])
+        my = sum((l + 0.5) * t for (l, _) in z["cases"]) / len(z["cases"])
+        l0, c0 = min(z["cases"], key=lambda lc: ((lc[1] + 0.5) * t - mx) ** 2 + ((lc[0] + 0.5) * t - my) ** 2)
+        cx, cy = (c0 + 0.5) * t, (l0 + 0.5) * t
         feats.append(_feature("Point", pt(cx, cy), kind="etiquette", zone_id=z["id"], couleur=z["couleur"],
                               culture=z["culture"], alimentaire=z["alimentaire"],
                               besoin_litres_jour=z["besoin_litres_jour"]))

@@ -1,4 +1,4 @@
-"""Dessin PNG du plan recommande (matplotlib). Sans Django.
+"""Dessin PNG du plan recommande (matplotlib), textes en anglais comme le site. Sans Django.
 
 Zones colorees, symbole de chaque plante, lignes de goutte-a-goutte, UNE vanne par zone,
 reservoir, pompe, panneaux solaires.
@@ -11,6 +11,17 @@ from matplotlib.patches import Circle, FancyBboxPatch, Rectangle  # noqa: E402
 
 FOND = {"ROUGE": "#f4c7c3", "ORANGE": "#fde0b5", "VERT": "#d4edc9"}
 VIF = {"ROUGE": "#c0392b", "ORANGE": "#e67e22", "VERT": "#27ae60"}
+COULEUR_EN = {"ROUGE": "RED", "ORANGE": "ORANGE", "VERT": "GREEN"}
+TEXTURE_EN = {"sablo-limoneux": "sandy loam", "sableux": "sandy", "sable": "sandy", "limoneux": "loamy",
+              "limono-argileux": "clay loam", "argileux": "clay", "argile": "clay"}
+
+
+def _texture(t):
+    return TEXTURE_EN.get((t or "").lower(), t or "?")
+
+
+def _source(c):
+    return (c.get("detail_source") or c["source"]).replace("table de secours", "fallback table").replace("region la plus proche", "nearest region")
 TUYAU = "#1f4e9c"
 GOUTTE = "#3a7bd5"
 
@@ -67,80 +78,80 @@ def dessiner_plan(reco, sortie, **_):
     for z in reco["zones"]:
         # etiquette de zone (besoin) au centre de sa premiere case
         l0, c0 = sorted(z["cases"])[0]
-        ax.text(c0 * t + t / 2 + 0.4, H - (l0 + 1) * t + 1.6, f"{z['id']} - {z['besoin_litres_jour']} L/j",
+        ax.text(c0 * t + t / 2 + 0.4, H - (l0 + 1) * t + 1.6, f"{z['id']} - {z['besoin_litres_jour']} L/day",
                 ha="center", fontsize=9, weight="bold", zorder=7,
                 bbox=dict(fc="white", ec=VIF[z["couleur"]], alpha=0.9, pad=1.5))
 
     # --- reservoir, pompe, panneaux solaires ---
     ax.add_patch(Circle((-6, H - 4), 1.8, fc="#9ec9f5", ec=TUYAU, lw=2))
-    ax.text(-6, H - 4, "Reservoir\nsureleve", ha="center", va="center", fontsize=7.5)
+    ax.text(-6, H - 4, "Elevated\ntank", ha="center", va="center", fontsize=7.5)
     ax.plot([-4.2, xm], [H - 4, H - 4], color=TUYAU, lw=3)
-    ax.text(-3, H - 3.4, "gravite", fontsize=7, color=TUYAU, ha="center")
+    ax.text(-3, H - 3.4, "gravity", fontsize=7, color=TUYAU, ha="center")
     ax.add_patch(FancyBboxPatch((-7.1, H / 2 - 1), 2.2, 2, boxstyle="round,pad=0.1", fc="#ddd", ec="#333"))
-    ax.text(-6, H / 2, "Pompe\n(nappe)", ha="center", va="center", fontsize=7.5)
+    ax.text(-6, H / 2, "Pump\n(groundwater)", ha="center", va="center", fontsize=7.5)
     ax.plot([-6, -6], [H / 2 + 1.1, H - 5.8], color=TUYAU, lw=3)
     for k in range(3):
         ax.add_patch(Rectangle((-9 + k * 1.8, 1), 1.5, 2.6, fc="#24356b", ec="#9ab", lw=1))
-    ax.text(-6.5, 0.2, "Panneaux solaires", ha="center", fontsize=8)
+    ax.text(-6.5, 0.2, "Solar panels", ha="center", fontsize=8)
     ax.plot([-6, -6], [3.7, H / 2 - 1.1], color="#e0a800", lw=1.5, ls=":")
-    ax.text(L / 2, -3.2, f"Parcelle {reco['parcelle_id']} : {L} m x {H} m, cases de {t} x {t} m, "
-            f"sol {reco.get('texture_sol') or '?'}  -  Nord en haut", ha="center", fontsize=9, color="#444")
-    ax.set_title(f"Plan recommande (terre nue) - {reco['parcelle_id']} - {reco.get('region')} - "
-                 f"mesure du {reco.get('date_mesure')}", fontsize=14, weight="bold", loc="left")
+    ax.text(L / 2, -3.2, f"Parcel {reco['parcelle_id']}: {L} m x {H} m, cells {t} x {t} m, "
+            f"{_texture(reco.get('texture_sol'))} soil  -  North up", ha="center", fontsize=9, color="#444")
+    ax.set_title(f"Recommended layout (bare land) - {reco['parcelle_id']} - {reco.get('region')} - "
+                 f"measured {reco.get('date_mesure')}", fontsize=14, weight="bold", loc="left")
 
     # --- legende ---
     hdl = []
     for z in reco["zones"]:
-        lab = z["culture"] + ("" if z["alimentaire"] else "  (NON alimentaire)")
+        lab = z["culture"] + ("" if z["alimentaire"] else "  (NON-FOOD)")
         if lab not in [h.get_label() for h in hdl]:
             hdl.append(plt.Line2D([], [], marker=z["marqueur"], color=z["couleur_plante"], ls="", ms=9, label=lab))
-    hdl += [plt.Line2D([], [], color=GOUTTE, lw=1.5, label="Ligne goutte-a-goutte"),
-            plt.Line2D([], [], marker="s", color="#222", ls="", ms=7, label="Vanne (1 par zone)"),
-            plt.Line2D([], [], color="#6b3e1f", lw=2.5, ls="--", label="Collecte du drainage (zone rouge)")]
+    hdl += [plt.Line2D([], [], color=GOUTTE, lw=1.5, label="Drip line"),
+            plt.Line2D([], [], marker="s", color="#222", ls="", ms=7, label="Valve (1 per zone)"),
+            plt.Line2D([], [], color="#6b3e1f", lw=2.5, ls="--", label="Drainage collection (red zone)")]
     ax.legend(handles=hdl, loc="upper left", bbox_to_anchor=(0.0, -0.02), ncol=2, fontsize=8, frameon=False)
 
     # --- panneau de droite ---
     clim = reco["climat"]
     ax2 = fig.add_axes([0.60, 0.06, 0.38, 0.86])
     ax2.axis("off")
-    ax2.text(0, 1.0, f"Climat - {reco.get('region')}", fontsize=13, weight="bold", va="top")
-    ax2.text(0.02, 0.955, f"Pluie {clim['pluie_mm']} mm/an  |  hiver min {clim['tmin_hiver']} C  |  "
-             f"ete max {clim['tmax_ete']} C  |  ET0 {clim['et0_mm_jour']} mm/j", fontsize=8.5, va="top")
-    ax2.text(0.02, 0.925, f"Source : {clim.get('detail_source', clim['source'])}", fontsize=8, color="#666", va="top")
-    ax2.text(0, 0.88, "Recommandation par zone", fontsize=13, weight="bold", va="top")
+    ax2.text(0, 1.0, f"Climate - {reco.get('region')}", fontsize=13, weight="bold", va="top")
+    ax2.text(0.02, 0.955, f"Rain {clim['pluie_mm']} mm/yr  |  winter min {clim['tmin_hiver']} C  |  "
+             f"summer max {clim['tmax_ete']} C  |  ET0 {clim['et0_mm_jour']} mm/day", fontsize=8.5, va="top")
+    ax2.text(0.02, 0.925, f"Source: {_source(clim)}", fontsize=8, color="#666", va="top")
+    ax2.text(0, 0.88, "Recommendation per zone", fontsize=13, weight="bold", va="top")
     y = 0.83
     for z in reco["zones"]:
         ax2.add_patch(Rectangle((0, y - 0.035), 0.025, 0.04, fc=VIF[z["couleur"]], transform=ax2.transAxes))
-        titre = f"{z['id']} ({z['couleur']}, {z['surface_m2']} m2)  {z['culture']}"
+        titre = f"{z['id']} ({COULEUR_EN.get(z['couleur'], z['couleur'])}, {z['surface_m2']} m2)  {z['culture']}"
         if len(titre) > 58:
             titre = titre[:56] + "..."
         ax2.text(0.04, y, titre, fontsize=9.5, weight="bold", va="top")
-        info = f"{z['nb_plants']} plants  |  {z['besoin_litres_jour']} L/jour  |  CE max {z['ce_max_dS_m']} dS/m"
-        info += "  |  decide par le " + z["decide_par"]
+        info = f"{z['nb_plants']} plants  |  {z['besoin_litres_jour']} L/day  |  max EC {z['ce_max_dS_m']} dS/m"
+        info += "  |  decided by " + z["decide_par"].replace("bloc", "Block")
         ax2.text(0.04, y - 0.03, info, fontsize=8, color="#444", va="top")
         info2 = []
         if z["alternatives"]:
-            info2.append("autres : " + ", ".join(a["nom"] for a in z["alternatives"]))
+            info2.append("alternatives: " + ", ".join(a["nom"] for a in z["alternatives"]))
         if z["microbes"]:
             info2.append(", ".join(z["microbes"]))
         if not z["alimentaire"]:
-            info2.append("NE PAS MANGER")
+            info2.append("DO NOT EAT")
         if z["collecte_drainage"]:
-            info2.append("pas de lessivage + collecte du drainage")
+            info2.append("no leaching + drainage collection")
         if info2:
             ax2.text(0.04, y - 0.055, "  |  ".join(info2), fontsize=7.5, color="#444", va="top")
         y -= 0.09
     y -= 0.01
     tex = reco["texture"]
     ax2.text(0, y, "Irrigation", fontsize=12, weight="bold", va="top")
-    lignes = [f"Besoin total estime : {reco['besoin_total_litres_jour'] / 1000:.2f} m3/jour",
-              f"Sol {reco.get('texture_sol')} : {tex['arrosages']} arrosage(s) par jour, tot le matin",
-              "Pompage nappe -> reservoir aux heures de soleil (pompe solaire)",
-              "Arrosage reservoir -> zones par gravite, une vanne par zone",
-              "Zone rouge : pas de lessivage (le cadmium ne doit pas aller a la nappe)"]
+    lignes = [f"Estimated total water need: {reco['besoin_total_litres_jour'] / 1000:.2f} m3/day",
+              f"{_texture(reco.get('texture_sol')).capitalize()} soil: {tex['arrosages']} watering(s) per day, at dawn",
+              "Groundwater -> tank pumping in sunny hours (solar pump)",
+              "Tank -> zones by gravity, one valve per zone",
+              "Red zone: no leaching (cadmium must not reach the groundwater)"]
     for i, l in enumerate(lignes):
         ax2.text(0.02, y - 0.04 - i * 0.03, l, fontsize=8.5, va="top")
-    ax2.text(0, -0.05, "Donnees simulees - prototype hackathon - estimations, pas des mesures",
+    ax2.text(0, -0.05, "Simulated data - hackathon prototype - estimates, not measurements",
              fontsize=8, style="italic", color="#888")
     fig.savefig(sortie, dpi=110)
     plt.close(fig)
