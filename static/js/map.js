@@ -8,9 +8,11 @@ const ZONE_ICON_SVG = {
 };
 
 function satelliteMap(el, options = {}) {
-  const map = L.map(el, { zoomControl: true, scrollWheelZoom: options.scrollWheelZoom ?? false, attributionControl: true, ...options });
+  // Sur téléphone : pas de glisser à un doigt (sinon la carte « capture » le défilement de la page)
+  const map = L.map(el, { zoomControl: true, scrollWheelZoom: false, dragging: !L.Browser.mobile, attributionControl: true, ...options });
   L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
-    maxZoom: 21, maxNativeZoom: 19,
+    // Imagerie disponible jusqu'au zoom 18 dans la région de Gabès (z19 = tuile « not available »)
+    maxZoom: 21, maxNativeZoom: 18,
     attribution: "Imagery © Esri, Maxar, Earthstar Geographics",
   }).addTo(map);
   return map;

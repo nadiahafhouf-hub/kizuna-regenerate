@@ -50,6 +50,18 @@ def zone_ui(color, attr):
     return ZONE_UI.get(color, ZONE_UI["VERT"]).get(attr, "")
 
 
+@register.simple_tag
+def vstatic(path):
+    """{% vstatic 'js/app.js' %} → URL statique + ?v=<date de modification> (évite le cache navigateur)."""
+    from django.contrib.staticfiles import finders
+    from django.templatetags.static import static
+    import os
+
+    found = finders.find(path)
+    version = int(os.path.getmtime(found)) if found else 0
+    return f"{static(path)}?v={version}"
+
+
 @register.inclusion_tag("components/zone_badge.html")
 def zone_badge(color, variant="soft", size="md", long=False):
     """{% zone_badge "ROUGE" %} · variant soft|solid · size sm|md|lg · long=True → « Red · Contaminated »."""

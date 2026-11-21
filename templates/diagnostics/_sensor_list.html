@@ -1,0 +1,16 @@
+{% load ui %}
+<ul class="divide-y divide-sand-100">
+  {% for s in sensors %}
+  <li class="flex items-center gap-3 py-2.5">
+    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl {% if s.new %}bg-sun-50 text-sun-700{% else %}bg-sand-100 text-ink{% endif %}">
+      <i data-lucide="radio-tower" class="h-4 w-4"></i>
+    </span>
+    <div class="min-w-0 flex-1">
+      <p class="flex items-center gap-2 text-sm font-semibold">{{ s.id }} <span class="font-normal text-muted">· ({{ s.ligne }}, {{ s.col }})</span>
+        {% if s.new %}<span class="rounded-full bg-sun-300 px-1.5 py-0.5 text-[10px] font-bold uppercase text-ink">{{ T.diagnostic.new_badge }}</span>{% endif %}</p>
+      <p class="truncate text-xs tabular-nums text-muted">EC {{ s.CE_dS_m }} · pH {{ s.pH }} · Cd {{ s.Cd_mg_kg }} · Pb {{ s.Pb_mg_kg }}</p>
+    </div>
+    {% zone_badge s.couleur size="sm" %}
+  </li>
+  {% endfor %}
+</ul>

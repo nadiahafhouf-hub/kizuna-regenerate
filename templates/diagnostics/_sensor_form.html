@@ -1,0 +1,38 @@
+{% load ui %}
+<form hx-post="{% url 'diagnostics:new_reading' pid %}" hx-target="this" hx-swap="outerHTML" class="space-y-4">
+  <p class="text-sm text-muted">{{ T.diagnostic.form.intro }}</p>
+  {% if errors %}
+  <p class="flex items-center gap-2 rounded-xl bg-zred-bg px-3 py-2 text-sm font-medium text-zred"><i data-lucide="circle-alert" class="h-4 w-4"></i>{{ T.diagnostic.form.invalid }}</p>
+  {% endif %}
+  <div class="grid grid-cols-2 gap-3">
+    <label class="block">
+      <span class="text-sm font-medium">{{ T.diagnostic.form.cell }}</span>
+      <select name="cell" class="mt-1 w-full rounded-xl border-0 bg-sand-50 px-3 py-2.5 text-sm ring-1 {% if errors.cell %}ring-zred{% else %}ring-sand-200{% endif %} focus:ring-2 focus:ring-olive-600">
+        {% for cell in cells %}
+        <option value="{{ cell.value }}" {% if values.cell == cell.value %}selected{% endif %}>{{ T.diagnostic.row }} {{ cell.ligne }} · {{ T.diagnostic.col }} {{ cell.col }} — {{ T.zone|get:cell.couleur|get:"label" }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="block">
+      <span class="text-sm font-medium">{{ T.diagnostic.form.date }}</span>
+      <input type="date" name="date" value="{{ values.date|default:today }}" class="mt-1 w-full rounded-xl border-0 bg-sand-50 px-3 py-2.5 text-sm ring-1 ring-sand-200 focus:ring-2 focus:ring-olive-600">
+    </label>
+    {% for key, unit, step, ph in fields %}
+    <label class="block">
+      <span class="text-sm font-medium">{{ T.diagnostic.param|get:key }}</span>
+      <div class="relative mt-1">
+        <input type="number" name="{{ key }}" step="{{ step }}" min="0" inputmode="decimal" required placeholder="{{ ph }}" value="{{ values|get:key }}"
+               class="w-full rounded-xl border-0 bg-sand-50 py-2.5 pl-3 pr-14 text-sm tabular-nums ring-1 {% if errors|get:key %}ring-zred{% else %}ring-sand-200{% endif %} focus:ring-2 focus:ring-olive-600">
+        {% if unit %}<span class="pointer-events-none absolute inset-y-0 right-3 grid place-items-center text-xs text-muted">{{ unit }}</span>{% endif %}
+      </div>
+      {% if errors|get:key %}<span class="mt-1 block text-xs text-zred">{{ errors|get:key }}</span>{% endif %}
+    </label>
+    {% endfor %}
+  </div>
+  <div class="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+    <button type="button" @click="$dispatch('close-modal')" class="rounded-xl px-4 py-2.5 font-semibold text-muted hover:bg-sand-100">{{ T.app.cancel }}</button>
+    <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-xl bg-olive-700 px-5 py-2.5 font-semibold text-white transition hover:bg-olive-800">
+      <i data-lucide="plus" class="h-4 w-4"></i>{{ T.diagnostic.form.submit }}
+    </button>
+  </div>
+</form>

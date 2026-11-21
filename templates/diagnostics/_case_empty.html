@@ -1,0 +1,17 @@
+{% load ui %}
+<div class="flex h-full flex-col">
+  <div class="grid flex-1 place-items-center py-6 text-center">
+    <div>
+      <span class="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-olive-100 text-olive-700"><i data-lucide="mouse-pointer-click" class="h-7 w-7"></i></span>
+      <p class="mt-3 font-semibold">{{ T.diagnostic.click_cell }}</p>
+      <p class="mx-auto mt-1 max-w-xs text-sm text-muted">{{ T.diagnostic.click_cell_hint }}</p>
+    </div>
+  </div>
+  <div class="mt-4 space-y-2 border-t border-sand-100 pt-4">
+    <p class="text-xs font-semibold uppercase tracking-wide text-muted">{{ T.diagnostic.legend }}</p>
+    <div class="flex items-center gap-2 text-sm">{% zone_badge "ROUGE" %}<span class="text-muted">{{ T.zone.ROUGE.long }}</span></div>
+    <div class="flex items-center gap-2 text-sm">{% zone_badge "ORANGE" %}<span class="text-muted">{{ T.zone.ORANGE.long }}</span></div>
+    <div class="flex items-center gap-2 text-sm">{% zone_badge "VERT" %}<span class="text-muted">{{ T.zone.VERT.long }}</span></div>
+    <div class="flex items-center gap-2 pt-1 text-sm"><span class="sensor-pin inline-block"></span><span class="text-muted">{{ T.diagnostic.sensor }}</span></div>
+  </div>
+</div>

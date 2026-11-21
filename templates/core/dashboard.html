@@ -46,7 +46,7 @@
 
 {% block scripts %}
 {% load static %}
-<script src="{% static 'js/map.js' %}"></script>
+<script src="{% vstatic 'js/map.js' %}"></script>
 <script>
   (function () {
     const data = JSON.parse(document.getElementById("map-data").textContent);

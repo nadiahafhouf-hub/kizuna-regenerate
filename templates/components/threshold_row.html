@@ -1,0 +1,13 @@
+{% comment %}Valeur comparée aux seuils. Paramètres : r (ligne de demo_data.threshold_rows){% endcomment %}{% load ui %}
+<div class="rounded-xl bg-sand-50 p-3 ring-1 ring-sand-200">
+  <div class="flex items-center justify-between gap-2">
+    <p class="text-sm font-medium">{{ T.diagnostic.param|get:r.key }}</p>
+    {% zone_badge r.status size="sm" %}
+  </div>
+  <p class="mt-1 text-2xl font-bold tabular-nums">{{ r.value }} <span class="text-sm font-medium text-muted">{{ r.unit }}</span></p>
+  <div class="relative mt-2 h-2 rounded-full bg-gradient-to-r {% if r.key == 'pH' %}from-zred via-zgreen to-zred{% else %}from-zgreen via-zorange to-zred{% endif %} opacity-80">
+    {% for t in r.ticks %}<span class="absolute -top-0.5 h-3 w-0.5 rounded bg-white" style="left: {{ t }}%"></span>{% endfor %}
+    <span class="absolute -top-1 h-4 w-4 -translate-x-1/2 rounded-full border-[3px] border-white bg-ink shadow" style="left: {{ r.pct }}%"></span>
+  </div>
+  <p class="mt-1.5 text-[11px] text-muted">{{ T.diagnostic.threshold }}: {{ r.range }} {{ r.unit }}</p>
+</div>

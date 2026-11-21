@@ -1,4 +1,4 @@
-{% load static %}<!doctype html>
+{% load static ui %}<!doctype html>
 <html lang="{{ LANG }}" dir="{{ DIR }}">
 <head>
   <meta charset="utf-8">
@@ -37,7 +37,7 @@
       },
     };
   </script>
-  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <link rel="stylesheet" href="{% vstatic 'css/app.css' %}">
   <script src="https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
   {% block head %}{% endblock %}
@@ -57,7 +57,7 @@
   {{ T|json_script:"ui-strings" }}
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
-  <script src="{% static 'js/app.js' %}"></script>
+  <script src="{% vstatic 'js/app.js' %}"></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>
