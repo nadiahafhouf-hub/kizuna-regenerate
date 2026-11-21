@@ -116,6 +116,32 @@ class RecommandationTests(SimpleTestCase):
         self.assertTrue(any("origine" in e for e in valider_land_profile(bad)[0]))
 
 
+class EtatTerreTests(SimpleTestCase):
+    """Terre nue ou plantee, d'apres le diagnostic (land_status, zones, puis Sentinel-2)."""
+
+    def _profil(self, ndvis, scl="bare_soil"):
+        lp = charger()
+        for c, v in zip(lp["cases"], ndvis):
+            c["satellite"] = {"ndvi": v, "scl": scl, "valide": True}
+        return lp
+
+    def test_sentinel2(self):
+        from advisor.services.etat_terre import etat_terre
+        self.assertEqual(etat_terre(self._profil([0.12] * 9))["etat"], "NUE")
+        self.assertEqual(etat_terre(self._profil([0.55] * 9, scl="vegetation"))["etat"], "PLANTEE")
+        self.assertEqual(etat_terre(self._profil([0.12] * 4 + [0.55] * 5, scl="unknown"))["etat"], "PLANTEE")
+        mixte = etat_terre(self._profil([0.25] * 9, scl="unknown"))
+        self.assertIsNone(mixte["etat"])                      # ni nue ni couverte -> on demande
+
+    def test_priorites(self):
+        from advisor.services.etat_terre import etat_terre
+        lp = self._profil([0.12] * 9)
+        lp["land_status"] = "PLANTEE"
+        self.assertEqual(etat_terre(lp)["etat"], "PLANTEE")   # le bloc 1 a toujours le dernier mot
+        lp2 = charger()
+        self.assertIsNone(etat_terre(lp2)["etat"])           # aucune donnee -> pop-up
+
+
 class PageTests(TestCase):
     """La page Crops affiche les vraies recommandations du bloc 2 et ne plante jamais."""
 
@@ -135,3 +161,45 @@ class PageTests(TestCase):
             self.assertEqual(j["etat"], "terre_nue")
         r = self.client.get("/p/GAB-001/crops/plan/")
         self.assertEqual(r["Content-Type"], "image/png")
+
+    def test_mode_detecte_et_carte_already_planted(self):
+        r = self.client.get("/p/GAB-001/crops/")          # aucun choix en session
+        self.assertEqual(r.context["mode"], "bare")         # Sentinel-2 : sol nu sur GAB-001
+        self.assertEqual(r.context["detection"]["etat"], "NUE")
+        html = r.content.decode()
+        self.assertIn('id="planted-map"', html)
+        self.assertIn("crops/champ.json", html)
+        self.client.post("/p/GAB-001/crops/mode/", {"mode": "planted"})   # le choix de l'agriculteur gagne
+        self.assertEqual(self.client.get("/p/GAB-001/crops/").context["mode"], "planted")
+
+
+class ChampTests(SimpleTestCase):
+    """Terre déjà plantée : réseau du champ entier (advisor/services/champ.py), sans internet."""
+
+    def _arbres(self):
+        # 3 rangs d'arbres parallèles à l'axe (v = -20, 0, 20), un arbre tous les 8 m
+        return [{"u": u, "v": v + (0.5 if u % 16 else 0), "diam_m": 6.0, "goutteurs": 6, "l_jour": 100.0}
+                for v in (-20, 0, 20) for u in range(-60, 61, 8)]
+
+    def test_un_rampe_par_rang_et_conduite_perpendiculaire(self):
+        from advisor.services.champ import concevoir
+        r = concevoir(self._arbres(), 140, 60, 8.0, 1500)
+        self.assertEqual(r["rangs"], 3)
+        self.assertEqual(len(r["rampes"]), 3)
+        self.assertEqual(r["position"], "milieu")               # le milieu demande le moins de tuyau... à égalité
+        self.assertAlmostEqual(r["principale"]["longueur_m"], 50, delta=1)   # de la source (v=-30) au rang v=20
+
+    def test_vannes_selon_le_debit_de_la_pompe(self):
+        from advisor.services.champ import concevoir
+        r = concevoir(self._arbres(), 140, 60, 8.0, 1500)      # 16 arbres × 6 × 8 L/h = 768 L/h par rang
+        self.assertEqual(len(r["secteurs"]), 3)
+        self.assertTrue(all(s["debit_l_h"] <= 1500 for s in r["secteurs"]))
+        self.assertEqual(sum(s["arbres"] for s in r["secteurs"]), 48)
+
+    def test_axe_des_rangs(self):
+        import math
+        from advisor.services.champ import _axe_rangs
+        t = math.radians(25)
+        pts = [(u * math.cos(t) - v * math.sin(t), u * math.sin(t) + v * math.cos(t))
+               for v in (-10, 0, 10) for u in range(-40, 41, 6)]
+        self.assertAlmostEqual(math.degrees(_axe_rangs(pts)), 25, delta=2)

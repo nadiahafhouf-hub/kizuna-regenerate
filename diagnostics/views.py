@@ -175,6 +175,10 @@ def new_parcel(request):
     """L'agriculteur donne la taille de sa terre et clique son coin nord-ouest sur la carte."""
     T = get_strings()
     values, error = {"largeur": 30, "longueur": 30, "region": "Gabes"}, None
+    # lien de test : /parcels/new/?lat=..&lon=.. pré-place le coin nord-ouest (on peut encore cliquer ailleurs)
+    for k in ("lat", "lon", "nom"):
+        if request.GET.get(k):
+            values[k] = request.GET[k]
     if request.method == "POST":
         values = request.POST
         try:

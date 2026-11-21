@@ -68,3 +68,84 @@ function cropsPlanMap(el, G, T) {
 }
 
 window.cropsPlanMap = cropsPlanMap;
+
+/* Mode « Already planted » : même fond satellite Esri, zones de la parcelle, et le CHEMIN D'IRRIGATION
+   calculé par le bloc 3 (GeoJSON de irrigation:network_geojson). Rechargé après chaque calcul du réseau. */
+/* Terre déjà plantée — vue du CHAMP entier (advisor.services.champ) : arbres détectés sur l'image,
+   rectangle du champ orienté sur l'axe des sillons, chemin d'irrigation (conduite principale,
+   rampes par rang d'arbres, vannes par secteur, source). Le repère (croix) se déplace : clic ou glisser. */
+function plantedFieldMap(el, G, T, onMove) {
+  const map = L.map(el, { zoomControl: true, scrollWheelZoom: false, dragging: !L.Browser.mobile, zoomSnap: 0.25 });
+  L.tileLayer(ESRI_WORLD_IMAGERY, {
+    maxZoom: 21, maxNativeZoom: 18,
+    attribution: "Imagery © Esri, Maxar, Earthstar Geographics",
+  }).addTo(map);
+  const hex = (c) => ZONE_HEX[c] || "#6B6F5E";
+  const zones = L.geoJSON({ type: "FeatureCollection", features: G.features.filter((f) => f.properties.kind === "case") }, {
+    style: (f) => ({ color: hex(f.properties.couleur), weight: 1.5, fillColor: hex(f.properties.couleur), fillOpacity: 0.18 }),
+    onEachFeature: (f, l) => l.bindTooltip(`<b>${T.zone} ${f.properties.zone_id || "—"}</b> · ${f.properties.id}`, { sticky: true }),
+  });
+  const ctl = L.control.layers(null, { [T.layers.zones]: zones }, { collapsed: true }).addTo(map);
+  L.control.scale({ imperial: false }).addTo(map);
+
+  const STYLE = {
+    champ: { color: "#FFFFFF", weight: 2, dashArray: "8 5", fillColor: "#FFFFFF", fillOpacity: 0.05 },
+    conduite_principale: { color: "#0B3D91", weight: 6 },
+    rampe: { color: "#7FD3FF", weight: 2.5 },
+  };
+  const POINT = {
+    plante_existante: (ll, p) => L.circle(ll, { radius: Math.max(1, p.diam_couronne_m / 2), color: "#0E3B12", weight: 1,
+      fillColor: "#3FBF5F", fillOpacity: 0.6 })
+      .bindTooltip(`${T.layers.existing} · Ø ${p.diam_couronne_m} m<br>${p.goutteurs} ${T.drippers} · ${p.l_jour} L/${T.day}`),
+    vanne: (ll, p) => L.marker(ll, { icon: L.divIcon({ className: "", iconSize: [18, 18], iconAnchor: [9, 9],
+      html: `<div style="width:18px;height:18px;display:grid;place-items:center;background:#1E2316;color:#fff;font:700 10px system-ui;border:2px solid #7FD3FF;border-radius:4px;box-shadow:0 0 0 1.5px #fff">${p.secteur}</div>` }) })
+      .bindTooltip(`${T.layers.valve} ${p.secteur} · ${p.arbres} ${T.trees} · ${p.debit_m3_h} m³/h · ${p.heures} h/${T.day}`),
+    source: (ll) => L.marker(ll, { icon: L.divIcon({ className: "", iconSize: [28, 28], iconAnchor: [14, 14],
+      html: '<div style="width:28px;height:28px;display:grid;place-items:center;background:#fff;border:2px solid #0B3D91;border-radius:999px;font-size:15px;box-shadow:0 1px 3px rgba(0,0,0,.35)">💧</div>' }) })
+      .bindTooltip(T.layers.source),
+  };
+  const NOMS = { champ: T.layers.field, conduite_principale: T.layers.main, rampe: T.layers.lateral,
+                 vanne: T.layers.valve, source: T.layers.source, plante_existante: T.layers.existing };
+
+  // repère du centre du champ : glisser, ou cliquer sur la carte
+  const croix = L.marker([0, 0], { draggable: true, zIndexOffset: 1000, icon: L.divIcon({ className: "", iconSize: [30, 30], iconAnchor: [15, 15],
+    html: '<div style="width:30px;height:30px;border:2px solid #FFD54A;border-radius:999px;background:rgba(255,213,74,.18);box-shadow:0 0 0 1.5px rgba(0,0,0,.5)"><div style="position:absolute;left:14px;top:4px;width:2px;height:22px;background:#FFD54A"></div><div style="position:absolute;top:14px;left:4px;height:2px;width:22px;background:#FFD54A"></div></div>' }) })
+    .bindTooltip(T.move_hint);
+  croix.on("dragend", () => onMove(croix.getLatLng()));
+  map.on("click", (e) => { croix.setLatLng(e.latlng).addTo(map); onMove(e.latlng); });
+
+  let couches = [];
+  let cadre = G.bounds;
+  const fit = (b) => { if (b) cadre = b; map.invalidateSize(); map.fitBounds(cadre, { padding: [16, 16], animate: false }); };
+
+  function afficher(r) {
+    couches.forEach((l) => { map.removeLayer(l); ctl.removeLayer(l); });
+    couches = [];
+    const feats = (r && r.geojson && r.geojson.features) || [];
+    for (const couche of ["champ", "rampe", "conduite_principale", "plante_existante", "vanne", "source"]) {
+      const fs = feats.filter((f) => f.properties.couche === couche);
+      if (!fs.length) continue;
+      const layer = L.geoJSON({ type: "FeatureCollection", features: fs }, {
+        style: () => ({ ...STYLE[couche], opacity: 0.95, lineCap: "round" }),
+        pointToLayer: (f, ll) => POINT[couche](ll, f.properties),
+        onEachFeature: (f, l) => {
+          if (couche === "rampe") l.bindTooltip(`${T.layers.lateral} · ${T.layers.valve} ${f.properties.secteur} · Ø 16 mm · ${f.properties.longueur_m} m · ${f.properties.arbres} ${T.trees}`, { sticky: true });
+          if (couche === "conduite_principale") l.bindTooltip(`${T.layers.main} · Ø ${f.properties.diametre_mm} mm · ${f.properties.longueur_m} m`, { sticky: true });
+        },
+      }).addTo(map);
+      ctl.addOverlay(layer, NOMS[couche]);
+      couches.push(layer);
+    }
+    if (r && r.centre) croix.setLatLng([r.centre.lat, r.centre.lon]).addTo(map);
+    const champ = couches[0];
+    if (champ) fit(champ.getBounds().pad(0.12));
+  }
+
+  let w = el.clientWidth;
+  // créée cachée (mode « Bare land » au chargement) : on recadre dès qu'elle apparaît
+  new ResizeObserver(() => { if (el.clientWidth && el.clientWidth !== w) { w = el.clientWidth; fit(); } }).observe(el);
+  fit();
+  return { map, afficher };
+}
+
+window.plantedFieldMap = plantedFieldMap;

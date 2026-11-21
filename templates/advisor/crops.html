@@ -24,6 +24,14 @@
     </div>
   </section>
 
+  {% if detection.etat and not mode_choisi %}
+  <section class="reveal mt-4 flex items-start gap-3 rounded-2xl bg-white px-4 py-3 text-sm shadow-soft ring-1 ring-sand-200">
+    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-olive-100 text-olive-700"><i data-lucide="satellite" class="h-[18px] w-[18px]"></i></span>
+    <p class="text-muted"><b class="text-ink">{% if detection.etat == "NUE" %}{{ T.crops.detect_bare }} ({{ detection.sol_nu_pct }} % {{ T.crops.detect_of_parcel }}){% else %}{{ T.crops.detect_planted }} ({{ detection.couvert_pct }} % {{ T.crops.detect_of_parcel }}){% endif %}</b>
+      {% if detection.source == "sentinel2" %}· {{ T.crops.detect_src }}{% if detection.date %} {{ detection.date }}{% endif %}{% endif %} — {{ T.crops.detect_auto }}</p>
+  </section>
+  {% endif %}
+
   <!-- ═══ Terre nue : recommandations par zone ═══ -->
   <div x-show="mode === 'bare'" x-cloak>
     {% if bloc2 %}
@@ -125,48 +133,74 @@
     {% endwith %}{% endfor %}
   </div>
 
-  <!-- ═══ Terre plantée : photo + formulaire → score ═══ -->
-  <section x-show="mode === 'planted'" x-cloak class="mt-8 grid gap-6 lg:grid-cols-5">
+  {% if bloc2.geo %}
+  <!-- ═══ Terre plantée : vue du champ entier, arbres détectés, chemin d'irrigation (advisor/services/champ.py) ═══ -->
+  <section x-show="mode === 'planted'" x-cloak class="reveal mt-8 rounded-2xl bg-white p-4 shadow-soft ring-1 ring-sand-200 sm:p-5"
+           x-data="fieldTool('{% url 'advisor:champ_json' parcel.id %}')">
+    <h2 class="flex items-center gap-2 text-lg font-semibold tracking-tight text-olive-900"><i data-lucide="waypoints" class="h-5 w-5 text-water-600"></i>{{ T.crops.pm_title }}</h2>
+    <p class="mt-0.5 max-w-3xl text-xs text-muted">{{ T.crops.pm_hint }}</p>
+
+    <!-- Réglages du champ -->
+    <div class="mt-4 grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <label class="block"><span class="text-xs font-medium text-muted">{{ T.crops.pm_crop }}</span>
+        <select x-model="p.culture" class="mt-1 w-full rounded-xl border-0 bg-sand-50 px-3 py-2 text-sm ring-1 ring-sand-200 focus:ring-2 focus:ring-olive-600">
+          {% for c in cultures_arbres %}<option value="{{ c }}">{{ T.crops.pm_crops|get:c }}</option>{% endfor %}
+        </select></label>
+      <label class="block"><span class="flex justify-between text-xs font-medium text-muted">{{ T.crops.pm_length }}<b class="tabular-nums text-ink" x-text="p.longueur + ' m'"></b></span>
+        <input type="range" min="40" max="300" step="5" x-model.number="p.longueur" class="mt-2 w-full accent-olive-700"></label>
+      <label class="block"><span class="flex justify-between text-xs font-medium text-muted">{{ T.crops.pm_width }}<b class="tabular-nums text-ink" x-text="p.largeur + ' m'"></b></span>
+        <input type="range" min="20" max="200" step="5" x-model.number="p.largeur" class="mt-2 w-full accent-olive-700"></label>
+      <div class="block"><span class="flex items-center justify-between text-xs font-medium text-muted">
+          <label class="inline-flex items-center gap-1.5"><input type="checkbox" x-model="p.auto" class="accent-olive-700">{{ T.crops.pm_auto }}</label>
+          <b class="tabular-nums text-ink" x-text="cap(p.angle) + '°'"></b></span>
+        <input type="range" min="-90" max="89" step="1" x-model.number="p.angle" :disabled="p.auto" class="mt-2 w-full accent-olive-700 disabled:opacity-40"></div>
+      <button type="button" @click="calc()" :disabled="busy"
+              class="inline-flex items-center justify-center gap-2 rounded-xl bg-olive-700 px-4 py-2.5 text-sm font-semibold text-white shadow-soft transition hover:bg-olive-800 disabled:opacity-60">
+        <i data-lucide="scan-search" class="h-4 w-4" x-show="!busy"></i><i data-lucide="loader-circle" class="h-4 w-4 animate-spin" x-show="busy" x-cloak></i>
+        <span x-text="busy ? '{{ T.crops.pm_running|escapejs }}' : '{{ T.crops.pm_run|escapejs }}'"></span></button>
+    </div>
+    <p class="mt-2 flex items-center gap-1.5 text-xs text-muted"><i data-lucide="move" class="h-3.5 w-3.5"></i>{{ T.crops.pm_move }}</p>
+
+    <div id="planted-map" class="mt-3 h-[440px] w-full overflow-hidden rounded-xl ring-1 ring-sand-200 sm:h-[520px]"></div>
+    <p x-show="err" x-cloak class="mt-2 flex items-center gap-1.5 text-sm font-medium text-zred-text"><i data-lucide="triangle-alert" class="h-4 w-4"></i><span x-text="err"></span></p>
+
+    <!-- Résultat -->
+    <template x-if="r">
+      <div class="mt-4">
+        <div class="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+          <div class="rounded-xl bg-sand-50 p-3 ring-1 ring-sand-200"><p class="text-xs text-muted">{{ T.crops.pm_trees }}</p><p class="text-xl font-semibold tabular-nums" x-text="r.arbres"></p></div>
+          <div class="rounded-xl bg-sand-50 p-3 ring-1 ring-sand-200"><p class="text-xs text-muted">{{ T.crops.pm_rows }}</p><p class="text-xl font-semibold tabular-nums" x-text="r.rangs"></p></div>
+          <div class="rounded-xl bg-sand-50 p-3 ring-1 ring-sand-200"><p class="text-xs text-muted">{{ T.crops.pm_bearing }}</p><p class="text-xl font-semibold tabular-nums" x-text="r.cap_deg + '°'"></p><p class="text-[11px] text-muted" x-text="axe[r.axe_source] || r.axe_source"></p></div>
+          <div class="rounded-xl bg-sand-50 p-3 ring-1 ring-sand-200"><p class="text-xs text-muted">{{ T.crops.pm_main }}</p><p class="text-xl font-semibold tabular-nums" x-text="r.longueur_principale_m + ' m'"></p><p class="text-[11px] text-muted" x-text="'Ø ' + r.diametre_principale_mm + ' mm · ' + (pos[r.position_principale] || '')"></p></div>
+          <div class="rounded-xl bg-sand-50 p-3 ring-1 ring-sand-200"><p class="text-xs text-muted">{{ T.crops.pm_laterals }}</p><p class="text-xl font-semibold tabular-nums" x-text="r.longueur_rampes_m + ' m'"></p><p class="text-[11px] text-muted" x-text="r.goutteurs + ' {{ T.crops.pm_drippers|escapejs }}'"></p></div>
+          <div class="rounded-xl bg-water-50 p-3 ring-1 ring-water-100"><p class="text-xs text-muted">{{ T.crops.pm_water }}</p><p class="text-xl font-semibold tabular-nums text-water-700" x-text="r.eau_l_jour.toLocaleString('en') + ' L'"></p><p class="text-[11px] text-muted" x-text="'ET0 ' + r.et0_mm + ' mm · Kc ' + r.kc"></p></div>
+          <div class="rounded-xl bg-sand-50 p-3 ring-1 ring-sand-200"><p class="text-xs text-muted">{{ T.crops.pm_pump }}</p><p class="text-xl font-semibold tabular-nums" x-text="r.heures_pompage + ' h'"></p><p class="text-[11px] text-muted" x-text="(r.debit_pompe_l_h / 1000) + ' m³/h'"></p></div>
+        </div>
+        <div class="mt-3 overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="text-xs text-muted"><tr><th class="py-1.5 pr-3 font-medium">{{ T.crops.pm_sector }}</th><th class="pr-3 font-medium">{{ T.crops.pm_trees }}</th><th class="pr-3 font-medium">{{ T.crops.pm_flow }}</th><th class="pr-3 font-medium">{{ T.crops.pm_water }}</th><th class="font-medium">{{ T.crops.pm_hours }}</th></tr></thead>
+            <tbody class="tabular-nums">
+              <template x-for="s in r.secteurs" :key="s.numero">
+                <tr class="border-t border-sand-200"><td class="py-1.5 pr-3 font-semibold" x-text="'{{ T.crops.pm_valve|escapejs }} ' + s.numero"></td><td class="pr-3" x-text="s.arbres"></td><td class="pr-3" x-text="(s.debit_l_h / 1000).toFixed(2) + ' m³/h'"></td><td class="pr-3" x-text="Math.round(s.eau_l_jour).toLocaleString('en') + ' L'"></td><td x-text="s.heures + ' h'"></td></tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+        <p class="mt-2 text-[11px] text-muted">{{ T.crops.pm_note }} <span x-text="'(' + r.resolution_m_px + ' m/px · ' + r.source_climat + ')'"></span></p>
+      </div>
+    </template>
+  </section>
+  {% endif %}
+
+  <!-- ═══ Terre plantée : carte satellite du réseau, formulaire → score, réseau du bloc 3 ═══ -->
+  <section x-show="mode === 'planted'" x-cloak class="mt-6 grid gap-6 lg:grid-cols-5">
     <form id="planted-form" class="reveal space-y-5 rounded-2xl bg-white p-5 shadow-soft ring-1 ring-sand-200 sm:p-6 lg:col-span-3"
           hx-post="{% url 'advisor:score' parcel.id %}" hx-encoding="multipart/form-data" hx-target="#score-result" hx-swap="innerHTML"
-          hx-indicator="#score-loading" x-data="photoUpload()">
-      {% include "components/section_header.html" with title=T.crops.upload_title icon="camera" %}
-
-      <!-- Zone de dépôt -->
-      <div>
-        <label @dragover.prevent="drag = true" @dragleave.prevent="drag = false" @drop.prevent="drop($event)"
-               class="group relative flex min-h-[200px] cursor-pointer flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border-2 border-dashed px-4 py-6 text-center transition"
-               :class="error ? 'border-zred bg-zred-bg/40' : (drag ? 'border-olive-600 bg-olive-50' : 'border-sand-300 bg-sand-50 hover:border-olive-600 hover:bg-olive-50/60')">
-          <input x-ref="input" type="file" name="photo" accept="image/jpeg,image/png" class="sr-only" @change="pick($event.target.files[0])">
-          <template x-if="preview">
-            <img :src="preview" alt="" class="absolute inset-0 h-full w-full object-cover">
-          </template>
-          <div x-show="preview" class="absolute inset-x-3 bottom-3 flex items-center justify-between gap-2 rounded-xl bg-ink/75 px-3 py-2 text-left text-xs text-white backdrop-blur">
-            <span class="truncate" x-text="name"></span>
-            <span class="shrink-0 font-semibold">{{ T.crops.upload_change }}</span>
-          </div>
-          <div x-show="!preview" class="flex flex-col items-center gap-2">
-            <span class="grid h-14 w-14 place-items-center rounded-2xl bg-white text-olive-700 shadow-soft ring-1 ring-sand-200 transition group-hover:scale-105"><i data-lucide="image-up" class="h-7 w-7"></i></span>
-            <p class="font-semibold">{{ T.crops.upload_drop }}</p>
-            <p class="text-xs text-muted">JPEG · PNG · &lt; 5 MB</p>
-          </div>
-        </label>
-        <p x-show="error" x-text="error" class="mt-2 text-sm font-medium text-zred"></p>
-      </div>
-
-      <!-- Consignes -->
-      <div class="rounded-2xl bg-sand-50 p-4 ring-1 ring-sand-200">
-        <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">{{ T.crops.guide_title }}</p>
-        <ul class="grid gap-2 sm:grid-cols-3">
-          {% for g in T.crops.guide %}
-          <li class="flex items-start gap-2 text-sm"><span class="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white text-olive-700 ring-1 ring-sand-200"><i data-lucide="{{ g.icon }}" class="h-4 w-4"></i></span>{{ g.text }}</li>
-          {% endfor %}
-        </ul>
-      </div>
+          hx-indicator="#score-loading">
+      {% include "components/section_header.html" with title=T.crops.form_title hint=T.crops.form_hint icon="sprout" %}
 
       <!-- Formulaire -->
       <div>
-        <p class="mb-3 text-sm font-semibold">{{ T.crops.form_title }}</p>
         <div class="grid gap-3 sm:grid-cols-2">
           <label class="block"><span class="text-sm font-medium">{{ T.crops.zone }}</span>
             <select name="zone" class="mt-1 w-full rounded-xl border-0 bg-sand-50 px-3 py-2.5 text-sm ring-1 ring-sand-200 focus:ring-2 focus:ring-olive-600">
@@ -185,7 +219,7 @@
         </div>
       </div>
 
-      <button type="submit" :disabled="!!error"
+      <button type="submit"
               class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-olive-700 px-5 py-3 font-semibold text-white shadow-soft transition hover:bg-olive-800 disabled:opacity-50 sm:w-auto">
         <i data-lucide="sparkles" class="h-4 w-4"></i>{{ T.crops.analyse }}
       </button>
@@ -222,31 +256,14 @@
   </div>
   {% endif %}
 
-  <!-- Pop-up « terre nue ou plantée ? » -->
-  <div x-show="ask" x-cloak class="fixed inset-0 z-[1450] grid place-items-end bg-ink/40 p-0 backdrop-blur-sm sm:place-items-center sm:p-6" x-transition.opacity>
-    <div class="w-full max-w-xl rounded-t-3xl bg-white p-6 shadow-lift sm:rounded-3xl sm:p-8" role="dialog" aria-modal="true" aria-labelledby="land-q"
-         x-show="ask" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-8 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100">
-      <span class="grid h-12 w-12 place-items-center rounded-2xl bg-olive-100 text-olive-700"><i data-lucide="land-plot" class="h-6 w-6"></i></span>
-      <h2 id="land-q" class="mt-4 text-2xl font-bold tracking-tight text-olive-900">{{ T.crops.question }}</h2>
-      <p class="mt-1 text-muted">{{ T.crops.question_hint }}</p>
-      <div class="mt-6 grid gap-3 sm:grid-cols-2">
-        <button type="button" @click="choose('bare')" class="group flex flex-col items-start gap-3 rounded-2xl p-5 text-left ring-1 ring-sand-200 transition hover:-translate-y-0.5 hover:bg-sand-50 hover:shadow-soft hover:ring-olive-600 focus:outline-none focus-visible:ring-4 focus-visible:ring-olive-200">
-          <span class="grid h-12 w-12 place-items-center rounded-xl bg-sun-50 text-sun-700"><i data-lucide="shovel" class="h-6 w-6"></i></span>
-          <span><span class="block text-lg font-semibold">{{ T.crops.bare }}</span><span class="text-sm text-muted">{{ T.crops.bare_hint }}</span></span>
-        </button>
-        <button type="button" @click="choose('planted')" class="group flex flex-col items-start gap-3 rounded-2xl p-5 text-left ring-1 ring-sand-200 transition hover:-translate-y-0.5 hover:bg-sand-50 hover:shadow-soft hover:ring-olive-600 focus:outline-none focus-visible:ring-4 focus-visible:ring-olive-200">
-          <span class="grid h-12 w-12 place-items-center rounded-xl bg-zgreen-bg text-zgreen"><i data-lucide="sprout" class="h-6 w-6"></i></span>
-          <span><span class="block text-lg font-semibold">{{ T.crops.planted }}</span><span class="text-sm text-muted">{{ T.crops.planted_hint }}</span></span>
-        </button>
-      </div>
-    </div>
-  </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 {% if bloc2.geo %}
 {{ bloc2.geo|json_script:"crops-geo" }}
+{{ T.crops.pm_layers|json_script:"pm-layers" }}
+{{ T.crops.pm_js|json_script:"pm-js" }}
 <script src="{% vstatic 'js/map.js' %}"></script>
 <script src="{% vstatic 'js/crops_map.js' %}"></script>
 <script>
@@ -258,7 +275,8 @@
       equipment: { reservoir: "Reservoir", pompe: "Pump", panneaux: "Solar panels" },
       layers: { zones: "Zones", plants: "Plants", drip: "Drip lines", drain: "Drainage collection", equipment: "Valves & equipment", labels: "Labels" },
     };
-    const map = cropsPlanMap(el, JSON.parse(document.getElementById("crops-geo").textContent), T);
+    const G = JSON.parse(document.getElementById("crops-geo").textContent);
+    const map = cropsPlanMap(el, G, T);
     let ok = 0, ko = 0;
     map.eachLayer((l) => { if (l instanceof L.TileLayer) {
       l.on("tileload", () => ok++);
@@ -269,36 +287,61 @@
 {% endif %}
 <script>
   document.addEventListener("alpine:init", () => {
+    // Terre plantée : réglages du champ + carte (plantedFieldMap, static/js/crops_map.js)
+    Alpine.data("fieldTool", (url) => ({
+      p: { culture: "Palmier dattier", longueur: 150, largeur: 80, angle: 0, auto: true, lat: null, lon: null },
+      r: null, busy: false, err: "", carte: null,
+      axe: {}, pos: {},
+      cap(a) { return Math.round(((90 + Number(a)) % 180 + 180) % 180); },
+      init() {
+        const el = document.getElementById("planted-map"), geo = document.getElementById("crops-geo");
+        if (!el || !window.plantedFieldMap || !geo) return;
+        const J = JSON.parse(document.getElementById("pm-js").textContent);
+        this.axe = J.axis_src; this.pos = J.position;
+        const T = { zone: "{{ T.zone.zone|escapejs }}", day: "day", trees: "{{ T.crops.pm_trees|lower|escapejs }}",
+                    drippers: "{{ T.crops.pm_drippers|escapejs }}", move_hint: "{{ T.crops.pm_move|escapejs }}",
+                    layers: JSON.parse(document.getElementById("pm-layers").textContent) };
+        this.carte = plantedFieldMap(el, JSON.parse(geo.textContent), T, (ll) => {
+          this.p.lat = ll.lat; this.p.lon = ll.lng; this.calc();
+        });
+        this.charger();
+      },
+      montrer(r) {
+        this.r = r;
+        Object.assign(this.p, { culture: r.culture, longueur: r.longueur_m, largeur: r.largeur_m, angle: Math.round(r.angle_deg),
+                                auto: r.axe_source !== "manuel", lat: r.centre.lat, lon: r.centre.lon });
+        this.carte.afficher(r);
+        this.$nextTick(() => window.lucide && lucide.createIcons());
+      },
+      async envoyer(opts) {
+        this.busy = true; this.err = "";
+        try {
+          const rep = await fetch(url, opts);
+          const d = await rep.json();
+          if (!rep.ok) throw new Error(d.error || rep.statusText);
+          this.montrer(d);
+        } catch (e) { this.err = "{{ T.crops.pm_error|escapejs }} " + e.message; }
+        this.busy = false;
+      },
+      charger() { return this.envoyer({ headers: { Accept: "application/json" } }); },
+      calc() {
+        const f = new FormData();
+        f.append("culture", this.p.culture); f.append("longueur", this.p.longueur); f.append("largeur", this.p.largeur);
+        f.append("angle", this.p.auto ? "" : this.p.angle);
+        if (this.p.lat != null) { f.append("lat", this.p.lat); f.append("lon", this.p.lon); }
+        const tok = "{{ csrf_token }}";
+        return this.envoyer({ method: "POST", body: f, headers: { "X-CSRFToken": tok, Accept: "application/json" } });
+      },
+    }));
     Alpine.data("cropsPage", (initial, url) => ({
       mode: initial || "bare",
-      ask: !initial,
+      ask: false,   // plus de pop-up : le mode vient du diagnostic (Sentinel-2) ou du choix en haut à droite
       choose(m) {
         this.mode = m;
         this.ask = false;
         const body = new URLSearchParams({ mode: m });
         fetch(url, { method: "POST", headers: { "X-CSRFToken": csrfToken() }, body }).catch(() => {});
         this.$nextTick(() => icons());
-      },
-    }));
-
-    Alpine.data("photoUpload", () => ({
-      preview: null, name: "", error: "", drag: false,
-      pick(file) {
-        this.error = "";
-        if (!file) return;
-        if (!["image/jpeg", "image/png"].includes(file.type)) { this.error = UI.crops.err_type; this.preview = null; return; }
-        if (file.size > 5 * 1024 * 1024) { this.error = UI.crops.err_size; this.preview = null; return; }
-        this.name = file.name;
-        this.preview = URL.createObjectURL(file);
-      },
-      drop(e) {
-        this.drag = false;
-        const file = e.dataTransfer.files[0];
-        if (!file) return;
-        const dt = new DataTransfer();
-        dt.items.add(file);
-        this.$refs.input.files = dt.files;
-        this.pick(file);
       },
     }));
   });

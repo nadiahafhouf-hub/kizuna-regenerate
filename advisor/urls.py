@@ -9,4 +9,5 @@ urlpatterns = [
     path("score/", views.score, name="score"),
     path("recommandation.json", views.recommandation_json, name="recommandation_json"),
     path("plan/", views.plan, name="plan"),
+    path("champ.json", views.champ_json, name="champ_json"),
 ]
