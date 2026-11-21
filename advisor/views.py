@@ -1,9 +1,13 @@
-from django.http import JsonResponse
+from pathlib import Path
+
+from django.conf import settings
+from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_POST
 
 from core.views import journey_context
 from services import demo_data
+from .logic import crop_recommendations_ui, plan_png, recommandation
 
 MAX_PHOTO_BYTES = 5 * 1024 * 1024
 PHOTO_TYPES = {"image/jpeg", "image/png"}
@@ -12,9 +16,17 @@ PHOTO_TYPES = {"image/jpeg", "image/png"}
 def index(request, pid):
     ctx = journey_context(pid, "crops")
     zones = demo_data.zones(pid)
+    try:   # bloc 2 : vraies règles ; secours = version démo
+        bloc2 = crop_recommendations_ui(pid)
+        recs = bloc2["zones"]
+    except Http404:
+        raise
+    except Exception:
+        bloc2, recs = None, demo_data.crop_recommendations(pid)
     ctx.update({
         "mode": request.session.get(f"crops_mode_{pid}"),  # None → pop-up « nue ou plantée ? »
-        "recommendations": demo_data.crop_recommendations(pid),
+        "recommendations": recs,
+        "bloc2": bloc2,
         "zones": zones,
         "catalog": demo_data.crop_catalog(),
         "irrigation_types": demo_data.IRRIGATION_TYPES,
@@ -55,3 +67,16 @@ def score(request, pid):
                                       max(spacing, 0.05), irrigation,
                                       photo.name if photo else None)
     return render(request, "advisor/_score_result.html", {"r": result})
+
+
+def recommandation_json(request, pid):
+    """Recommandation terre nue complète (JSON) : pour le passeport / chatbot du bloc 4."""
+    demo_data.parcel(pid)  # 404 si parcelle inconnue
+    return JsonResponse(recommandation(pid), json_dumps_params={"ensure_ascii": False})
+
+
+def plan(request, pid):
+    """Plan PNG (zones, plantes, goutte-à-goutte, une vanne par zone), aussi enregistré dans media/."""
+    demo_data.parcel(pid)
+    rel = plan_png(pid)
+    return FileResponse(open(Path(settings.MEDIA_ROOT) / rel, "rb"), content_type="image/png")

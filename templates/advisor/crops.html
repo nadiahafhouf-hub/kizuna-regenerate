@@ -26,6 +26,26 @@
 
   <!-- ═══ Terre nue : recommandations par zone ═══ -->
   <div x-show="mode === 'bare'" x-cloak>
+    {% if bloc2 %}
+    <section class="mt-6 rounded-2xl bg-white p-4 text-sm shadow-soft ring-1 ring-sand-200" x-data="{ plan: false }">
+      <div class="flex flex-wrap items-center gap-x-5 gap-y-1.5">
+        <span class="inline-flex items-center gap-1.5 font-semibold"><i data-lucide="cloud-sun" class="h-4 w-4 text-olive-700"></i>{{ T.crops.b2_climate }}</span>
+        <span>{{ T.crops.b2_rain }} <b>{{ bloc2.climat.pluie_mm }} mm/yr</b></span>
+        <span>{{ T.crops.b2_winter }} <b>{{ bloc2.climat.tmin_hiver }} °C</b></span>
+        <span>{{ T.crops.b2_summer }} <b>{{ bloc2.climat.tmax_ete }} °C</b></span>
+        <span>ET0 <b>{{ bloc2.climat.et0_mm_jour }} mm/day</b></span>
+        <span>{{ T.crops.b2_water_ec }} <b>{{ bloc2.ce_eau_dS_m }} dS/m</b></span>
+        <span>{{ T.crops.b2_total }} <b>{{ bloc2.besoin_total_litres_jour|num }} {{ T.crops.b2_per_day }}</b></span>
+      </div>
+      <p class="mt-1.5 text-xs text-muted">{{ T.crops.b2_source }}: {{ bloc2.climat.detail_source|default:bloc2.climat.source }} · {{ bloc2.ce_eau_source }} · {{ T.crops.b2_estimates }}</p>
+      <button type="button" @click="plan = !plan" class="mt-3 inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-semibold text-olive-800 ring-1 ring-olive-200 hover:bg-olive-50">
+        <i data-lucide="map" class="h-4 w-4"></i><span x-text="plan ? '{{ T.crops.b2_plan_hide|escapejs }}' : '{{ T.crops.b2_plan_show|escapejs }}'"></span>
+      </button>
+      <template x-if="plan">
+        <img src="{% url 'advisor:plan' parcel.id %}" alt="{{ T.crops.b2_plan_show }}" class="mt-3 w-full rounded-xl ring-1 ring-sand-200" loading="lazy">
+      </template>
+    </section>
+    {% endif %}
     {% for rec in recommendations %}{% with z=rec.zone %}
     <section class="mt-8">
       <div class="mb-4 flex flex-wrap items-center gap-3">
@@ -38,6 +58,22 @@
       <div class="mb-4 flex items-start gap-3 rounded-2xl bg-zred-bg px-4 py-3 text-sm font-medium text-zred ring-1 ring-zred/25">
         <i data-lucide="octagon-alert" class="mt-0.5 h-5 w-5 shrink-0"></i>{{ T.crops.red_banner }}
       </div>
+      {% elif z.couleur == "ORANGE" %}
+      <div class="mb-4 flex items-start gap-3 rounded-2xl bg-zorange-bg px-4 py-3 text-sm font-medium text-zorange ring-1 ring-zorange/25">
+        <i data-lucide="triangle-alert" class="mt-0.5 h-5 w-5 shrink-0"></i>{{ T.crops.orange_banner }}
+      </div>
+      {% endif %}
+      {% if rec.bloc2 %}{% with b=rec.bloc2 %}
+      <div class="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl bg-white px-4 py-2.5 text-sm shadow-soft ring-1 ring-sand-200">
+        <span class="inline-flex items-center gap-1.5 font-medium"><i data-lucide="droplets" class="h-4 w-4 text-water-600"></i>{{ T.crops.b2_water }} <b class="tabular-nums">{{ b.besoin_litres_jour|num }}</b> {{ T.crops.b2_per_day }}</span>
+        <span class="text-muted">{{ b.nb_plants }} {{ T.crops.b2_plants }}</span>
+        <span class="text-muted">{% if b.decide_par == "bloc 1" %}{{ T.crops.b2_by_block1 }}{% else %}{{ T.crops.b2_by_block2 }}{% endif %}</span>
+        {% if b.microbes %}<span class="text-muted">{{ T.crops.b2_microbes }}: <i>{{ b.microbes|join:", " }}</i></span>{% endif %}
+        {% if b.collecte_drainage %}<span class="inline-flex items-center gap-1 text-zred"><i data-lucide="shield-alert" class="h-4 w-4"></i>{{ T.crops.b2_no_leaching }}</span>{% endif %}
+        {% if rec.crops %}<span class="w-full text-xs text-muted">{{ T.crops.b2_one_valve }}</span>{% endif %}
+      </div>
+      {% endwith %}{% endif %}
+      {% if rec.remediation %}
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {% for p in rec.remediation %}
         <article class="reveal flex gap-3 rounded-2xl bg-white p-4 shadow-soft ring-1 ring-sand-200" style="animation-delay: {% widthratio forloop.counter0 1 80 %}ms">
@@ -52,15 +88,17 @@
         {% endfor %}
       </div>
       {% else %}
-      {% if z.couleur == "ORANGE" %}
-      <div class="mb-4 flex items-start gap-3 rounded-2xl bg-zorange-bg px-4 py-3 text-sm font-medium text-zorange ring-1 ring-zorange/25">
-        <i data-lucide="triangle-alert" class="mt-0.5 h-5 w-5 shrink-0"></i>{{ T.crops.orange_banner }}
-      </div>
-      {% endif %}
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {% for c in rec.crops %}
           {% widthratio forloop.counter0 1 70 as d %}
+          {% if c.recommended %}
+          <div class="relative flex flex-col rounded-2xl ring-2 ring-olive-600 [&>article]:flex-1">
+            <span class="absolute -top-2.5 right-3 z-10 inline-flex items-center gap-1 rounded-full bg-olive-700 px-2.5 py-0.5 text-[11px] font-semibold text-white shadow-soft"><i data-lucide="star" class="h-3 w-3"></i>{{ T.crops.b2_recommended }}</span>
+            {% include "components/crop_card.html" with c=c z=z delay=d %}
+          </div>
+          {% else %}
           {% include "components/crop_card.html" with c=c z=z delay=d %}
+          {% endif %}
         {% endfor %}
       </div>
       {% endif %}

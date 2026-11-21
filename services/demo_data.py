@@ -257,7 +257,20 @@ WATER_LEVEL = {"FAIBLE": 1, "MOYEN": 2, "ELEVE": 3}
 
 
 def crop_recommendations(pid) -> list[dict]:
-    """Par zone : cultures compatibles (terre nue). Zone ROUGE : plantes de dépollution
+    """Bloc 2 branché : vraies règles de advisor.logic (une culture par zone verte,
+    traitement du bloc 1 pour ROUGE/ORANGE, jamais d'alimentaire sur zone interdite).
+    En cas d'erreur, on retombe sur l'ancienne version démo : la page ne plante jamais."""
+    try:
+        from advisor.logic import crop_recommendations_ui
+        return crop_recommendations_ui(pid)["zones"]
+    except Http404:
+        raise
+    except Exception:
+        return _crop_recommendations_demo(pid)
+
+
+def _crop_recommendations_demo(pid) -> list[dict]:
+    """Ancienne version démo (secours). Zone ROUGE : plantes de dépollution
     uniquement, jamais de culture alimentaire."""
     meta = _crops_meta()
     catalog = {c["nom"]: c for c in crop_catalog()}

@@ -1,0 +1,8 @@
+{
+  "_lisez_moi": "Table de secours si Open-Meteo ne repond pas. Valeurs APPROXIMATIVES. tmin_hiver = minimum moyen du mois le plus froid ; tmax_ete = maximum moyen du mois le plus chaud ; et0_mm_jour = ET0 moyen annuel. ce_eau_dS_m = salinite typique de l'eau d'irrigation (nappe), ORDRE DE GRANDEUR a confirmer par une mesure.",
+  "Gabes": {"lat": 33.88, "lon": 10.1, "pluie_mm": 180, "tmin_hiver": 6, "tmax_ete": 33, "et0_mm_jour": 4.5, "ce_eau_dS_m": 3.5},
+  "Kebili": {"lat": 33.7, "lon": 8.97, "pluie_mm": 90, "tmin_hiver": 4, "tmax_ete": 40, "et0_mm_jour": 5.5, "ce_eau_dS_m": 3.5},
+  "Bizerte": {"lat": 37.27, "lon": 9.87, "pluie_mm": 600, "tmin_hiver": 8, "tmax_ete": 31, "et0_mm_jour": 3.5, "ce_eau_dS_m": 1.5},
+  "Jendouba": {"lat": 36.5, "lon": 8.78, "pluie_mm": 450, "tmin_hiver": 4, "tmax_ete": 36, "et0_mm_jour": 3.8, "ce_eau_dS_m": 1.0},
+  "Sfax": {"lat": 34.74, "lon": 10.76, "pluie_mm": 200, "tmin_hiver": 6, "tmax_ete": 33, "et0_mm_jour": 4.3, "ce_eau_dS_m": 3.0}
+}

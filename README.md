@@ -62,6 +62,22 @@ Règles :
 - Valeurs en **MAJUSCULES** : `ROUGE` / `ORANGE` / `VERT`, `NUE` / `PLANTEE`, etc.
 - Ne pas changer les clés du contrat sans prévenir toute l'équipe.
 
+## Bloc 2 — conseiller cultures (terre nue)
+
+Calculs sans Django dans `advisor/services/` (testables seuls), branchés sur l'interface via
+`advisor/logic.py` → `services.demo_data.crop_recommendations()` (mêmes champs qu'avant).
+
+- **ROUGE / ORANGE** : plantes et microbes du `traitement` du bloc 1 (rien d'inventé) ; si `traitement`
+  est vide → secours Atriplex + hyperaccumulatrice. ROUGE : pas de lessivage (LR = 0) + collecte du drainage.
+- **VERT** : **une seule culture par zone** (une vanne = mêmes besoins en eau), évaluée avec la CE **max**
+  de la zone et le climat, + 2 alternatives. `culture_alimentaire_autorisee = false` → jamais d'alimentaire.
+- Base de plantes : `advisor/data/plantes.json` (ajouter une plante = copier un bloc, sans coder).
+- Climat : Open-Meteo → NASA POWER (ET0 Hargreaves) → `advisor/data/regions.json` ; cache dans `cache/`.
+- Eau d'irrigation : `ce_eau_dS_m` du LandProfile si mesurée, sinon valeur typique de la région
+  (Gabès ≈ 3,5 dS/m, ordre de grandeur à confirmer).
+- JSON complet (pour le bloc 4) : `GET /p/<id>/crops/recommandation.json` · plan PNG : `GET /p/<id>/crops/plan/`.
+- Tests : `python manage.py test advisor` (hors ligne).
+
 ## `services/` — code récupéré de l'ancien projet
 
 | Fichier | Origine | Contenu |
