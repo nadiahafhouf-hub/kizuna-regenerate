@@ -147,3 +147,82 @@ class ParcoursAgriculteurTests(TestCase):
     def test_parcelle_hors_limites_refusee(self):
         r = self.client.post("/parcels/new/", {"largeur": 5000, "longueur": 30, "lat": 33.88, "lon": 10.07})
         self.assertEqual(r.status_code, 200)
+
+
+def _sat(nl, nc, f):
+    """Couche satellite factice : f(ligne, col) → (ndvi, ndmi, si)."""
+    cases = []
+    for l in range(nl):
+        for c in range(nc):
+            ndvi, ndmi, si = f(l, c)
+            cases.append({"ligne": l, "col": c, "valide": True, "scl": "vegetation" if ndvi >= 0.3 else "bare_soil",
+                          "ndvi": ndvi, "ndmi": ndmi, "si": si})
+    return {"source": "test", "attribution": "test", "image": "T", "date": "2026-11-02",
+            "nuages_scene_pct": 0, "cases_valides_pct": 100, "taille_case_m": 10, "cases": cases}
+
+
+class SatelliteFusionTests(SimpleTestCase):
+    def _profile(self, ce_de):
+        from .sampling import disposition
+        pts = disposition(5, 5, 9)
+        mesures = [_m(l, c, ce=ce_de(l, c)) for l, c in pts]
+        return construire_land_profile("T", 50, 50, 33.88, 10.07, mesures, "2026-11-22")
+
+    def test_fusion_adoptee_si_le_satellite_explique_la_ce(self):
+        from .satellite_fusion import appliquer_satellite
+        ndmi = lambda l, c: [0.30, -0.20, 0.25, -0.15, 0.10][(l * 3 + c) % 5]  # motif non lisse
+        prof = self._profile(lambda l, c: round(4 + 20 * ndmi(l, c), 2))
+        prof = appliquer_satellite(prof, _sat(5, 5, lambda l, c: (0.6, ndmi(l, c), 0.1)))
+        f = prof["fusion_ce"]
+        self.assertTrue(f["adoptee"], f)
+        self.assertEqual(f["covariable"], "ndmi")
+        self.assertGreater(f["gain_pct"], 10)
+        # le contrat est conservé
+        self.assertTrue(1 <= len(prof["zones"]) <= 3)
+        for c in prof["cases"]:
+            self.assertEqual(c["couleur"], couleur_case(c["CE_dS_m"], c["pH"], c["Cd_mg_kg"], c["Pb_mg_kg"]))
+
+    def test_fusion_refusee_si_pas_de_lien(self):
+        from .satellite_fusion import appliquer_satellite
+        rng = np.random.default_rng(3)
+        prof = self._profile(lambda l, c: round(float(rng.uniform(2, 12)), 2))
+        avant = [c["CE_dS_m"] for c in prof["cases"]]
+        prof = appliquer_satellite(prof, _sat(5, 5, lambda l, c: (0.6, float(rng.uniform(-0.2, 0.3)), 0.1)))
+        self.assertFalse(prof["fusion_ce"]["adoptee"])
+        self.assertEqual(avant, [c["CE_dS_m"] for c in prof["cases"]])  # IDW conservé
+
+    def test_cd_et_pb_jamais_modifies(self):
+        from .satellite_fusion import appliquer_satellite
+        prof = self._profile(lambda l, c: 3 + l)
+        avant = [(c["Cd_mg_kg"], c["Pb_mg_kg"]) for c in prof["cases"]]
+        prof = appliquer_satellite(prof, _sat(5, 5, lambda l, c: (0.5, 0.1 * l, 0.1)))
+        self.assertEqual(avant, [(c["Cd_mg_kg"], c["Pb_mg_kg"]) for c in prof["cases"]])
+
+    def test_observations(self):
+        from .satellite_fusion import observations_zone
+        zone = {"couleur": "ROUGE"}
+        cases = [{"ligne": 0, "col": i, "CE_dS_m": 8.0} for i in range(3)]
+        pix = {(0, i): {"valide": True, "ndvi": 0.6, "ndmi": -0.1, "si": 0.1} for i in range(3)}
+        codes = [o["code"] for o in observations_zone(zone, cases, pix)]
+        self.assertIn("stress_hydrique_fort", codes)
+        self.assertIn("couvert_utile", codes)
+        pix = {(0, i): {"valide": True, "ndvi": 0.1, "ndmi": -0.2, "si": 0.2} for i in range(3)}
+        codes = [o["code"] for o in observations_zone(zone, cases, pix)]
+        self.assertEqual(codes, ["sol_nu_a_couvrir", "sel_surface_probable"])
+
+    def test_demo_sans_fusion(self):
+        from .satellite_fusion import appliquer_satellite
+        sample = json.loads(SAMPLE.read_text(encoding="utf-8"))
+        avant = [c["CE_dS_m"] for c in sample["cases"]]
+        out = appliquer_satellite(sample, _sat(3, 3, lambda l, c: (0.15, -0.1, 0.12)), fusion=False)
+        self.assertEqual(avant, [c["CE_dS_m"] for c in out["cases"]])
+        self.assertNotIn("fusion_ce", out)
+        self.assertTrue(all(z.get("observations") for z in out["zones"]))
+
+    def test_satellite_indisponible_hors_ligne(self):
+        from unittest import mock
+
+        from .satellite import SatelliteIndisponible, analyser
+        with mock.patch("pystac_client.Client.open", side_effect=OSError("offline")):
+            with self.assertRaises(SatelliteIndisponible):
+                analyser(33.88, 10.07, 30, 30)

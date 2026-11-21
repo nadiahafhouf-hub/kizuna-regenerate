@@ -17,6 +17,8 @@ from .geo import land_profile_to_geojson
 from .models import LandProfile, SensorReading
 from .pipeline import construire_land_profile
 from .sampling import centre_case, distance_km, plan_capteurs
+from .satellite import SatelliteIndisponible
+from .satellite_fusion import appliquer_satellite
 
 EXPERIENCE = Path(settings.BASE_DIR) / "fixtures" / "bloc1" / "experience_capteurs.json"
 METRIQUES_CD = Path(settings.BASE_DIR) / "fixtures" / "bloc1" / "modele_cd_metriques.json"
@@ -45,6 +47,10 @@ def index(request, pid):
         "sources": sources,
         "interp": profile.get("interpolation"),
         "triage": profile.get("tri_labo"),
+        "sat": profile.get("satellite"),
+        "fusion": profile.get("fusion_ce"),
+        "controles": profile.get("points_controle") or [],
+        "needs_sat": demo_data.is_db_parcel(pid) and not profile.get("satellite"),
         "is_db": demo_data.is_db_parcel(pid),
         "map_data": {
             "geojson": land_profile_to_geojson(profile),
@@ -54,6 +60,8 @@ def index(request, pid):
             "center": ctx["parcel"]["center"],
             "caseUrl": reverse("diagnostics:case", args=[pid, 0, 0]).replace("/0/0/", "/{l}/{c}/"),
             "hasConfidence": any("confiance" in c for c in profile["cases"]),
+            "hasSatellite": bool(profile.get("satellite")),
+            "controles": profile.get("points_controle") or [],
         },
     })
     return render(request, "diagnostics/diagnostic.html", ctx)
@@ -280,6 +288,12 @@ def readings(request, pid):
                                  region=g["region"], texture_sol=texture, taille_m=g["taille"])
     tri = [t for t in (_tri_labo(m["id"], m, texture) for m in mesures) if t]
     lp["tri_labo"] = tri or None
+    # même parcelle, même géométrie : on réutilise la dernière image satellite (pas de nouvel appel réseau)
+    precedent = LandProfile.objects.filter(parcel=parcelle).order_by("-created_at").first()
+    if precedent and (precedent.data.get("satellite") or {}).get("cases"):
+        sat = precedent.data["satellite"]
+        if len(sat["cases"]) == len(lp["cases"]):
+            lp = appliquer_satellite(lp, sat, fusion=True)
     LandProfile.objects.create(parcel=parcelle, date_mesure=when, data=lp)
     SensorReading.objects.bulk_create([
         SensorReading(parcel=parcelle, date_mesure=when, ligne=m["ligne"], col=m["col"], lat=m["lat"],
@@ -287,3 +301,31 @@ def readings(request, pid):
         for m in mesures])
     request.session.pop(f"readings_{pid}", None)
     return redirect("diagnostics:index", pid)
+
+
+# ───────────────────────── Couche satellite (Sentinel-2) ─────────────────────────
+
+def analyser_parcelle(pid):
+    """Lit Sentinel-2 pour la parcelle ; met à jour le dernier LandProfile si la parcelle est en base.
+    Renvoie le dict satellite (lève SatelliteIndisponible)."""
+    from .satellite import analyser
+    g = _geometrie(pid)
+    sat = analyser(g["lat"], g["lon"], g["largeur"], g["longueur"], g["taille"])
+    if demo_data.is_db_parcel(pid):
+        lp = LandProfile.objects.filter(parcel__parcelle_id=pid).order_by("-created_at").first()
+        if lp:
+            lp.data = appliquer_satellite(lp.data, sat, fusion=True)
+            lp.save(update_fields=["data"])
+    return sat
+
+
+@require_POST
+def satellite(request, pid):
+    """HTMX : analyse l'image Sentinel-2 la plus récente, puis recharge la page."""
+    try:
+        analyser_parcelle(pid)
+    except SatelliteIndisponible as e:
+        return render(request, "diagnostics/_satellite_error.html", {"error": str(e), "pid": pid})
+    resp = JsonResponse({"ok": True})
+    resp["HX-Refresh"] = "true"
+    return resp

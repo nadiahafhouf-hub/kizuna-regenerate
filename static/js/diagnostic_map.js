@@ -6,8 +6,32 @@
   const cellLayers = {};
 
   let showConfidence = false;
+  let layerMode = "zones";
+  // Calques satellite (Sentinel-2) : échelles de couleur par indice
+  const SCALES = {
+    ndvi: { min: -0.05, max: 0.6, colors: ["#B98B5E", "#EDE3B4", "#2F7D32"], legend: UI.satellite.legend_ndvi },
+    ndmi: { min: -0.25, max: 0.35, colors: ["#C0712B", "#F1E7C8", "#1F6FA8"], legend: UI.satellite.legend_ndmi },
+    si: { min: 0.08, max: 0.3, colors: ["#F3EDE1", "#E3A6BE", "#8E2A63"], legend: UI.satellite.legend_si },
+  };
+  const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  function ramp(colors, t) {
+    t = Math.max(0, Math.min(1, t));
+    const seg = t * (colors.length - 1), i = Math.min(colors.length - 2, Math.floor(seg)), u = seg - i;
+    const a = hex(colors[i]), b = hex(colors[i + 1]);
+    return `rgb(${a.map((v, k) => Math.round(v + (b[k] - v) * u)).join(",")})`;
+  }
+  function satStyle(f) {
+    const s = f.properties.satellite, sc = SCALES[layerMode];
+    const v = s && s.valide ? s[layerMode] : null;
+    // l'indice de sel n'a de sens que sur sol nu (NDVI < 0.2)
+    if (v === null || v === undefined || (layerMode === "si" && s.ndvi >= 0.2)) {
+      return { color: "#FFFFFF", weight: 1, dashArray: "3 3", fillColor: "#9CA3AF", fillOpacity: 0.25 };
+    }
+    return { color: "#FFFFFF", weight: 1.5, fillColor: ramp(sc.colors, (v - sc.min) / (sc.max - sc.min)), fillOpacity: 0.8 };
+  }
   // Calque « confiance » : les cases interpolées loin des points deviennent pâles et en pointillés
   const baseStyle = (f) => {
+    if (layerMode !== "zones") return satStyle(f);
     const conf = f.properties.confiance;
     if (showConfidence && conf !== undefined) {
       return { color: "#FFFFFF", weight: f.properties.source === "capteur" ? 2.5 : 1.5,
@@ -36,7 +60,9 @@
       cellLayers[`${p.ligne}-${p.col}`] = layer;
       const z = UI.zone[p.couleur];
       const conf = p.niveau_confiance ? `<br>${UI.diagnostic.confidence}: ${UI.diagnostic.confidence_levels[p.niveau_confiance]} (${Math.round(p.confiance * 100)}%)` : "";
-      layer.bindTooltip(`${ZONE_ICON_SVG[p.couleur]} <b>${z.label}</b> · ${UI.diagnostic.row} ${p.ligne}, ${UI.diagnostic.col} ${p.col}${p.zone ? " · " + p.zone : ""}${conf}`,
+      const s = p.satellite;
+      const sat = s && s.valide ? `<br><span style="color:#6B6F5E">NDVI ${s.ndvi} · NDMI ${s.ndmi} · SI ${s.si}</span>` : "";
+      layer.bindTooltip(`${ZONE_ICON_SVG[p.couleur]} <b>${z.label}</b> · ${UI.diagnostic.row} ${p.ligne}, ${UI.diagnostic.col} ${p.col}${p.zone ? " · " + p.zone : ""}${conf}${sat}`,
                         { sticky: true, direction: "top", opacity: 0.95 });
       layer.on({
         click: () => select(layer),
@@ -62,6 +88,37 @@
     grid.eachLayer((l) => { if (l !== selected) grid.resetStyle(l); });
   });
   map.fitBounds(data.bounds, { padding: [30, 30] });
+
+  // Sélecteur de calque satellite
+  const legend = document.getElementById("sat-legend");
+  document.querySelectorAll(".layer-btn").forEach((btn) => btn.addEventListener("click", () => {
+    layerMode = btn.dataset.layer;
+    document.querySelectorAll(".layer-btn").forEach((b) => {
+      const on = b === btn;
+      b.classList.toggle("bg-olive-700", on); b.classList.toggle("text-white", on);
+      b.classList.toggle("text-muted", !on);
+    });
+    grid.eachLayer((l) => grid.resetStyle(l));
+    selected = null;
+    if (legend) {
+      const sc = SCALES[layerMode];
+      legend.classList.toggle("hidden", !sc);
+      if (sc) {
+        document.getElementById("sat-legend-bar").style.background = `linear-gradient(90deg, ${sc.colors.join(",")})`;
+        document.getElementById("sat-legend-lo").textContent = sc.legend[0];
+        document.getElementById("sat-legend-hi").textContent = sc.legend[1];
+        document.getElementById("sat-legend-note").classList.toggle("hidden", layerMode !== "si");
+      }
+    }
+  }));
+
+  // Points de contrôle proposés par le satellite (cases non mesurées anormales)
+  (data.controles || []).forEach((c) => {
+    const l = cellLayers[`${c.ligne}-${c.col}`];
+    if (!l) return;
+    L.circle(l.getBounds().getCenter(), { radius: 4, color: "#E8A916", weight: 3, dashArray: "4 3", fill: false })
+      .addTo(map).bindTooltip(`${UI.satellite.controls_title} · NDVI ${c.ndvi} (${c.ndvi_zone})`);
+  });
 
   // Fermeture du panneau
   document.addEventListener("case-clear", () => {

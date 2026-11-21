@@ -56,11 +56,26 @@
 <section class="mt-6 grid gap-6 lg:grid-cols-3">
   <div class="reveal relative overflow-hidden rounded-2xl bg-white shadow-soft ring-1 ring-sand-200 lg:col-span-2" style="animation-delay: 140ms">
     <div id="diag-map" class="h-[380px] sm:h-[520px]"></div>
-    {% if map_data.hasConfidence %}
-    <label class="absolute right-3 top-3 z-[500] inline-flex cursor-pointer items-center gap-2 rounded-xl bg-white/95 px-3 py-2 text-xs font-semibold shadow-soft ring-1 ring-sand-200">
-      <input type="checkbox" id="conf-toggle" class="h-4 w-4 rounded accent-olive-700">{{ T.diagnostic.confidence_layer }}
-    </label>
-    {% endif %}
+    <div class="absolute inset-x-3 top-3 z-[500] flex flex-wrap items-start justify-end gap-2 pl-12">
+      {% if map_data.hasSatellite %}
+      <div class="inline-flex overflow-hidden rounded-xl bg-white/95 text-xs font-semibold shadow-soft ring-1 ring-sand-200" role="group" aria-label="{{ T.satellite.title }}">
+        <button type="button" data-layer="zones" class="layer-btn bg-olive-700 px-3 py-2 text-white">{{ T.satellite.layer_zones }}</button>
+        <button type="button" data-layer="ndvi" class="layer-btn px-3 py-2 text-muted hover:bg-sand-50">{{ T.satellite.layer_ndvi }}</button>
+        <button type="button" data-layer="ndmi" class="layer-btn px-3 py-2 text-muted hover:bg-sand-50">{{ T.satellite.layer_ndmi }}</button>
+        <button type="button" data-layer="si" class="layer-btn px-3 py-2 text-muted hover:bg-sand-50">{{ T.satellite.layer_si }}</button>
+      </div>
+      {% endif %}
+      {% if map_data.hasConfidence %}
+      <label class="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-white/95 px-3 py-2 text-xs font-semibold shadow-soft ring-1 ring-sand-200">
+        <input type="checkbox" id="conf-toggle" class="h-4 w-4 rounded accent-olive-700">{{ T.diagnostic.confidence_layer }}
+      </label>
+      {% endif %}
+    </div>
+    <div id="sat-legend" class="pointer-events-none absolute bottom-6 right-3 z-[500] hidden rounded-xl bg-white/95 px-3 py-2 text-[11px] shadow-soft ring-1 ring-sand-200">
+      <div id="sat-legend-bar" class="h-2 w-40 rounded-full"></div>
+      <div class="mt-1 flex justify-between gap-4 text-muted"><span id="sat-legend-lo"></span><span id="sat-legend-hi"></span></div>
+      <p id="sat-legend-note" class="mt-1 hidden max-w-[11rem] text-muted">{{ T.satellite.si_bare_only }}</p>
+    </div>
   </div>
   <aside class="reveal rounded-2xl bg-white p-5 shadow-soft ring-1 ring-sand-200" style="animation-delay: 200ms">
     <div id="case-panel">
@@ -116,6 +131,8 @@
   </div>
 </section>
 {% endif %}
+
+{% include "diagnostics/_satellite_card.html" %}
 
 <!-- Capteurs + sources de pollution -->
 <section class="mt-6 grid gap-6 lg:grid-cols-2">

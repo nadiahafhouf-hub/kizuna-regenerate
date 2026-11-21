@@ -1,0 +1,119 @@
+{
+ "source": "Copernicus Sentinel-2 L2A (Earth Search, AWS)",
+ "attribution": "Contains modified Copernicus Sentinel data 2026",
+ "image": "S2B_32SNC_20261026_1_L2A",
+ "date": "2026-10-26",
+ "nuages_scene_pct": 7.5,
+ "cases_valides_pct": 100,
+ "taille_case_m": 10,
+ "cases": [
+  {
+   "ligne": 0,
+   "col": 0,
+   "valide": true,
+   "scl": "bare_soil",
+   "ndvi": 0.262,
+   "ndmi": -0.149,
+   "si": 0.083
+  },
+  {
+   "ligne": 0,
+   "col": 1,
+   "valide": true,
+   "scl": "bare_soil",
+   "ndvi": 0.356,
+   "ndmi": -0.149,
+   "si": 0.04
+  },
+  {
+   "ligne": 0,
+   "col": 2,
+   "valide": true,
+   "scl": "bare_soil",
+   "ndvi": 0.261,
+   "ndmi": -0.165,
+   "si": 0.048
+  },
+  {
+   "ligne": 0,
+   "col": 3,
+   "valide": true,
+   "scl": "bare_soil",
+   "ndvi": 0.246,
+   "ndmi": -0.165,
+   "si": 0.069
+  },
+  {
+   "ligne": 1,
+   "col": 0,
+   "valide": true,
+   "scl": "bare_soil",
+   "ndvi": 0.179,
+   "ndmi": -0.137,
+   "si": 0.116
+  },
+  {
+   "ligne": 1,
+   "col": 1,
+   "valide": true,
+   "scl": "bare_soil",
+   "ndvi": 0.316,
+   "ndmi": -0.149,
+   "si": 0.042
+  },
+  {
+   "ligne": 1,
+   "col": 2,
+   "valide": true,
+   "scl": "bare_soil",
+   "ndvi": 0.281,
+   "ndmi": -0.165,
+   "si": 0.044
+  },
+  {
+   "ligne": 1,
+   "col": 3,
+   "valide": true,
+   "scl": "bare_soil",
+   "ndvi": 0.28,
+   "ndmi": -0.165,
+   "si": 0.041
+  },
+  {
+   "ligne": 2,
+   "col": 0,
+   "valide": true,
+   "scl": "bare_soil",
+   "ndvi": 0.179,
+   "ndmi": -0.137,
+   "si": 0.116
+  },
+  {
+   "ligne": 2,
+   "col": 1,
+   "valide": true,
+   "scl": "bare_soil",
+   "ndvi": 0.313,
+   "ndmi": -0.137,
+   "si": 0.043
+  },
+  {
+   "ligne": 2,
+   "col": 2,
+   "valide": true,
+   "scl": "bare_soil",
+   "ndvi": 0.321,
+   "ndmi": -0.185,
+   "si": 0.037
+  },
+  {
+   "ligne": 2,
+   "col": 3,
+   "valide": true,
+   "scl": "bare_soil",
+   "ndvi": 0.271,
+   "ndmi": -0.185,
+   "si": 0.044
+  }
+ ]
+}

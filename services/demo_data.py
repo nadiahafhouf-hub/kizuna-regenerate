@@ -91,7 +91,13 @@ def land_profile(pid) -> dict:
         if lp is None:
             raise Http404(f"No soil diagnostic yet for {pid}")
         return lp.data
-    return _read(FIXTURES / rec["land_profile"])
+    profile = _read(FIXTURES / rec["land_profile"])
+    # couche satellite pré-calculée (python manage.py bloc1_satellite) : démo instantanée, sans réseau
+    sat_path = FIXTURES / "bloc1" / "satellite" / f"{pid}.json"
+    if sat_path.exists():
+        from diagnostics.satellite_fusion import appliquer_satellite
+        profile = appliquer_satellite(profile, _read(sat_path), fusion=False)
+    return profile
 
 
 def _deg(lat):

@@ -1,0 +1,65 @@
+{
+ "source": "Copernicus Sentinel-2 L2A (Earth Search, AWS)",
+ "attribution": "Contains modified Copernicus Sentinel data 2026",
+ "image": "S2C_32SPC_20261120_0_L2A",
+ "date": "2026-11-20",
+ "nuages_scene_pct": 27.8,
+ "cases_valides_pct": 100,
+ "taille_case_m": 10,
+ "cases": [
+  {
+   "ligne": 0,
+   "col": 0,
+   "valide": true,
+   "scl": "bare_soil",
+   "ndvi": 0.142,
+   "ndmi": -0.178,
+   "si": 0.071
+  },
+  {
+   "ligne": 0,
+   "col": 1,
+   "valide": true,
+   "scl": "bare_soil",
+   "ndvi": 0.05,
+   "ndmi": -0.178,
+   "si": 0.121
+  },
+  {
+   "ligne": 0,
+   "col": 2,
+   "valide": true,
+   "scl": "bare_soil",
+   "ndvi": 0.156,
+   "ndmi": -0.062,
+   "si": 0.156
+  },
+  {
+   "ligne": 1,
+   "col": 0,
+   "valide": true,
+   "scl": "bare_soil",
+   "ndvi": 0.142,
+   "ndmi": -0.084,
+   "si": 0.139
+  },
+  {
+   "ligne": 1,
+   "col": 1,
+   "valide": true,
+   "scl": "bare_soil",
+   "ndvi": 0.167,
+   "ndmi": -0.084,
+   "si": 0.168
+  },
+  {
+   "ligne": 1,
+   "col": 2,
+   "valide": true,
+   "scl": "bare_soil",
+   "ndvi": 0.323,
+   "ndmi": -0.078,
+   "si": 0.141
+  }
+ ]
+}
