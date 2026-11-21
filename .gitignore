@@ -30,3 +30,6 @@ Thumbs.db
 
 # Config locale Claude Code
 .claude/
+
+# Cache du climat (bloc 2)
+cache/
