@@ -13,4 +13,5 @@ urlpatterns = [
     path("network/recompute/", views.network_recompute, name="network_recompute"),
     path("network/geojson/", views.network_geojson, name="network_geojson"),
     path("network/api/", views.network_api, name="network_api"),
+    path("network/card/", views.network_card, name="network_card"),  # page Crops, « Already planted »
 ]

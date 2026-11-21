@@ -130,6 +130,23 @@ class ReseauSatelliteTests(TestCase):
         src = next(f for f in plan.geojson["features"] if f["properties"]["couche"] == "source")
         self.assertGreater(src["geometry"]["coordinates"][0], self.profil["origine"]["lon"])
 
+    def test_carte_page_crops_already_planted(self):
+        """Page Crops (bloc 2), mode « Already planted » : la carte réseau reprend zone, culture et irrigation."""
+        crops = self.client.get(f"/p/{PID}/crops/")
+        self.assertContains(crops, f"/p/{PID}/irrigation/network/card/")
+        carte = f"{self.url}card/"
+        self.assertContains(self.client.get(carte), "Design my drip network")
+        zone = self.profil["zones"][-1]["id"]
+        r = self.client.post(carte, {"zone": zone, "crop": "Olivier", "irrigation": "GRAVITAIRE"})
+        self.assertEqual(r.status_code, 200)
+        plan = DripNetworkPlan.objects.get()
+        self.assertEqual(plan.statut, DripNetworkPlan.Statut.OK, plan.message)
+        z = next(z for z in plan.land_profile["zones"] if z["id"] == zone)
+        self.assertEqual((z["etat"], z["culture"], z["irrigation_actuelle"]["type"]),
+                         ("PLANTEE", "Olivier", "gravitaire"))
+        self.assertGreater(plan.conso_actuelle_m3_an, 0)  # irrigation actuelle connue -> économie calculée
+        self.assertContains(r, plan.image_trace.url)
+
     def test_panne_reseau_message_clair(self):
         self.serveur.panne = True
         r = self.client.post(self.url, {"source_image": "satellite"}, follow=True)
@@ -165,6 +182,9 @@ class DetectionIATests(ReseauSatelliteTests):
         pass
 
     def test_panne_reseau_message_clair(self):
+        pass
+
+    def test_carte_page_crops_already_planted(self):
         pass
 
     def test_detection_par_ia_puis_recalcul_sans_appel(self):

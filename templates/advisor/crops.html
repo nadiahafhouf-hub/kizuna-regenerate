@@ -70,7 +70,7 @@
 
   <!-- ═══ Terre plantée : photo + formulaire → score ═══ -->
   <section x-show="mode === 'planted'" x-cloak class="mt-8 grid gap-6 lg:grid-cols-5">
-    <form class="reveal space-y-5 rounded-2xl bg-white p-5 shadow-soft ring-1 ring-sand-200 sm:p-6 lg:col-span-3"
+    <form id="planted-form" class="reveal space-y-5 rounded-2xl bg-white p-5 shadow-soft ring-1 ring-sand-200 sm:p-6 lg:col-span-3"
           hx-post="{% url 'advisor:score' parcel.id %}" hx-encoding="multipart/form-data" hx-target="#score-result" hx-swap="innerHTML"
           hx-indicator="#score-loading" x-data="photoUpload()">
       {% include "components/section_header.html" with title=T.crops.upload_title icon="camera" %}
@@ -148,6 +148,13 @@
         </div>
       </div>
     </div>
+  </section>
+
+  <!-- Bloc 3 : réseau goutte-à-goutte de la parcelle déjà plantée (chargé en HTMX par l'app irrigation) -->
+  <section x-show="mode === 'planted'" x-cloak id="network-card"
+           class="reveal mt-6 rounded-2xl bg-white p-5 shadow-soft ring-1 ring-sand-200 sm:p-6"
+           hx-get="{% url 'irrigation:network_card' parcel.id %}" hx-trigger="load" hx-swap="innerHTML">
+    <p class="flex items-center gap-2 text-sm text-muted"><i data-lucide="loader-circle" class="h-4 w-4 animate-spin"></i>{{ T.network.card_title }}</p>
   </section>
 
   {% if next_step %}

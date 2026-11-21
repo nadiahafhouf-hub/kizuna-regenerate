@@ -195,6 +195,46 @@ def network_preview(request, pid):
         "warnings": sat["avertissements"]})
 
 
+# Valeurs du formulaire « Already planted » (bloc 2) → type d'irrigation du moteur
+IRRIGATION_CROPS = {"GOUTTE_A_GOUTTE": "goutte_a_goutte", "ASPERSION": "aspersion",
+                    "GRAVITAIRE": "gravitaire", "AUCUNE": "aucun"}
+
+
+@require_http_methods(["GET", "POST"])
+def network_card(request, pid):
+    """Carte « réseau goutte-à-goutte » insérée dans la page Crops, mode « Already planted » (HTMX).
+    GET : dernier réseau calculé. POST : calcule le réseau à partir de l'image satellite, en reprenant
+    la zone, la culture et l'irrigation actuelle saisies dans le formulaire du bloc 2."""
+    S = get_strings()["network"]
+    dernier = DripNetworkPlan.objects.filter(parcelle_id=pid).first()
+    erreur = None
+    if request.method == "POST":
+        profile = _profil(request, pid, dernier)
+        zone_id, crop = request.POST.get("zone"), request.POST.get("crop")
+        irr = IRRIGATION_CROPS.get(request.POST.get("irrigation"), "aucun")
+        zones = []
+        for z in profile.get("zones", []):
+            z = dict(z)
+            if z.get("id") == zone_id:  # zone déclarée plantée par l'agriculteur
+                z.update(etat="PLANTEE", irrigation_actuelle={"type": irr})
+                if crop:
+                    z["culture"] = crop
+            zones.append(z)
+        profile["zones"] = zones
+        try:
+            sat_engine.coins_lonlat(profile)
+            dernier = network.creer_reseau(pid, profile, {"mode": "satellite"})
+        except sat_engine.SatelliteErreur as e:
+            erreur = str(e)
+        except Exception as e:
+            erreur = f"{S['err_analysis']} {e}"
+            dernier = DripNetworkPlan.objects.filter(parcelle_id=pid).first()
+    return render(request, "irrigation/_network_card.html", {
+        "parcel": {"id": pid}, "net": dernier, "erreur": erreur,
+        "ia": ((dernier.resultat or {}).get("photo") or {}).get("detection_ia") if dernier else None,
+        "legende_source": sat_engine.legende_source(dernier.source_image) if dernier else ""})
+
+
 def network_geojson(request, pid):
     plan = get_object_or_404(DripNetworkPlan.objects.filter(parcelle_id=pid)[:1])
     return JsonResponse(plan.geojson or {})
