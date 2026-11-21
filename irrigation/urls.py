@@ -9,4 +9,8 @@ urlpatterns = [
     path("reset/", views.reset, name="reset"),
     path("plan.json", views.plan_json, name="plan_json"),
     path("passeport.json", views.passeport_json, name="passeport_json"),
+    path("etat.json", views.etat_json, name="etat"),
+    path("simuler/", views.simuler, name="simuler"),
+    path("modifier/", views.modifier, name="modifier"),
+    path("action/<str:nom>/", views.action, name="action"),
 ]

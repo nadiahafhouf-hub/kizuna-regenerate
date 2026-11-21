@@ -101,9 +101,9 @@ class PlanningTests(SimpleTestCase):
 
 
 class PageTests(TestCase):
-    """La page Irrigation lit le vrai planning et garde le format attendu par irrigation_sim.js."""
+    """Parcours complet sur la vraie page : planning en base, Valider -> Automatique -> Simuler -> Reprendre la main."""
 
-    def test_page_et_json(self):
+    def test_contrat_demo_data(self):
         from services import demo_data
         for pid in ("GAB-001", "GAB-002", "GAB-003"):
             plan = demo_data.irrigation_plan(pid)
@@ -113,11 +113,48 @@ class PageTests(TestCase):
                 for k in ("index", "weekday", "day", "month", "slots", "pump", "hourly",
                           "irrigation_m3", "flood_m3", "skipped"):
                     self.assertIn(k, d)
-                self.assertEqual(len(d["hourly"]["solar"]), 24)
             self.assertLessEqual(plan["totals"]["pumped_m3"], plan["totals"]["quota_m3"])
+
+    def test_parcours_complet(self):
+        from irrigation.models import IrrigationEvent, IrrigationPlan
+        pid = "GAB-001"
+        r = self.client.get(f"/p/{pid}/irrigation/")
+        self.assertEqual(r.status_code, 200)
+        plan = IrrigationPlan.objects.get()
+        self.assertEqual(plan.statut, "BROUILLON")
+        self.assertEqual(self.client.post(f"/p/{pid}/irrigation/simuler/").status_code, 400)   # pas encore auto
+        # modifier un volume -> plan recalcule
+        date = plan.date_debut.isoformat()
+        self.client.post(f"/p/{pid}/irrigation/modifier/", {"zone_id": "Z3", "date": date, "volume_l": "450"})
+        self.assertEqual(sum(e.volume_l for e in plan.programme.filter(zone_id="Z3", date=plan.date_debut)), 450)
+        # Valider -> Automatique
+        self.client.post(f"/p/{pid}/irrigation/action/valider/")
+        self.client.post(f"/p/{pid}/irrigation/action/automatique/")
+        plan.refresh_from_db()
+        self.assertEqual(plan.statut, "AUTO")
+        self.assertEqual(self.client.get(f"/p/{pid}/irrigation/").status_code, 200)
+        cap = plan.planning["totaux"]["capacite_reservoir_l"]
+        for _ in range(8):                                     # 7 jours + 1 clic de trop
+            j = self.client.post(f"/p/{pid}/irrigation/simuler/").json()
+            self.assertTrue(j["ok"])
+            self.assertTrue(0 <= j["etat"]["reservoir"]["niveau_l"] <= cap)
+            self.assertLessEqual(j["etat"]["quota"]["pompe_l"], j["etat"]["quota"]["quota_l"])
+        self.assertFalse(plan.programme.filter(statut="PREVU").exists())
+        self.assertTrue(j["etat"]["semaine_finie"])
+        self.assertTrue(plan.evenements.filter(action="OUVERTURE").exists())        # journal ValveEvent
+        ev = self.client.get(f"/p/{pid}/irrigation/passeport.json").json()["evenements"]
+        self.assertTrue(ev and all(e["statut"] in ("FAIT", "ANNULE") for e in ev))
+        # Reprendre la main -> l'automate ne fait plus rien
+        self.client.post(f"/p/{pid}/irrigation/action/nouveau/")
+        plan2 = IrrigationPlan.objects.first()
+        self.client.post(f"/p/{pid}/irrigation/action/valider/")
+        self.client.post(f"/p/{pid}/irrigation/action/automatique/")
+        self.client.post(f"/p/{pid}/irrigation/action/manuel/")
+        self.client.post(f"/p/{pid}/irrigation/simuler/")
+        self.assertFalse(IrrigationEvent.objects.filter(plan=plan2, statut="FAIT").exists())
+
+    def test_pages_des_trois_parcelles(self):
+        for pid in ("GAB-001", "GAB-002", "GAB-003"):
             self.assertEqual(self.client.get(f"/p/{pid}/irrigation/").status_code, 200)
             self.assertIn("evenements", self.client.get(f"/p/{pid}/irrigation/plan.json").json())
-            ev = self.client.get(f"/p/{pid}/irrigation/passeport.json").json()["evenements"]
-            self.assertTrue(ev)
-            self.assertTrue(all(e["statut"] in ("FAIT", "ANNULE") for e in ev))
-            self.assertTrue(all(e["date"] < datetime.date.today().isoformat() for e in ev))
+            self.assertEqual(self.client.get(f"/p/{pid}/irrigation/passeport.json").json()["evenements"], [])

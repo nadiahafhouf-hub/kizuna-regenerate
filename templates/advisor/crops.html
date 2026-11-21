@@ -27,8 +27,33 @@
   <!-- ═══ Terre nue : recommandations par zone ═══ -->
   <div x-show="mode === 'bare'" x-cloak>
     {% if bloc2 %}
-    <section class="mt-6 rounded-2xl bg-white p-4 text-sm shadow-soft ring-1 ring-sand-200" x-data="{ plan: false }">
-      <div class="flex flex-wrap items-center gap-x-5 gap-y-1.5">
+    <section class="mt-6 rounded-2xl bg-white p-4 shadow-soft ring-1 ring-sand-200 sm:p-5" x-data="{ tab: 'map' }">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 class="flex items-center gap-2 text-lg font-semibold tracking-tight text-olive-900"><i data-lucide="map" class="h-5 w-5 text-olive-700"></i>{{ T.crops.b2_layout_title }}</h2>
+          <p class="mt-0.5 max-w-2xl text-xs text-muted" x-text="tab === 'map' ? '{{ T.crops.b2_layout_hint|escapejs }}' : '{{ T.crops.b2_plan_hint|escapejs }}'"></p>
+        </div>
+        <div class="flex rounded-xl bg-sand-100 p-1 text-sm font-semibold" role="tablist">
+          <button type="button" role="tab" @click="tab = 'map'" :aria-selected="tab === 'map'"
+                  class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition" :class="tab === 'map' ? 'bg-white text-olive-800 shadow-soft' : 'text-muted hover:text-ink'">
+            <i data-lucide="satellite" class="h-4 w-4"></i>{{ T.crops.b2_tab_map }}</button>
+          <button type="button" role="tab" @click="tab = 'plan'" :aria-selected="tab === 'plan'"
+                  class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition" :class="tab === 'plan' ? 'bg-white text-olive-800 shadow-soft' : 'text-muted hover:text-ink'">
+            <i data-lucide="layout-grid" class="h-4 w-4"></i>{{ T.crops.b2_tab_plan }}</button>
+        </div>
+      </div>
+      {% if bloc2.geo %}
+      <div x-show="tab === 'map'" class="mt-4">
+        <div id="crops-map" class="h-[420px] w-full overflow-hidden rounded-xl ring-1 ring-sand-200 sm:h-[480px]"></div>
+        <p id="crops-map-msg" class="mt-1.5 hidden text-xs font-medium text-zorange">{{ T.crops.b2_map_offline }}</p>
+      </div>
+      {% endif %}
+      <div x-show="tab === 'plan'" x-cloak class="mt-4">
+        <template x-if="tab === 'plan'">
+          <img src="{% url 'advisor:plan' parcel.id %}" alt="{{ T.crops.b2_tab_plan }}" class="w-full rounded-xl ring-1 ring-sand-200" loading="lazy">
+        </template>
+      </div>
+      <div class="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1.5 border-t border-sand-100 pt-3 text-sm">
         <span class="inline-flex items-center gap-1.5 font-semibold"><i data-lucide="cloud-sun" class="h-4 w-4 text-olive-700"></i>{{ T.crops.b2_climate }}</span>
         <span>{{ T.crops.b2_rain }} <b>{{ bloc2.climat.pluie_mm }} mm/yr</b></span>
         <span>{{ T.crops.b2_winter }} <b>{{ bloc2.climat.tmin_hiver }} °C</b></span>
@@ -38,12 +63,6 @@
         <span>{{ T.crops.b2_total }} <b>{{ bloc2.besoin_total_litres_jour|num }} {{ T.crops.b2_per_day }}</b></span>
       </div>
       <p class="mt-1.5 text-xs text-muted">{{ T.crops.b2_source }}: {{ bloc2.climat.detail_source|default:bloc2.climat.source }} · {{ bloc2.ce_eau_source }} · {{ T.crops.b2_estimates }}</p>
-      <button type="button" @click="plan = !plan" class="mt-3 inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-semibold text-olive-800 ring-1 ring-olive-200 hover:bg-olive-50">
-        <i data-lucide="map" class="h-4 w-4"></i><span x-text="plan ? '{{ T.crops.b2_plan_hide|escapejs }}' : '{{ T.crops.b2_plan_show|escapejs }}'"></span>
-      </button>
-      <template x-if="plan">
-        <img src="{% url 'advisor:plan' parcel.id %}" alt="{{ T.crops.b2_plan_show }}" class="mt-3 w-full rounded-xl ring-1 ring-sand-200" loading="lazy">
-      </template>
     </section>
     {% endif %}
     {% for rec in recommendations %}{% with z=rec.zone %}
@@ -219,6 +238,28 @@
 {% endblock %}
 
 {% block scripts %}
+{% if bloc2.geo %}
+{{ bloc2.geo|json_script:"crops-geo" }}
+<script src="{% vstatic 'js/map.js' %}"></script>
+<script src="{% vstatic 'js/crops_map.js' %}"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const el = document.getElementById("crops-map");
+    if (!el || !window.L) return;
+    const T = {
+      zone: "{{ T.zone.zone|escapejs }}", non_food: "{{ T.crops.non_food|escapejs }}", valve: "{{ T.irrigation.valve|escapejs }}", day: "day",
+      equipment: { reservoir: "Reservoir", pompe: "Pump", panneaux: "Solar panels" },
+      layers: { zones: "Zones", plants: "Plants", drip: "Drip lines", drain: "Drainage collection", equipment: "Valves & equipment", labels: "Labels" },
+    };
+    const map = cropsPlanMap(el, JSON.parse(document.getElementById("crops-geo").textContent), T);
+    let ok = 0, ko = 0;
+    map.eachLayer((l) => { if (l instanceof L.TileLayer) {
+      l.on("tileload", () => ok++);
+      l.on("tileerror", () => { if (++ko >= 4 && !ok) document.getElementById("crops-map-msg").classList.remove("hidden"); });
+    } });
+  });
+</script>
+{% endif %}
 <script>
   document.addEventListener("alpine:init", () => {
     Alpine.data("cropsPage", (initial, url) => ({
