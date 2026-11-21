@@ -53,3 +53,38 @@ class ValveEvent(models.Model):
 
     def __str__(self):
         return f"{self.horodatage:%Y-%m-%d %H:%M} {self.action} {self.volume_l:.0f} L"
+
+
+class IrrigationSettings(models.Model):
+    """Parametres du systeme d'irrigation (une seule ligne, modifiable dans l'admin)."""
+    puissance_pompe_kw = models.FloatField(default=0.75)
+    debit_pompe_m3_h = models.FloatField(default=1.5)
+    puissance_crete_kwc = models.FloatField(
+        default=2.0, help_text="Avec 1,0 kWc x 0,8 la production max est 0,8 kW : la pompe de 0,75 kW "
+                               "ne demarre que si le rayonnement >= 938 W/m2 (jamais en hiver).")
+    ratio_performance = models.FloatField(default=0.8)
+    capacite_reservoir_m3 = models.FloatField(default=5.0)
+    niveau_initial_m3 = models.FloatField(default=2.5, help_text="eau dans le reservoir au debut de la semaine")
+    quota_nappe_m3_semaine = models.FloatField(default=15.0)
+    seuil_pluie_mm = models.FloatField(default=5.0, help_text="pluie prevue qui annule un arrosage")
+    seuil_humidite_pct = models.FloatField(default=30.0, help_text="humidite du sol qui fait sauter un arrosage")
+    heure_arrosage = models.PositiveSmallIntegerField(default=6)
+    debit_goutte_m3_h = models.FloatField(default=3.0, help_text="debit par gravite quand une vanne est ouverte")
+    rendement_submersion = models.FloatField(default=0.6, help_text="arrosage traditionnel (comparaison)")
+    ce_eau_dS_m = models.FloatField(
+        null=True, blank=True, verbose_name="CE de l'eau d'irrigation (dS/m)",
+        help_text="Vide = valeur de la recommandation (LandProfile, sinon valeur typique de la region).")
+
+    class Meta:
+        verbose_name = verbose_name_plural = "Parametres d'irrigation"
+
+    def __str__(self):
+        return "Parametres d'irrigation"
+
+    @classmethod
+    def charger(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def en_dict(self):
+        return {f.name: getattr(self, f.name) for f in self._meta.fields if f.name != "id"}

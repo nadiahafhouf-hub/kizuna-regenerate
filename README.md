@@ -78,6 +78,23 @@ Calculs sans Django dans `advisor/services/` (testables seuls), branchés sur l'
 - JSON complet (pour le bloc 4) : `GET /p/<id>/crops/recommandation.json` · plan PNG : `GET /p/<id>/crops/plan/`.
 - Tests : `python manage.py test advisor` (hors ligne).
 
+## Irrigation — planning 7 jours (tâche du bloc 2)
+
+Calculs sans Django dans `irrigation/services/`, branchés via `irrigation/logic.py` →
+`services.demo_data.irrigation_plan()` (mêmes champs pour `irrigation.html` et `irrigation_sim.js`).
+
+- Météo 7 jours Open-Meteo (ET0, pluie, rayonnement horaire, températures ; cache 1 h) → sinon moyennes du climat.
+- Besoin par zone et par jour = formule FAO du bloc 2 ; arrosage à 6 h en 1 à 3 doses selon la texture.
+- Pluie ≥ 5 mm → arrosage annulé (raison affichée). Quota de nappe/semaine jamais dépassé :
+  priorité VERT → ORANGE → ROUGE, chaque réduction est expliquée.
+- Pompage nappe → réservoir seulement aux heures où `kWc × rayonnement/1000 × 0,8 ≥ puissance pompe` ;
+  le réservoir ne déborde jamais ; on remplit d'avance avant les jours sans soleil.
+- Paramètres modifiables dans l'admin : **Paramètres d'irrigation** (pompe, panneaux, réservoir, quota, seuils).
+  Par défaut 2,0 kWc : avec 1,0 kWc × 0,8 la pompe de 0,75 kW ne démarre presque jamais en hiver.
+- JSON : `GET /p/<id>/irrigation/plan.json` · passeport (bloc 4) : `GET /p/<id>/irrigation/passeport.json`
+  (événements FAIT / ANNULE de la semaine écoulée, simulés).
+- Tests : `python manage.py test irrigation` (hors ligne).
+
 ## `services/` — code récupéré de l'ancien projet
 
 | Fichier | Origine | Contenu |

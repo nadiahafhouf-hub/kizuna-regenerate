@@ -397,8 +397,20 @@ def _solar_curve(kwp, cloud):
 
 
 def irrigation_plan(pid, start=None) -> dict:
-    """Planning 7 jours : irrigation à 6 h par gravité depuis le réservoir, pompage solaire
-    vers le réservoir à midi. Remplacé plus tard par Open-Meteo + agent du bloc 3."""
+    """Planning 7 jours branché sur irrigation.logic : météo Open-Meteo, besoin FAO par zone,
+    annulation pluie, quota de nappe (VERT > ORANGE > ROUGE), pompage seulement si le solaire
+    suffit, réservoir jamais débordé. En cas d'erreur : ancienne version démo (la page ne plante jamais)."""
+    try:
+        from irrigation.logic import irrigation_plan_ui
+        return irrigation_plan_ui(pid, start)
+    except Http404:
+        raise
+    except Exception:
+        return _irrigation_plan_demo(pid, start)
+
+
+def _irrigation_plan_demo(pid, start=None) -> dict:
+    """Ancienne version démo (secours) : irrigation à 6 h par gravité, pompage solaire à midi."""
     cfg = _read(DEMO / "irrigation.json")
     sysc, week = cfg["system"], cfg["week"]
     start = start or date.today()
