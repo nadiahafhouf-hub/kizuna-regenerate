@@ -22,12 +22,42 @@ def nb_lignes_colonnes(largeur_m, longueur_m, taille_m=10):
     return math.ceil(longueur_m / taille_m), math.ceil(largeur_m / taille_m)
 
 
+HECTARE = 10_000
+AIRE_MAX_M2 = 20 * HECTARE   # 20 ha : au-delà, découper l'exploitation en plusieurs parcelles
+# Au-delà de 1 ha, densité dégressive : 1 point / 0,25 ha (≈ grille de 50 m), pour que la campagne
+# XRF reste faisable en une journée (≈ 2-3 min par point + marche) — 20 ha → ~100 points.
+AIRE_PAR_POINT_GRANDE_M2 = 2_500
+# Stations fixes au-delà de 1 ha : 1 par hectare (≈ un secteur d'irrigation).
+AIRE_PAR_STATION_GRANDE_M2 = HECTARE
+
+
 def nb_points_recommande(largeur_m, longueur_m):
-    return max(MIN_POINTS, math.ceil(largeur_m * longueur_m / AIRE_PAR_POINT_M2))
+    aire = largeur_m * longueur_m
+    if aire <= HECTARE:
+        return max(MIN_POINTS, math.ceil(aire / AIRE_PAR_POINT_M2))
+    return HECTARE // AIRE_PAR_POINT_M2 + math.ceil((aire - HECTARE) / AIRE_PAR_POINT_GRANDE_M2)
 
 
 def nb_stations_recommande(largeur_m, longueur_m):
-    return max(1, math.ceil(largeur_m * longueur_m / AIRE_PAR_STATION_M2))
+    aire = largeur_m * longueur_m
+    if aire <= HECTARE:
+        return max(1, math.ceil(aire / AIRE_PAR_STATION_M2))
+    return HECTARE // AIRE_PAR_STATION_M2 + math.ceil((aire - HECTARE) / AIRE_PAR_STATION_GRANDE_M2)
+
+
+def dimensions_depuis_hectares(hectares, ratio=1.0):
+    """Surface (ha) → largeur × longueur (m), arrondies à la case de 10 m. ratio = largeur / longueur."""
+    aire = hectares * HECTARE
+    longueur = math.sqrt(aire / ratio)
+    largeur = aire / longueur
+    arrondi = lambda v: max(10, int(round(v / 10.0)) * 10)  # noqa: E731
+    return arrondi(largeur), arrondi(longueur)
+
+
+def origine_depuis_centre(lat, lon, largeur_m, longueur_m):
+    """Position de l'agriculteur (centre de la terre) → coin nord-ouest (origine de la grille)."""
+    dlat, dlon = _deg(lat)
+    return lat + longueur_m / 2 * dlat, lon - largeur_m / 2 * dlon
 
 
 def _spread(n, size):
@@ -124,14 +154,19 @@ def plan_capteurs(largeur_m, longueur_m, origine_lat, origine_lon, taille_m=10, 
         points.append({"id": f"P{i}", "ligne": l, "col": c, "lat": lat, "lon": lon,
                        "role": "renfort" if renfort and (l, c) == cases[-1] and i > n else "grille"})
 
-    # stations : centres de bandes horizontales (secteurs d'irrigation)
+    # stations : une au centre de chaque bloc (≈ secteur d'irrigation), blocs répartis sur toute la terre
     k = nb_stations_recommande(largeur_m, longueur_m)
+    k_c = max(1, min(nc, round(math.sqrt(k * nc / nl))))
+    k_l = max(1, math.ceil(k / k_c))
     stations = []
-    for j in range(k):
-        l = min(nl - 1, int((j + 0.5) * nl / k))
-        c = nc // 2
-        lat, lon = centre_case(origine_lat, origine_lon, l, c, taille_m)
-        stations.append({"id": f"S{j + 1}", "ligne": l, "col": c, "lat": lat, "lon": lon})
+    for bl in range(k_l):
+        for bc in range(k_c):
+            if len(stations) >= k:
+                break
+            l = min(nl - 1, int((bl + 0.5) * nl / k_l))
+            c = min(nc - 1, int((bc + 0.5) * nc / k_c))
+            lat, lon = centre_case(origine_lat, origine_lon, l, c, taille_m)
+            stations.append({"id": f"S{len(stations) + 1}", "ligne": l, "col": c, "lat": lat, "lon": lon})
 
     return {
         "largeur_m": largeur_m, "longueur_m": longueur_m, "taille_case_m": taille_m,

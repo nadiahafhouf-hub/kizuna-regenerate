@@ -226,3 +226,34 @@ class SatelliteFusionTests(SimpleTestCase):
         with mock.patch("pystac_client.Client.open", side_effect=OSError("offline")):
             with self.assertRaises(SatelliteIndisponible):
                 analyser(33.88, 10.07, 30, 30)
+
+
+class GrandeParcelleTests(TestCase):
+    def test_regle_grandes_surfaces(self):
+        from .sampling import dimensions_depuis_hectares
+        self.assertEqual(dimensions_depuis_hectares(1), (100, 100))
+        self.assertEqual(nb_points_recommande(100, 100), 25)
+        w, l = dimensions_depuis_hectares(20)
+        self.assertLessEqual(nb_points_recommande(w, l), 110)   # campagne faisable en une journée
+        self.assertGreater(nb_points_recommande(w, l), 25)
+
+    def test_hectares_position_centre_et_diagnostic_en_un_clic(self):
+        from .sampling import origine_depuis_centre
+        r = self.client.post("/parcels/new/", {"hectares": "5", "forme": "carre", "lat": 33.8843, "lon": 10.0757})
+        self.assertEqual(r.status_code, 302)
+        pid = r.url.split("/")[2]
+        from core.models import Parcel
+        p = Parcel.objects.get(parcelle_id=pid)
+        self.assertEqual((p.largeur_m, p.longueur_m), (220, 220))
+        o_lat, o_lon = origine_depuis_centre(33.8843, 10.0757, 220, 220)
+        self.assertAlmostEqual(p.origine_lat, o_lat, places=6)   # la position = centre de la terre
+        r = self.client.post(f"/p/{pid}/diagnostic/plan/diagnostic/")
+        self.assertRedirects(r, f"/p/{pid}/diagnostic/")
+        lp = LandProfile.objects.get(parcel=p).data
+        self.assertEqual(len(lp["cases"]), 22 * 22)
+        self.assertTrue(lp["releves_simules"])
+        self.assertEqual(self.client.get(f"/p/{pid}/diagnostic/").status_code, 200)
+
+    def test_trop_grand_refuse(self):
+        r = self.client.post("/parcels/new/", {"hectares": "50", "lat": 33.88, "lon": 10.07})
+        self.assertEqual(r.status_code, 200)
