@@ -4,9 +4,10 @@ from pathlib import Path
 
 import numpy as np
 from django.conf import settings
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, TestCase
 
 from .couleur import couleur_case
+from .models import LandProfile, SensorReading
 from .idw import interpoler_grille, loocv
 from .pipeline import construire_land_profile, regrouper_zones
 from .sampling import disposition, nb_points_recommande, nb_stations_recommande, plan_capteurs
@@ -107,3 +108,42 @@ class SyntheticTests(SimpleTestCase):
         m = mesurer(v, disposition(3, 3, 5), np.random.default_rng(0))
         lp = construire_land_profile("T", 30, 30, 33.88, 10.07, m, "2026-11-22")
         self.assertEqual(len(lp["cases"]), 9)
+
+
+class ParcoursAgriculteurTests(TestCase):
+    """Nouvelle parcelle → plan → relevés → diagnostic, puis les autres étapes du parcours."""
+
+    def test_parcours_complet(self):
+        r = self.client.post("/parcels/new/", {"nom": "Test", "agriculteur": "A", "region": "Gabes",
+                                               "largeur": 40, "longueur": 30, "lat": 33.8843, "lon": 10.0757})
+        self.assertEqual(r.status_code, 302)
+        pid = r.url.split("/")[2]
+        self.assertTrue(pid.startswith("KZ-"))
+        # pas encore de diagnostic → redirection vers le plan
+        self.assertRedirects(self.client.get(f"/p/{pid}/diagnostic/"), f"/p/{pid}/diagnostic/plan/")
+        self.assertEqual(self.client.get(f"/p/{pid}/diagnostic/plan/").status_code, 200)
+
+        sim = self.client.get(f"/p/{pid}/diagnostic/plan/simulate/").json()
+        data = {"date": "2026-11-22", "texture": "sablo-limoneux"}
+        for point, vals in sim["readings"].items():
+            for k in ("CE_dS_m", "pH", "Cd_mg_kg", "Pb_mg_kg", "Cu_mg_kg", "Zn_mg_kg"):
+                data[f"{point}_{k}"] = vals[k]
+        r = self.client.post(f"/p/{pid}/diagnostic/campaign/", data)
+        self.assertRedirects(r, f"/p/{pid}/diagnostic/")
+        lp = LandProfile.objects.get(parcel__parcelle_id=pid).data
+        self.assertEqual(len(lp["cases"]), 12)
+        self.assertEqual(SensorReading.objects.filter(parcel__parcelle_id=pid).count(), len(sim["readings"]))
+        for url in (f"/p/{pid}/diagnostic/", f"/p/{pid}/crops/", f"/p/{pid}/irrigation/",
+                    f"/p/{pid}/passport/", f"/verify/{pid}-P1/", "/"):
+            self.assertEqual(self.client.get(url).status_code, 200, url)
+
+    def test_releve_invalide(self):
+        r = self.client.post("/parcels/new/", {"largeur": 30, "longueur": 30, "lat": 33.88, "lon": 10.07})
+        pid = r.url.split("/")[2]
+        r = self.client.post(f"/p/{pid}/diagnostic/campaign/", {"P1_CE_dS_m": "abc"})
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(LandProfile.objects.filter(parcel__parcelle_id=pid).exists())
+
+    def test_parcelle_hors_limites_refusee(self):
+        r = self.client.post("/parcels/new/", {"largeur": 5000, "longueur": 30, "lat": 33.88, "lon": 10.07})
+        self.assertEqual(r.status_code, 200)

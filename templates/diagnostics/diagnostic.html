@@ -15,10 +15,23 @@
       <span class="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 font-medium ring-1 ring-sand-200"><i data-lucide="layers" class="h-3.5 w-3.5 text-muted"></i>{{ profile.texture_sol|label }}</span>
     </div>
   </div>
-  <button type="button" x-data @click="$dispatch('open-reading')"
-          class="inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-olive-700 px-5 py-3 font-semibold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-olive-800 hover:shadow-lift focus:outline-none focus-visible:ring-4 focus-visible:ring-olive-200">
-    <i data-lucide="plus" class="h-4 w-4"></i>{{ T.diagnostic.new_reading }}
-  </button>
+  <div class="flex flex-wrap gap-2">
+    <a href="{% url 'diagnostics:plan' parcel.id %}"
+       class="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl bg-white px-4 py-3 font-semibold text-olive-800 shadow-soft ring-1 ring-sand-200 transition hover:-translate-y-0.5 hover:shadow-lift">
+      <i data-lucide="map" class="h-4 w-4"></i>{{ T.diagnostic.sensor_plan }}
+    </a>
+    {% if is_db %}
+    <a href="{% url 'diagnostics:readings' parcel.id %}"
+       class="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl bg-olive-700 px-5 py-3 font-semibold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-olive-800 hover:shadow-lift">
+      <i data-lucide="clipboard-pen-line" class="h-4 w-4"></i>{{ T.diagnostic.new_campaign }}
+    </a>
+    {% else %}
+    <button type="button" x-data @click="$dispatch('open-reading')"
+            class="inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-olive-700 px-5 py-3 font-semibold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-olive-800 hover:shadow-lift focus:outline-none focus-visible:ring-4 focus-visible:ring-olive-200">
+      <i data-lucide="plus" class="h-4 w-4"></i>{{ T.diagnostic.new_reading }}
+    </button>
+    {% endif %}
+  </div>
 </section>
 
 <!-- Répartition des surfaces -->
@@ -41,8 +54,13 @@
 
 <!-- Carte + panneau de case -->
 <section class="mt-6 grid gap-6 lg:grid-cols-3">
-  <div class="reveal overflow-hidden rounded-2xl bg-white shadow-soft ring-1 ring-sand-200 lg:col-span-2" style="animation-delay: 140ms">
+  <div class="reveal relative overflow-hidden rounded-2xl bg-white shadow-soft ring-1 ring-sand-200 lg:col-span-2" style="animation-delay: 140ms">
     <div id="diag-map" class="h-[380px] sm:h-[520px]"></div>
+    {% if map_data.hasConfidence %}
+    <label class="absolute right-3 top-3 z-[500] inline-flex cursor-pointer items-center gap-2 rounded-xl bg-white/95 px-3 py-2 text-xs font-semibold shadow-soft ring-1 ring-sand-200">
+      <input type="checkbox" id="conf-toggle" class="h-4 w-4 rounded accent-olive-700">{{ T.diagnostic.confidence_layer }}
+    </label>
+    {% endif %}
   </div>
   <aside class="reveal rounded-2xl bg-white p-5 shadow-soft ring-1 ring-sand-200" style="animation-delay: 200ms">
     <div id="case-panel">
@@ -50,6 +68,54 @@
     </div>
   </aside>
 </section>
+
+{% if interp or triage %}
+<!-- Fiabilité de la carte + tri IA -->
+<section class="mt-6 grid gap-6 lg:grid-cols-2">
+  {% if interp %}
+  <div class="reveal rounded-2xl bg-white p-5 shadow-soft ring-1 ring-sand-200">
+    {% include "components/section_header.html" with title=T.diagnostic.interp_title hint=T.diagnostic.interp_hint icon="target" %}
+    <dl class="grid grid-cols-3 gap-2 text-center">
+      <div class="rounded-xl bg-sand-50 px-2 py-2.5"><dt class="text-[11px] text-muted">{{ T.diagnostic.interp_points }}</dt><dd class="text-xl font-bold tabular-nums">{{ interp.nb_points }}</dd></div>
+      <div class="rounded-xl bg-sand-50 px-2 py-2.5"><dt class="text-[11px] text-muted">{{ T.diagnostic.interp_spacing }}</dt><dd class="text-xl font-bold tabular-nums">{{ interp.espacement_m }} m</dd></div>
+      <div class="rounded-xl bg-sand-50 px-2 py-2.5"><dt class="text-[11px] text-muted">{{ T.diagnostic.interp_power }}</dt><dd class="text-xl font-bold tabular-nums">{{ interp.puissance }}</dd></div>
+    </dl>
+    <p class="mt-4 mb-2 text-xs font-semibold uppercase tracking-wide text-muted">{{ T.diagnostic.interp_error }}</p>
+    <ul class="grid grid-cols-2 gap-2 text-sm">
+      {% with v=interp.validation_croisee %}
+      <li class="flex justify-between rounded-lg bg-sand-50 px-3 py-2"><span>{{ T.diagnostic.param.CE_dS_m }}</span><b class="tabular-nums">± {{ v.CE_dS_m.mae|floatformat:1 }}</b></li>
+      <li class="flex justify-between rounded-lg bg-sand-50 px-3 py-2"><span>{{ T.diagnostic.param.pH }}</span><b class="tabular-nums">± {{ v.pH.mae|floatformat:2 }}</b></li>
+      <li class="flex justify-between rounded-lg bg-sand-50 px-3 py-2"><span>{{ T.diagnostic.param.Cd_mg_kg }}</span><b class="tabular-nums">± {{ v.Cd_mg_kg.mae|floatformat:2 }}</b></li>
+      <li class="flex justify-between rounded-lg bg-sand-50 px-3 py-2"><span>{{ T.diagnostic.param.Pb_mg_kg }}</span><b class="tabular-nums">± {{ v.Pb_mg_kg.mae|floatformat:0 }}</b></li>
+      {% endwith %}
+    </ul>
+  </div>
+  {% endif %}
+  <div class="reveal rounded-2xl bg-white p-5 shadow-soft ring-1 ring-sand-200" style="animation-delay: 60ms">
+    {% include "components/section_header.html" with title=T.diagnostic.triage_title hint=T.diagnostic.triage_hint icon="brain-circuit" tone="sun" %}
+    {% if triage %}
+    <ul class="divide-y divide-sand-100">
+      {% for t in triage %}
+      <li class="flex items-center gap-3 py-2.5">
+        <span class="inline-grid h-7 w-7 place-items-center rounded-full bg-sun-500 text-[11px] font-bold text-white">{{ t.point }}</span>
+        <div class="min-w-0 flex-1">
+          <div class="h-2 overflow-hidden rounded-full bg-sand-100"><div class="bar-grow h-full rounded-full {% if t.envoyer_au_labo %}bg-zorange{% else %}bg-zgreen{% endif %}" style="width: {% widthratio t.probabilite 1 100 %}%"></div></div>
+          <p class="mt-1 text-xs text-muted">{% widthratio t.probabilite 1 100 %}% {{ T.diagnostic.triage_proba }} · XRF Cd {{ t.cd_mesure_xrf }}</p>
+        </div>
+        {% if t.envoyer_au_labo %}
+        <span class="inline-flex items-center gap-1 rounded-full bg-zorange-bg px-2.5 py-1 text-xs font-semibold text-zorange ring-1 ring-zorange/25"><i data-lucide="flask-conical" class="h-3.5 w-3.5"></i>{{ T.diagnostic.triage_send }}</span>
+        {% else %}
+        <span class="inline-flex items-center gap-1 rounded-full bg-zgreen-bg px-2.5 py-1 text-xs font-semibold text-zgreen ring-1 ring-zgreen/25"><i data-lucide="check" class="h-3.5 w-3.5"></i>{{ T.diagnostic.triage_skip }}</span>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-sm text-muted">{{ T.diagnostic.triage_none }}</p>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
 
 <!-- Capteurs + sources de pollution -->
 <section class="mt-6 grid gap-6 lg:grid-cols-2">

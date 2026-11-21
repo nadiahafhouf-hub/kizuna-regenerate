@@ -3,11 +3,14 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
+from diagnostics import views as diagnostics_views
 from passport import views as passport_views
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include("core.urls")),
+    # Bloc 1 : l'agriculteur crée sa parcelle (dimensions + coin nord-ouest)
+    path("parcels/new/", diagnostics_views.new_parcel, name="new_parcel"),
     # Parcours par parcelle : 1 Diagnostic → 2 Crops → 3 Irrigation → 4 Passport
     path("p/<str:pid>/diagnostic/", include("diagnostics.urls")),
     path("p/<str:pid>/crops/", include("advisor.urls")),

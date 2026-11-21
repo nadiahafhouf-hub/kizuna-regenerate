@@ -1,6 +1,6 @@
 import json
 
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
@@ -25,8 +25,13 @@ def journey_context(pid, step) -> dict:
     for i, s in enumerate(get_strings()["steps"]):
         steps.append({**s, "url": reverse(STEP_URLS[s["key"]], args=[pid]),
                       "state": "current" if i == current else "done" if i < current else "todo"})
+    try:
+        p = demo_data.parcel(pid)
+    except Http404:
+        # parcelle créée mais pas encore diagnostiquée (plan des capteurs / saisie des relevés)
+        p = {**demo_data._record(pid), "worst": "VERT", "zones_count": 0, "cells_count": 0}
     return {
-        "parcel": demo_data.parcel(pid),
+        "parcel": p,
         "all_parcels": demo_data.parcels(),
         "steps": steps,
         "step": step,
