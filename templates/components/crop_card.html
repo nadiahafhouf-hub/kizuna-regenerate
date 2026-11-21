@@ -1,0 +1,42 @@
+{% comment %}Carte culture recommandée. Paramètres : c (culture de demo_data.crop_recommendations), z (zone), delay{% endcomment %}{% load ui %}
+<article class="reveal flex flex-col rounded-2xl bg-white p-4 shadow-soft ring-1 ring-sand-200 transition hover:-translate-y-0.5 hover:shadow-lift" style="animation-delay: {{ delay|default:0 }}ms">
+  <div class="flex items-start gap-3">
+    <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-olive-100 text-olive-700"><i data-lucide="{{ c.icon }}" class="h-5 w-5"></i></span>
+    <div class="min-w-0 flex-1">
+      <h3 class="font-semibold leading-tight">{{ c.en }}</h3>
+      <span class="mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold {% if c.alimentaire %}bg-zgreen-bg text-zgreen{% else %}bg-sand-100 text-muted{% endif %}">
+        {% if c.alimentaire %}<i data-lucide="utensils" class="h-3 w-3"></i>{{ T.crops.food }}{% else %}<i data-lucide="wheat" class="h-3 w-3"></i>{{ T.crops.non_food }}{% endif %}
+      </span>
+    </div>
+  </div>
+
+  <dl class="mt-4 space-y-3 text-sm">
+    <div class="flex items-center justify-between gap-2">
+      <dt class="text-muted">{{ T.crops.water_need }}</dt>
+      <dd class="flex items-center gap-0.5 text-water-600" title="{{ c.besoin_eau|label }}">
+        {% for i in "123" %}<span class="{% if forloop.counter <= c.water_level %}opacity-100{% else %}opacity-20{% endif %}"><i data-lucide="droplet" class="h-4 w-4"></i></span>{% endfor %}
+        <span class="ml-1 text-xs font-medium text-muted">{{ c.besoin_eau|label }}</span>
+      </dd>
+    </div>
+    <div>
+      <div class="flex items-center justify-between gap-2">
+        <dt class="text-muted">{{ T.crops.salt_tolerance }}</dt>
+        <dd class="text-xs font-semibold tabular-nums">{{ c.ce_seuil }} dS/m</dd>
+      </div>
+      <div class="relative mt-1.5 h-2 rounded-full bg-sand-100">
+        <div class="bar-grow h-full rounded-full bg-olive-600" style="width: {{ c.salt_pct }}%"></div>
+        <span class="absolute -top-1 h-4 w-0.5 rounded bg-ink" style="left: {% widthratio z.ce_max 20 100 %}%" title="{{ T.crops.zone_ec }} {{ z.ce_max }}"></span>
+      </div>
+      {% if c.salt_margin >= 0 %}
+      <p class="mt-1 text-[11px] text-muted">▲ {{ T.crops.zone_ec }} {{ z.ce_max }} dS/m · +{{ c.salt_margin }} {{ T.crops.margin_word }}</p>
+      {% else %}
+      <p class="mt-1 flex items-center gap-1 text-[11px] font-medium text-zorange"><i data-lucide="triangle-alert" class="h-3 w-3"></i>{{ T.crops.zone_ec }} {{ z.ce_max }} dS/m · {{ T.crops.yield_loss }}</p>
+      {% endif %}
+    </div>
+  </dl>
+
+  <div class="mt-auto flex items-end justify-between gap-2 border-t border-sand-100 pt-3">
+    <span class="text-xs text-muted">{{ T.crops.income }}</span>
+    <span class="text-right"><span class="text-xl font-bold tabular-nums text-olive-900">{{ c.income_tnd_ha|num }}</span> <span class="text-xs text-muted">{{ T.crops.per_ha }}</span></span>
+  </div>
+</article>

@@ -1,0 +1,220 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}{{ T.crops.title }} · {{ parcel.id }}{% endblock %}
+{% block content %}
+<div x-data="cropsPage('{{ mode|default:'' }}', '{% url 'advisor:mode' parcel.id %}')">
+
+  <!-- En-tête -->
+  <section class="reveal flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div>
+      <p class="flex items-center gap-1.5 text-sm font-medium text-olive-600"><i data-lucide="sprout" class="h-4 w-4"></i>{{ parcel.name }} · {{ parcel.zones_count }} {{ T.crops.zones_word }}</p>
+      <h1 class="mt-1 text-3xl font-bold tracking-tight text-olive-900 sm:text-4xl">{{ T.crops.title }}</h1>
+      <p class="mt-1 max-w-2xl text-muted">{{ T.crops.subtitle }}</p>
+    </div>
+    <div class="inline-flex self-start rounded-2xl bg-white p-1 shadow-soft ring-1 ring-sand-200 lg:self-auto" role="tablist">
+      <button type="button" role="tab" @click="choose('bare')" :aria-selected="mode === 'bare'"
+              class="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition"
+              :class="mode === 'bare' ? 'bg-olive-700 text-white shadow-soft' : 'text-muted hover:text-ink'">
+        <span><i data-lucide="shovel" class="h-4 w-4"></i></span>{{ T.crops.bare }}
+      </button>
+      <button type="button" role="tab" @click="choose('planted')" :aria-selected="mode === 'planted'"
+              class="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition"
+              :class="mode === 'planted' ? 'bg-olive-700 text-white shadow-soft' : 'text-muted hover:text-ink'">
+        <span><i data-lucide="sprout" class="h-4 w-4"></i></span>{{ T.crops.planted }}
+      </button>
+    </div>
+  </section>
+
+  <!-- ═══ Terre nue : recommandations par zone ═══ -->
+  <div x-show="mode === 'bare'" x-cloak>
+    {% for rec in recommendations %}{% with z=rec.zone %}
+    <section class="mt-8">
+      <div class="mb-4 flex flex-wrap items-center gap-3">
+        <h2 class="text-xl font-semibold tracking-tight text-olive-900">{{ T.zone.zone }} {{ z.id }}</h2>
+        {% zone_badge z.couleur long=True %}
+        <span class="text-sm text-muted">{{ z.surface_m2 }} m² · EC max {{ z.ce_max }} dS/m · Cd max {{ z.cd_max }} mg/kg</span>
+      </div>
+
+      {% if z.couleur == "ROUGE" %}
+      <div class="mb-4 flex items-start gap-3 rounded-2xl bg-zred-bg px-4 py-3 text-sm font-medium text-zred ring-1 ring-zred/25">
+        <i data-lucide="octagon-alert" class="mt-0.5 h-5 w-5 shrink-0"></i>{{ T.crops.red_banner }}
+      </div>
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {% for p in rec.remediation %}
+        <article class="reveal flex gap-3 rounded-2xl bg-white p-4 shadow-soft ring-1 ring-sand-200" style="animation-delay: {% widthratio forloop.counter0 1 80 %}ms">
+          <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-olive-100 text-olive-700"><i data-lucide="{{ p.icon }}" class="h-5 w-5"></i></span>
+          <div class="min-w-0">
+            <h3 class="font-semibold leading-tight">{{ p.en }}</h3>
+            <p class="text-xs italic text-muted">{{ p.latin }}</p>
+            <span class="mt-1.5 inline-flex items-center gap-1 rounded-full bg-olive-50 px-2 py-0.5 text-[11px] font-semibold text-olive-800 ring-1 ring-olive-200"><i data-lucide="recycle" class="h-3 w-3"></i>{{ T.crops.remediation_tag }}</span>
+            <p class="mt-2 text-sm text-muted">{{ p.role }}</p>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+      {% else %}
+      {% if z.couleur == "ORANGE" %}
+      <div class="mb-4 flex items-start gap-3 rounded-2xl bg-zorange-bg px-4 py-3 text-sm font-medium text-zorange ring-1 ring-zorange/25">
+        <i data-lucide="triangle-alert" class="mt-0.5 h-5 w-5 shrink-0"></i>{{ T.crops.orange_banner }}
+      </div>
+      {% endif %}
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {% for c in rec.crops %}
+          {% widthratio forloop.counter0 1 70 as d %}
+          {% include "components/crop_card.html" with c=c z=z delay=d %}
+        {% endfor %}
+      </div>
+      {% endif %}
+    </section>
+    {% endwith %}{% endfor %}
+  </div>
+
+  <!-- ═══ Terre plantée : photo + formulaire → score ═══ -->
+  <section x-show="mode === 'planted'" x-cloak class="mt-8 grid gap-6 lg:grid-cols-5">
+    <form class="reveal space-y-5 rounded-2xl bg-white p-5 shadow-soft ring-1 ring-sand-200 sm:p-6 lg:col-span-3"
+          hx-post="{% url 'advisor:score' parcel.id %}" hx-encoding="multipart/form-data" hx-target="#score-result" hx-swap="innerHTML"
+          hx-indicator="#score-loading" x-data="photoUpload()">
+      {% include "components/section_header.html" with title=T.crops.upload_title icon="camera" %}
+
+      <!-- Zone de dépôt -->
+      <div>
+        <label @dragover.prevent="drag = true" @dragleave.prevent="drag = false" @drop.prevent="drop($event)"
+               class="group relative flex min-h-[200px] cursor-pointer flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border-2 border-dashed px-4 py-6 text-center transition"
+               :class="error ? 'border-zred bg-zred-bg/40' : (drag ? 'border-olive-600 bg-olive-50' : 'border-sand-300 bg-sand-50 hover:border-olive-600 hover:bg-olive-50/60')">
+          <input x-ref="input" type="file" name="photo" accept="image/jpeg,image/png" class="sr-only" @change="pick($event.target.files[0])">
+          <template x-if="preview">
+            <img :src="preview" alt="" class="absolute inset-0 h-full w-full object-cover">
+          </template>
+          <div x-show="preview" class="absolute inset-x-3 bottom-3 flex items-center justify-between gap-2 rounded-xl bg-ink/75 px-3 py-2 text-left text-xs text-white backdrop-blur">
+            <span class="truncate" x-text="name"></span>
+            <span class="shrink-0 font-semibold">{{ T.crops.upload_change }}</span>
+          </div>
+          <div x-show="!preview" class="flex flex-col items-center gap-2">
+            <span class="grid h-14 w-14 place-items-center rounded-2xl bg-white text-olive-700 shadow-soft ring-1 ring-sand-200 transition group-hover:scale-105"><i data-lucide="image-up" class="h-7 w-7"></i></span>
+            <p class="font-semibold">{{ T.crops.upload_drop }}</p>
+            <p class="text-xs text-muted">JPEG · PNG · &lt; 5 MB</p>
+          </div>
+        </label>
+        <p x-show="error" x-text="error" class="mt-2 text-sm font-medium text-zred"></p>
+      </div>
+
+      <!-- Consignes -->
+      <div class="rounded-2xl bg-sand-50 p-4 ring-1 ring-sand-200">
+        <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">{{ T.crops.guide_title }}</p>
+        <ul class="grid gap-2 sm:grid-cols-3">
+          {% for g in T.crops.guide %}
+          <li class="flex items-start gap-2 text-sm"><span class="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white text-olive-700 ring-1 ring-sand-200"><i data-lucide="{{ g.icon }}" class="h-4 w-4"></i></span>{{ g.text }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <!-- Formulaire -->
+      <div>
+        <p class="mb-3 text-sm font-semibold">{{ T.crops.form_title }}</p>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <label class="block"><span class="text-sm font-medium">{{ T.crops.zone }}</span>
+            <select name="zone" class="mt-1 w-full rounded-xl border-0 bg-sand-50 px-3 py-2.5 text-sm ring-1 ring-sand-200 focus:ring-2 focus:ring-olive-600">
+              {% for z in zones %}<option value="{{ z.id }}" {% if z.id == default_zone %}selected{% endif %}>{{ z.id }} — {{ T.zone|get:z.couleur|get:"label" }} · {{ z.surface_m2 }} m²</option>{% endfor %}
+            </select></label>
+          <label class="block"><span class="text-sm font-medium">{{ T.crops.crop }}</span>
+            <select name="crop" class="mt-1 w-full rounded-xl border-0 bg-sand-50 px-3 py-2.5 text-sm ring-1 ring-sand-200 focus:ring-2 focus:ring-olive-600">
+              {% for c in catalog %}<option value="{{ c.nom }}" {% if c.nom == "Grenadier" %}selected{% endif %}>{{ c.en }}</option>{% endfor %}
+            </select></label>
+          <label class="block"><span class="text-sm font-medium">{{ T.crops.spacing }}</span>
+            <input type="number" name="spacing" value="4" min="0.1" step="0.1" inputmode="decimal" class="mt-1 w-full rounded-xl border-0 bg-sand-50 px-3 py-2.5 text-sm tabular-nums ring-1 ring-sand-200 focus:ring-2 focus:ring-olive-600"></label>
+          <label class="block"><span class="text-sm font-medium">{{ T.crops.irrigation }}</span>
+            <select name="irrigation" class="mt-1 w-full rounded-xl border-0 bg-sand-50 px-3 py-2.5 text-sm ring-1 ring-sand-200 focus:ring-2 focus:ring-olive-600">
+              {% for it in irrigation_types %}<option value="{{ it }}">{{ T.crops.irrigation_types|get:it }}</option>{% endfor %}
+            </select></label>
+        </div>
+      </div>
+
+      <button type="submit" :disabled="!!error"
+              class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-olive-700 px-5 py-3 font-semibold text-white shadow-soft transition hover:bg-olive-800 disabled:opacity-50 sm:w-auto">
+        <i data-lucide="sparkles" class="h-4 w-4"></i>{{ T.crops.analyse }}
+      </button>
+    </form>
+
+    <div class="lg:col-span-2">
+      <div class="reveal rounded-2xl bg-white p-5 shadow-soft ring-1 ring-sand-200 sm:p-6 lg:sticky lg:top-20" style="animation-delay: 120ms">
+        <div id="score-loading" class="htmx-indicator mb-3 flex items-center gap-2 text-sm text-muted"><i data-lucide="loader-circle" class="h-4 w-4 animate-spin"></i>{{ T.crops.analysing }}</div>
+        <div id="score-result">
+          <div class="grid place-items-center py-12 text-center">
+            <div>
+              <span class="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-olive-100 text-olive-700"><i data-lucide="gauge" class="h-7 w-7"></i></span>
+              <p class="mt-3 font-semibold">{{ T.crops.score_title }}</p>
+              <p class="mt-1 text-sm text-muted">{{ T.crops.result_placeholder }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {% if next_step %}
+  <div class="mt-8 flex justify-end">
+    <a href="{{ next_step.url }}" class="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 font-semibold text-olive-800 shadow-soft ring-1 ring-sand-200 transition hover:-translate-y-0.5 hover:shadow-lift">
+      {{ T.app.next_step }}: {{ next_step.label }}<i data-lucide="arrow-right" class="h-4 w-4"></i>
+    </a>
+  </div>
+  {% endif %}
+
+  <!-- Pop-up « terre nue ou plantée ? » -->
+  <div x-show="ask" x-cloak class="fixed inset-0 z-[1450] grid place-items-end bg-ink/40 p-0 backdrop-blur-sm sm:place-items-center sm:p-6" x-transition.opacity>
+    <div class="w-full max-w-xl rounded-t-3xl bg-white p-6 shadow-lift sm:rounded-3xl sm:p-8" role="dialog" aria-modal="true" aria-labelledby="land-q"
+         x-show="ask" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-8 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100">
+      <span class="grid h-12 w-12 place-items-center rounded-2xl bg-olive-100 text-olive-700"><i data-lucide="land-plot" class="h-6 w-6"></i></span>
+      <h2 id="land-q" class="mt-4 text-2xl font-bold tracking-tight text-olive-900">{{ T.crops.question }}</h2>
+      <p class="mt-1 text-muted">{{ T.crops.question_hint }}</p>
+      <div class="mt-6 grid gap-3 sm:grid-cols-2">
+        <button type="button" @click="choose('bare')" class="group flex flex-col items-start gap-3 rounded-2xl p-5 text-left ring-1 ring-sand-200 transition hover:-translate-y-0.5 hover:bg-sand-50 hover:shadow-soft hover:ring-olive-600 focus:outline-none focus-visible:ring-4 focus-visible:ring-olive-200">
+          <span class="grid h-12 w-12 place-items-center rounded-xl bg-sun-50 text-sun-700"><i data-lucide="shovel" class="h-6 w-6"></i></span>
+          <span><span class="block text-lg font-semibold">{{ T.crops.bare }}</span><span class="text-sm text-muted">{{ T.crops.bare_hint }}</span></span>
+        </button>
+        <button type="button" @click="choose('planted')" class="group flex flex-col items-start gap-3 rounded-2xl p-5 text-left ring-1 ring-sand-200 transition hover:-translate-y-0.5 hover:bg-sand-50 hover:shadow-soft hover:ring-olive-600 focus:outline-none focus-visible:ring-4 focus-visible:ring-olive-200">
+          <span class="grid h-12 w-12 place-items-center rounded-xl bg-zgreen-bg text-zgreen"><i data-lucide="sprout" class="h-6 w-6"></i></span>
+          <span><span class="block text-lg font-semibold">{{ T.crops.planted }}</span><span class="text-sm text-muted">{{ T.crops.planted_hint }}</span></span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener("alpine:init", () => {
+    Alpine.data("cropsPage", (initial, url) => ({
+      mode: initial || "bare",
+      ask: !initial,
+      choose(m) {
+        this.mode = m;
+        this.ask = false;
+        const body = new URLSearchParams({ mode: m });
+        fetch(url, { method: "POST", headers: { "X-CSRFToken": csrfToken() }, body }).catch(() => {});
+        this.$nextTick(() => icons());
+      },
+    }));
+
+    Alpine.data("photoUpload", () => ({
+      preview: null, name: "", error: "", drag: false,
+      pick(file) {
+        this.error = "";
+        if (!file) return;
+        if (!["image/jpeg", "image/png"].includes(file.type)) { this.error = UI.crops.err_type; this.preview = null; return; }
+        if (file.size > 5 * 1024 * 1024) { this.error = UI.crops.err_size; this.preview = null; return; }
+        this.name = file.name;
+        this.preview = URL.createObjectURL(file);
+      },
+      drop(e) {
+        this.drag = false;
+        const file = e.dataTransfer.files[0];
+        if (!file) return;
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        this.$refs.input.files = dt.files;
+        this.pick(file);
+      },
+    }));
+  });
+</script>
+{% endblock %}

@@ -269,13 +269,20 @@ def crop_recommendations(pid) -> list[dict]:
             out.append({"zone": z, "remediation": plants, "crops": []})
             continue
         crops = []
-        for c in cultures_compatibles(z["couleur"], z["ce_max"]):
-            full = catalog[c["nom"]]
+        # cultures_compatibles() exige un seuil FAO ≥ CE (aucune perte de rendement) ;
+        # pour le conseil on accepte une légère perte (seuil ≥ 80 % de la CE), signalée sur la carte.
+        strict = {c["nom"] for c in cultures_compatibles(z["couleur"], z["ce_max"])}
+        for full in catalog.values():
+            if z["couleur"] == "ORANGE" and full["alimentaire"]:
+                continue
+            if full["nom"] not in strict and full["ce_seuil"] < 0.8 * z["ce_max"]:
+                continue
             margin = full["ce_seuil"] - z["ce_max"]
             crops.append({**full, "water_level": WATER_LEVEL[full["besoin_eau"]],
                           "salt_margin": round(margin, 1),
                           "salt_pct": min(100, round(full["ce_seuil"] / 20 * 100))})
-        crops.sort(key=lambda c: -c["income_tnd_ha"])
+        # zone verte : cultures alimentaires d'abord, puis par revenu
+        crops.sort(key=lambda c: (-(z["couleur"] == "VERT" and c["alimentaire"]), -c["income_tnd_ha"]))
         out.append({"zone": z, "remediation": [], "crops": crops[:6]})
     return out
 

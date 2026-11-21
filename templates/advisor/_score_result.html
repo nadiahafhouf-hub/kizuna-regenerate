@@ -1,0 +1,60 @@
+{% load ui %}
+<div class="reveal">
+  <div class="flex flex-col items-center text-center">
+    {% include "components/gauge.html" with value=r.score color=r.grade size=180 label=T.crops.score_title suffix="/100" %}
+    <div class="mt-3">{% zone_badge r.grade variant="solid" %}</div>
+    <p class="mt-2 text-lg font-semibold">{{ T.crops.verdict|get:r.grade }}</p>
+    <p class="text-sm text-muted">{{ r.crop.en }} · {{ T.zone.zone }} {{ r.zone.id }} · {{ r.spacing_m }} m · {{ T.crops.irrigation_types|get:r.irrigation }}</p>
+  </div>
+
+  <!-- Détail du score -->
+  <div class="mt-6">
+    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">{{ T.crops.breakdown }}</p>
+    <ul class="space-y-2.5">
+      {% for c in r.criteria %}
+      <li>
+        <div class="flex justify-between text-sm"><span>{{ T.crops.criteria|get:c.key }}</span><span class="font-semibold tabular-nums">{{ c.score }}/{{ c.max }}</span></div>
+        <div class="mt-1 h-2 overflow-hidden rounded-full bg-sand-100">
+          <div class="bar-grow h-full rounded-full {% if c.pct >= 75 %}bg-zgreen{% elif c.pct >= 50 %}bg-zorange{% else %}bg-zred{% endif %}" style="width: {{ c.pct }}%"></div>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <!-- Analyse photo (simulée) -->
+  <div class="mt-6 rounded-2xl bg-sand-50 p-4 ring-1 ring-sand-200">
+    <p class="flex items-center gap-2 text-sm font-semibold"><i data-lucide="scan-eye" class="h-4 w-4 text-olive-700"></i>{{ T.crops.photo_title }}
+      <span class="ml-auto rounded-full bg-sun-50 px-2 py-0.5 text-[10px] font-bold uppercase text-sun-700">{{ T.app.simulated }}</span></p>
+    {% if r.photo.name %}
+    <dl class="mt-3 grid grid-cols-3 gap-2 text-center text-sm">
+      <div class="rounded-xl bg-white px-2 py-2"><dt class="text-[11px] text-muted">{{ T.crops.detected }}</dt><dd class="font-semibold">{{ r.photo.detected }}</dd></div>
+      <div class="rounded-xl bg-white px-2 py-2"><dt class="text-[11px] text-muted">{{ T.crops.confidence }}</dt><dd class="font-semibold tabular-nums">{{ r.photo.confidence }}%</dd></div>
+      <div class="rounded-xl bg-white px-2 py-2"><dt class="text-[11px] text-muted">{{ T.crops.canopy }}</dt><dd class="font-semibold tabular-nums">{{ r.photo.canopy_pct }}%</dd></div>
+    </dl>
+    <ul class="mt-2 space-y-1 text-sm">
+      {% for s in r.photo.stress %}<li class="flex items-center gap-2 text-zorange"><i data-lucide="triangle-alert" class="h-4 w-4"></i>{{ T.crops.stress|get:s }}</li>
+      {% empty %}<li class="flex items-center gap-2 text-zgreen"><i data-lucide="circle-check" class="h-4 w-4"></i>{{ T.crops.no_stress }}</li>{% endfor %}
+    </ul>
+    {% else %}
+    <p class="mt-2 text-sm text-muted">{{ T.crops.no_photo }}</p>
+    {% endif %}
+    <p class="mt-2 text-[11px] text-muted">{{ T.crops.photo_sim }}</p>
+  </div>
+
+  <!-- Actions -->
+  <div class="mt-6">
+    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">{{ T.crops.actions_title }}</p>
+    <ol class="space-y-2">
+      {% for a in r.actions %}
+      <li class="flex gap-3 rounded-xl p-3 ring-1 {% if a.priority == 'high' %}bg-zred-bg/60 ring-zred/20{% elif a.priority == 'medium' %}bg-zorange-bg/60 ring-zorange/20{% else %}bg-sand-50 ring-sand-200{% endif %}">
+        <span class="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white {% if a.priority == 'high' %}text-zred{% elif a.priority == 'medium' %}text-zorange{% else %}text-olive-700{% endif %}"><i data-lucide="{{ a.icon }}" class="h-4 w-4"></i></span>
+        <div class="min-w-0">
+          <p class="text-[11px] font-bold uppercase tracking-wide {% if a.priority == 'high' %}text-zred{% elif a.priority == 'medium' %}text-zorange{% else %}text-muted{% endif %}">{{ T.crops.priority|get:a.priority }}</p>
+          <p class="text-sm">{{ T.crops.actions|get:a.key }}</p>
+        </div>
+      </li>
+      {% endfor %}
+    </ol>
+  </div>
+</div>
