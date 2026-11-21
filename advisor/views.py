@@ -3,11 +3,12 @@ from pathlib import Path
 from django.conf import settings
 from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import render
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_http_methods, require_POST
 
 from core.views import journey_context
 from services import demo_data
-from .logic import crop_recommendations_ui, plan_png, recommandation
+from .logic import CULTURES_ARBRES, champ_parcelle, crop_recommendations_ui, plan_png, recommandation
+from .services.etat_terre import etat_terre
 
 MAX_PHOTO_BYTES = 5 * 1024 * 1024
 PHOTO_TYPES = {"image/jpeg", "image/png"}
@@ -23,14 +24,25 @@ def index(request, pid):
         raise
     except Exception:
         bloc2, recs = None, demo_data.crop_recommendations(pid)
+    # Terre nue ou plantée ? Choix de l'agriculteur, sinon détecté par le diagnostic (Sentinel-2)
+    try:
+        detection = etat_terre(demo_data.land_profile(pid))
+    except Exception:
+        detection = {"etat": None}
+    mode = ((request.GET.get("mode") if request.GET.get("mode") in ("bare", "planted") else None)
+            or request.session.get(f"crops_mode_{pid}")
+            or {"NUE": "bare", "PLANTEE": "planted"}.get(detection["etat"]) or "bare")
     ctx.update({
-        "mode": request.session.get(f"crops_mode_{pid}"),  # None → pop-up « nue ou plantée ? »
+        "mode": mode,  # choix de l'agriculteur > diagnostic satellite > terre nue
+        "detection": detection,
+        "mode_choisi": bool(request.session.get(f"crops_mode_{pid}")),
         "recommendations": recs,
         "bloc2": bloc2,
         "zones": zones,
         "catalog": demo_data.crop_catalog(),
         "irrigation_types": demo_data.IRRIGATION_TYPES,
         "default_zone": zones[-1]["id"] if zones else "",
+        "cultures_arbres": CULTURES_ARBRES,
     })
     return render(request, "advisor/crops.html", ctx)
 
@@ -80,3 +92,17 @@ def plan(request, pid):
     demo_data.parcel(pid)
     rel = plan_png(pid)
     return FileResponse(open(Path(settings.MEDIA_ROOT) / rel, "rb"), content_type="image/png")
+
+
+@require_http_methods(["GET", "POST"])
+def champ_json(request, pid):
+    """Terre déjà plantée : arbres détectés, axe du champ et chemin d'irrigation (vue large du champ).
+    GET : dernière analyse (calculée la première fois). POST : nouvelle analyse avec les réglages de la carte."""
+    demo_data.parcel(pid)
+    try:
+        r = champ_parcelle(pid, request.POST.dict() if request.method == "POST" else None)
+    except Http404:
+        raise
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=422)
+    return JsonResponse(r, json_dumps_params={"ensure_ascii": False})

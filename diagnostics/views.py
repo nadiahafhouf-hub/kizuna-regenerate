@@ -178,6 +178,10 @@ def new_parcel(request):
     TOUTE la terre (jusqu'à 20 ha) avec la grille de 10 m."""
     T = get_strings()
     values, error = {"hectares": 1, "region": "Gabes", "forme": "carre"}, None
+    # lien de test : /parcels/new/?lat=..&lon=.. pré-place le centre de la terre (on peut encore cliquer ailleurs)
+    for k in ("lat", "lon", "nom"):
+        if request.GET.get(k):
+            values[k] = request.GET[k]
     if request.method == "POST":
         values = request.POST
         try:

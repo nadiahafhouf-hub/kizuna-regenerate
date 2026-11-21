@@ -12,7 +12,7 @@ document.addEventListener("alpine:init", () => {
     selected: 0,
     busy: false,
     msg: "",
-    etat: JSON.parse(document.getElementById("etat-initial")?.textContent || "null") ||
+    etat: JSON.parse((document.getElementById("etat-initial") || {}).textContent || "null") ||
           { vannes: [], reservoir: { niveau_l: 0, capacite_l: 1, pct: 0 }, quota: { pompe_l: 0, quota_l: 1, pct: 0 },
             economie: { economise_m3: 0, kwh: 0 }, horloge: "", semaine_finie: false },
 

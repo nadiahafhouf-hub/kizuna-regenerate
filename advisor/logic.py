@@ -123,3 +123,48 @@ def plan_png(pid):
     chemin.parent.mkdir(parents=True, exist_ok=True)
     dessiner_plan(_reco_en_anglais(recommandation(pid)), str(chemin))
     return rel
+
+
+# ───────────────────────── terre déjà plantée : analyse du champ entier ─────────────────────────
+CULTURES_ARBRES = ["Palmier dattier", "Olivier", "Grenadier", "Figuier", "Agrumes", "Pecher / abricotier"]
+
+
+def _fichier_champ(pid):
+    return Path(settings.MEDIA_ROOT) / "advisor" / "champ" / f"{pid}.json"
+
+
+def champ_parcelle(pid, params=None):
+    """Analyse satellite du champ autour de la parcelle (services/champ.py).
+    params (POST de la carte) : lat, lon, longueur, largeur, angle ('' = automatique), culture.
+    Sans params : dernière analyse enregistrée, sinon analyse par défaut centrée sur la parcelle."""
+    from services import demo_data
+    from irrigation.logic import parametres
+    from .services.champ import analyser_champ
+    from .services.climat import obtenir_climat
+
+    fichier = _fichier_champ(pid)
+    if params is None and fichier.exists():
+        return json.loads(fichier.read_text(encoding="utf-8"))
+    profile = demo_data.land_profile(pid)
+    (sud, ouest), (nord, est) = demo_data.parcel_bounds(profile)
+    p = params or {}
+
+    def nombre(cle, defaut):
+        try:
+            return float(p[cle])
+        except (KeyError, TypeError, ValueError):
+            return defaut
+
+    lat, lon = nombre("lat", (sud + nord) / 2), nombre("lon", (ouest + est) / 2)
+    angle = nombre("angle", None) if str(p.get("angle", "")).strip() else None
+    culture = p.get("culture") if p.get("culture") in CULTURES_ARBRES else "Palmier dattier"
+    climat = obtenir_climat(lat, lon, profile.get("region", "Gabes"), cache_dir=CACHE_DIR)
+    debit = float(parametres().get("debit_pompe_m3_h", 1.5)) * 1000
+    r = analyser_champ(lat, lon, nombre("longueur", 150), nombre("largeur", 80), angle, culture=culture,
+                       et0_mm=climat["et0_mm_jour"], debit_pompe_l_h=debit,
+                       cache=str(Path(settings.MEDIA_ROOT) / "tiles_cache"))
+    r.update(parcelle_id=pid, source_climat=climat.get("detail_source") or climat.get("source"),
+             debit_pompe_l_h=debit, parcelle=[[sud, ouest], [nord, est]])
+    fichier.parent.mkdir(parents=True, exist_ok=True)
+    fichier.write_text(json.dumps(r, ensure_ascii=False), encoding="utf-8")
+    return r
