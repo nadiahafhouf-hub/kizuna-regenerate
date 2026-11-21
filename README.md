@@ -25,6 +25,27 @@ Ouvrir http://127.0.0.1:8000/ — admin : `python manage.py createsuperuser` pui
 | `irrigation` | `bloc-3` | planning 7 jours (Open-Meteo ET0 × Kc, CE), validation, vanne simulée + pompe solaire |
 | `passport` | `bloc-4` | PDF + QR, chaîne de hash (`data_hash`, `prev_hash`), `/verify/<id>/`, chatbot RAG |
 
+## Interface (démo jury)
+
+Parcours par parcelle : `/` (dashboard) → `/p/<id>/diagnostic/` → `/crops/` → `/irrigation/` → `/passport/`,
+plus la page publique `/verify/<passport_id>/` (cible du QR). Bouton « Load demo parcel » = `/demo/`.
+
+- **Stack sans build** : Tailwind (CDN), Alpine.js, HTMX, Leaflet (imagerie Esri), Chart.js, Lucide, DM Sans.
+- **Données** : toutes les pages lisent `services/demo_data.py` (fixtures `fixtures/demo/*.json`).
+  Pour brancher la vraie logique d'un bloc, remplacer la fonction correspondante en gardant les mêmes champs :
+  bloc 1 → `land_profile`, `zones`, `sensors`, `case_detail` · bloc 2 → `crop_recommendations`, `score_planting`
+  · bloc 3 → `irrigation_plan` · bloc 4 → `passport`, `chatbot_reply`.
+- **Textes** : tous dans `core/strings.py` (`{{ T.section.cle }}` dans les templates, `UI.section.cle` en JS).
+  Valeurs du contrat (ROUGE, phytoextraction…) → libellé affiché via le filtre `{{ valeur|label }}`.
+- **Composants** réutilisables dans `templates/components/` : `zone_badge` (via `{% zone_badge "ROUGE" %}`),
+  `zone_card`, `kpi_card`, `gauge`, `threshold_row`, `crop_card`, `parcel_card`, `modal`, `hash_chip`, `section_header`.
+- **JS/CSS** : `static/js/` (app, map, diagnostic_map, irrigation_sim). Utiliser `{% vstatic 'js/x.js' %}`
+  (ajoute `?v=<date>` pour éviter le cache navigateur).
+- Démo irrigation : le bouton « Approve plan » est mémorisé en session ; `POST /p/<id>/irrigation/reset/` le remet à zéro.
+- Démo passeport falsifié : `/verify/GAB-001-P4-T/` affiche « Tampered ✗ ».
+- Le QR pointe vers l'adresse du serveur : pour le scanner avec un téléphone pendant la démo, lancer
+  `python manage.py runserver 0.0.0.0:8000`, ajouter l'IP du PC dans `ALLOWED_HOSTS` (`.env`) et ouvrir la page par cette IP.
+
 ## Le contrat entre les blocs : LandProfile
 
 Le bloc 1 produit un **LandProfile** ; les blocs 2-4 le consomment. Un exemple complet

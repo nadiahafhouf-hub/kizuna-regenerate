@@ -1,0 +1,130 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}{{ T.passport.title }} · {{ parcel.id }}{% endblock %}
+{% block content %}
+<!-- En-tête -->
+<section class="reveal flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+  <div>
+    <p class="flex items-center gap-1.5 text-sm font-medium text-olive-600"><i data-lucide="badge-check" class="h-4 w-4"></i>{{ parcel.name }}</p>
+    <h1 class="mt-1 text-3xl font-bold tracking-tight text-olive-900 sm:text-4xl">{{ T.passport.title }}</h1>
+    <p class="mt-1 max-w-2xl text-muted">{{ T.passport.subtitle }}</p>
+  </div>
+  <div class="flex flex-wrap gap-2">
+    <a href="{% url 'passport:pdf' parcel.id %}"
+       class="inline-flex items-center gap-2 rounded-xl bg-olive-700 px-5 py-3 font-semibold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-olive-800 hover:shadow-lift">
+      <i data-lucide="file-down" class="h-4 w-4"></i>{{ T.passport.download_pdf }}
+    </a>
+    <a href="{{ verify_url }}" target="_blank" rel="noopener"
+       class="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 font-semibold text-olive-800 shadow-soft ring-1 ring-sand-200 transition hover:-translate-y-0.5 hover:shadow-lift">
+      <i data-lucide="external-link" class="h-4 w-4"></i>{{ T.passport.open_verify }}
+    </a>
+  </div>
+</section>
+
+<section class="mt-6 grid gap-6 lg:grid-cols-5">
+  <!-- Certificat -->
+  <article class="reveal relative overflow-hidden rounded-3xl bg-white p-2 shadow-lift ring-1 ring-sand-200 lg:col-span-3" style="animation-delay: 80ms">
+    <div class="relative h-full rounded-[20px] border-2 border-dashed border-olive-200 bg-gradient-to-br from-white via-white to-olive-50/70 p-5 sm:p-8">
+      <!-- filigrane -->
+      <svg class="pointer-events-none absolute -right-10 -top-10 h-56 w-56 text-olive-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M7 20h10"/><path d="M10 20c5.5-2.5.8-6.4 3-10"/><path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z"/><path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z"/></svg>
+
+      <div class="relative flex items-start justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <span class="grid h-12 w-12 place-items-center rounded-2xl bg-olive-700 text-sun-300 shadow-soft"><i data-lucide="sprout" class="h-6 w-6"></i></span>
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-olive-600">{{ T.app.name }}</p>
+            <h2 class="text-2xl font-bold tracking-tight text-olive-900">{{ T.passport.certificate }}</h2>
+          </div>
+        </div>
+        <span class="hidden rounded-full bg-olive-50 px-3 py-1 font-mono text-xs font-medium text-olive-800 ring-1 ring-olive-200 sm:inline">{{ pp.id }}</span>
+      </div>
+      <p class="relative mt-1 text-sm text-muted">{{ T.passport.certificate_sub }}</p>
+
+      <div class="relative mt-6 grid gap-6 sm:grid-cols-[1fr_auto]">
+        <div>
+          <!-- Statut -->
+          <p class="text-xs font-semibold uppercase tracking-wide text-muted">{{ T.passport.status }}</p>
+          <div class="mt-2 flex flex-wrap items-center gap-3">
+            {% zone_badge pp.status variant="solid" size="lg" long=True %}
+            <span class="font-semibold">{{ T.passport.status_text|get:pp.status }}</span>
+          </div>
+
+          <dl class="mt-5 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+            <div><dt class="text-xs text-muted">{{ T.verify.parcel }}</dt><dd class="font-semibold">{{ parcel.id }} · {{ parcel.name }}</dd></div>
+            <div><dt class="text-xs text-muted">{{ T.verify.farmer }}</dt><dd class="font-semibold">{{ parcel.farmer }}</dd></div>
+            <div><dt class="text-xs text-muted">{{ T.verify.region }}</dt><dd class="font-semibold">{{ parcel.region }} · {{ parcel.area_m2|num }} m²</dd></div>
+            <div><dt class="text-xs text-muted">{{ T.passport.issued }}</dt><dd class="font-semibold">{{ pp.issued }}</dd></div>
+          </dl>
+
+          <!-- Zones -->
+          <ul class="mt-5 space-y-2">
+            {% for z in pp.zones %}
+            <li class="flex flex-wrap items-center gap-2 rounded-xl bg-white/80 px-3 py-2 text-sm ring-1 ring-sand-200">
+              <span class="font-semibold">{{ z.id }}</span>{% zone_badge z.couleur size="sm" %}
+              <span class="text-muted">{{ z.surface_m2 }} m²</span>
+              <span class="ml-auto flex items-center gap-1 text-xs font-medium {% if z.culture_alimentaire_autorisee %}text-zgreen{% else %}text-zred{% endif %}">
+                {% if z.culture_alimentaire_autorisee %}<i data-lucide="utensils" class="h-3.5 w-3.5"></i>{{ T.zone.food_allowed }}{% else %}<i data-lucide="ban" class="h-3.5 w-3.5"></i>{{ T.zone.food_blocked }}{% endif %}
+              </span>
+            </li>
+            {% endfor %}
+          </ul>
+          <p class="mt-3 text-sm"><span class="text-muted">{{ T.passport.food_area }}:</span> <b class="text-zgreen">{{ pp.food_area_m2 }} m²</b> / {{ parcel.area_m2|num }} m²</p>
+        </div>
+
+        <!-- QR -->
+        <div class="flex flex-col items-center justify-start gap-2 sm:w-44">
+          <div class="rounded-2xl bg-white p-2 shadow-soft ring-1 ring-sand-200">
+            <img src="{{ qr_data_uri }}" alt="QR code — {{ verify_url }}" class="h-40 w-40" width="160" height="160">
+          </div>
+          <p class="flex items-center gap-1 text-xs font-semibold text-olive-800"><i data-lucide="scan-line" class="h-3.5 w-3.5"></i>{{ T.passport.scan }}</p>
+          <p class="max-w-[11rem] break-all text-center font-mono text-[10px] text-muted">{{ verify_url }}</p>
+        </div>
+      </div>
+
+      <div class="relative mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-dashed border-olive-200 pt-4">
+        {% if pp.intact %}
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-zgreen-bg px-3 py-1 text-xs font-semibold text-zgreen ring-1 ring-zgreen/25"><i data-lucide="link" class="h-3.5 w-3.5"></i>{{ T.passport.chain_ok }} · {{ pp.events|length }} {{ T.passport.blocks }}</span>
+        {% else %}
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-zred-bg px-3 py-1 text-xs font-semibold text-zred ring-1 ring-zred/25"><i data-lucide="unlink" class="h-3.5 w-3.5"></i>{{ T.passport.chain_ko }}</span>
+        {% endif %}
+        {% include "components/hash_chip.html" with hash=pp.head_hash label=T.passport.hash %}
+      </div>
+    </div>
+  </article>
+
+  <!-- Frise chronologique -->
+  <div class="reveal rounded-2xl bg-white p-5 shadow-soft ring-1 ring-sand-200 sm:p-6 lg:col-span-2" style="animation-delay: 160ms">
+    {% include "components/section_header.html" with title=T.passport.timeline hint=T.passport.timeline_hint icon="git-commit-vertical" %}
+    <ol class="relative">
+      {% for ev in pp.events reversed %}
+      <li class="relative flex gap-4 pb-6 last:pb-0">
+        {% if not forloop.last %}<span class="absolute left-[19px] top-11 h-[calc(100%-2.75rem)] w-0.5 bg-gradient-to-b from-olive-200 to-sand-200" aria-hidden="true"></span>{% endif %}
+        <span class="relative z-10 grid h-10 w-10 shrink-0 place-items-center rounded-full ring-4 ring-white
+          {% if ev.type == 'IRRIGATION' %}bg-water-50 text-water-600{% elif ev.type == 'ANALYSIS' %}bg-sun-50 text-sun-700{% elif ev.type == 'PLANTING' %}bg-zgreen-bg text-zgreen{% else %}bg-olive-100 text-olive-700{% endif %}">
+          <i data-lucide="{{ ev.icon }}" class="h-[18px] w-[18px]"></i>
+        </span>
+        <div class="min-w-0 flex-1">
+          <div class="flex flex-wrap items-baseline justify-between gap-x-2">
+            <p class="text-[11px] font-bold uppercase tracking-wide text-muted">{{ T.passport.event_types|get:ev.type }}</p>
+            <time class="text-xs text-muted">{{ ev.date }}</time>
+          </div>
+          <p class="font-semibold leading-snug">{{ ev.title }}</p>
+          <p class="mt-0.5 text-sm text-muted">{{ ev.summary }}</p>
+          <div class="mt-2 flex flex-wrap items-center gap-1.5">
+            {% include "components/hash_chip.html" with hash=ev.hash label=T.passport.hash %}
+            <i data-lucide="arrow-left" class="h-3.5 w-3.5 text-muted"></i>
+            {% if forloop.last %}
+              {% include "components/hash_chip.html" with hash=ev.prev_hash label=T.passport.genesis tone="muted" %}
+            {% else %}
+              {% include "components/hash_chip.html" with hash=ev.prev_hash label=T.passport.prev_hash tone="muted" %}
+            {% endif %}
+          </div>
+        </div>
+      </li>
+      {% endfor %}
+    </ol>
+    <a href="{{ tampered_url }}" target="_blank" rel="noopener" class="mt-5 inline-flex items-center gap-1.5 text-xs font-semibold text-zred hover:underline">
+      <i data-lucide="shield-alert" class="h-3.5 w-3.5"></i>{{ T.passport.try_tampered }}
+    </a>
+  </div>
+</section>
+{% endblock %}

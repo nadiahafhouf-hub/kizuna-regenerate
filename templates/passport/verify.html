@@ -1,0 +1,88 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}{{ T.verify.title }} · {{ pp.id }}{% endblock %}
+{% block chatbot %}{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-2xl">
+  <!-- Verdict -->
+  <section class="reveal overflow-hidden rounded-3xl bg-white text-center shadow-lift ring-1 ring-sand-200">
+    <div class="px-6 pb-8 pt-10 {% if pp.intact %}bg-gradient-to-b from-zgreen-bg to-white{% else %}bg-gradient-to-b from-zred-bg to-white{% endif %}">
+      <p class="text-xs font-semibold uppercase tracking-[0.2em] text-muted">{{ T.verify.title }}</p>
+      <span class="mx-auto mt-5 grid h-28 w-28 place-items-center rounded-full text-white shadow-lift ring-8 {% if pp.intact %}bg-zgreen ring-zgreen/15{% else %}bg-zred ring-zred/15{% endif %}">
+        {% if pp.intact %}<i data-lucide="shield-check" class="h-14 w-14"></i>{% else %}<i data-lucide="shield-x" class="h-14 w-14"></i>{% endif %}
+      </span>
+      <h1 class="mt-5 text-4xl font-bold tracking-tight sm:text-5xl {% if pp.intact %}text-zgreen{% else %}text-zred{% endif %}">
+        {% if pp.intact %}{{ T.verify.intact }} ✓{% else %}{{ T.verify.tampered }} ✗{% endif %}
+      </h1>
+      <p class="mx-auto mt-3 max-w-md text-lg text-ink/80">{% if pp.intact %}{{ T.verify.intact_text }}{% else %}{{ T.verify.tampered_text }}{% endif %}</p>
+      <p class="mt-3 font-mono text-xs text-muted">{{ pp.id }}</p>
+    </div>
+    <div class="border-t border-sand-100 bg-sand-50/70 px-6 py-5 text-left">
+      <p class="flex items-center gap-2 text-sm font-semibold"><i data-lucide="info" class="h-4 w-4 text-olive-700"></i>{{ T.verify.what_it_means }}</p>
+      <p class="mt-1 text-sm text-muted">{% if pp.intact %}{{ T.verify.buyer_ok }}{% else %}{{ T.verify.buyer_ko }}{% endif %}</p>
+    </div>
+  </section>
+
+  <!-- Parcelle -->
+  <section class="reveal mt-6 rounded-2xl bg-white p-5 shadow-soft ring-1 ring-sand-200 sm:p-6" style="animation-delay: 100ms">
+    <dl class="grid grid-cols-2 gap-4 text-sm">
+      <div><dt class="text-xs text-muted">{{ T.verify.parcel }}</dt><dd class="font-semibold">{{ pp.parcel.id }} · {{ pp.parcel.name }}</dd></div>
+      <div><dt class="text-xs text-muted">{{ T.verify.region }}</dt><dd class="font-semibold">{{ pp.parcel.region }}</dd></div>
+      <div><dt class="text-xs text-muted">{{ T.verify.farmer }}</dt><dd class="font-semibold">{{ pp.parcel.farmer }}</dd></div>
+      <div><dt class="text-xs text-muted">{{ T.passport.issued }}</dt><dd class="font-semibold">{{ pp.issued }}</dd></div>
+    </dl>
+    <p class="mt-5 text-xs font-semibold uppercase tracking-wide text-muted">{{ T.verify.zones }}</p>
+    <ul class="mt-2 space-y-2">
+      {% for z in pp.zones %}
+      <li class="flex flex-wrap items-center gap-2 rounded-xl bg-sand-50 px-3 py-2.5 text-sm ring-1 ring-sand-200">
+        <span class="font-semibold">{{ z.id }}</span>{% zone_badge z.couleur long=True %}
+        <span class="text-muted">{{ z.surface_m2 }} m²</span>
+        <span class="ml-auto flex items-center gap-1 font-medium {% if z.culture_alimentaire_autorisee %}text-zgreen{% else %}text-zred{% endif %}">
+          {% if z.culture_alimentaire_autorisee %}<i data-lucide="utensils" class="h-4 w-4"></i>{{ T.zone.food_allowed }}{% else %}<i data-lucide="ban" class="h-4 w-4"></i>{{ T.zone.food_blocked }}{% endif %}
+        </span>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <!-- Historique -->
+  <section class="reveal mt-6 rounded-2xl bg-white p-5 shadow-soft ring-1 ring-sand-200 sm:p-6" style="animation-delay: 180ms">
+    <p class="mb-3 text-sm font-semibold">{{ T.verify.history }}</p>
+    <ol class="space-y-2">
+      {% for ev in pp.events %}
+      <li class="flex items-start gap-3 rounded-xl px-3 py-2.5 ring-1 {% if ev.valid %}bg-white ring-sand-200{% else %}bg-zred-bg/60 ring-zred/25{% endif %}">
+        <span class="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full {% if ev.valid %}bg-zgreen-bg text-zgreen{% else %}bg-zred text-white{% endif %}">
+          {% if ev.valid %}<i data-lucide="check" class="h-4 w-4"></i>{% else %}<i data-lucide="x" class="h-4 w-4"></i>{% endif %}
+        </span>
+        <div class="min-w-0 flex-1">
+          <div class="flex flex-wrap items-baseline justify-between gap-x-2">
+            <p class="font-semibold">{{ ev.title }}</p>
+            <time class="text-xs text-muted">{{ ev.date }}</time>
+          </div>
+          <p class="text-sm text-muted">{{ ev.summary }}</p>
+          <p class="mt-1 text-xs font-semibold {% if ev.valid %}text-zgreen{% else %}text-zred{% endif %}">{% if ev.valid %}{{ T.verify.event_ok }}{% else %}{{ T.verify.event_ko }}{% endif %}</p>
+        </div>
+      </li>
+      {% endfor %}
+    </ol>
+
+    <details class="group mt-5 rounded-xl bg-sand-50 ring-1 ring-sand-200">
+      <summary class="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 text-sm font-semibold">
+        <span class="flex items-center gap-2"><i data-lucide="code-xml" class="h-4 w-4 text-muted"></i>{{ T.verify.technical }}</span>
+        <span class="text-muted transition group-open:rotate-180"><i data-lucide="chevron-down" class="h-4 w-4"></i></span>
+      </summary>
+      <div class="space-y-3 border-t border-sand-200 px-4 py-3">
+        <p class="text-xs text-muted">{{ T.verify.technical_hint }}</p>
+        {% for ev in pp.events %}
+        <div class="font-mono text-[11px] leading-relaxed">
+          <p class="font-sans text-xs font-semibold">{{ forloop.counter }}. {{ T.passport.event_types|get:ev.type }} · {{ ev.date }}</p>
+          <p class="break-all text-muted">prev {{ ev.prev_hash }}</p>
+          <p class="break-all {% if ev.valid %}text-olive-800{% else %}text-zred{% endif %}">hash {{ ev.hash }}</p>
+        </div>
+        {% endfor %}
+      </div>
+    </details>
+  </section>
+
+  <p class="mt-6 flex items-center justify-center gap-1.5 text-xs text-muted"><i data-lucide="sprout" class="h-3.5 w-3.5"></i>{{ T.verify.powered }}</p>
+</div>
+{% endblock %}
