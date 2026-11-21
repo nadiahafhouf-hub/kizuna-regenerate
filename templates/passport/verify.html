@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Vérification passeport #{{ passeport.id }}{% endblock %}
+{% block content %}
+<h1>Vérification du passeport #{{ passeport.id }}</h1>
+{% if valide %}
+  <p class="card" style="border-left:4px solid var(--vert)">✅ Passeport authentique : le contenu
+     correspond au hash enregistré et la chaîne est intacte.</p>
+{% else %}
+  <p class="card" style="border-left:4px solid var(--rouge)">❌ Passeport invalide : contenu modifié
+     ou chaîne rompue.</p>
+{% endif %}
+<table>
+  <tr><th>Parcelle</th><td>{{ passeport.parcel.parcelle_id }} — {{ passeport.parcel.region }}</td></tr>
+  <tr><th>Émis le</th><td>{{ passeport.created_at }}</td></tr>
+  <tr><th>data_hash</th><td><code>{{ passeport.data_hash }}</code></td></tr>
+  <tr><th>prev_hash</th><td><code>{{ passeport.prev_hash }}</code></td></tr>
+</table>
+<h2>Zones</h2>
+<ul>{% for z in passeport.land_profile.zones %}
+  <li><span class="badge {{ z.couleur }}">{{ z.couleur }}</span> {{ z.id }} — {{ z.surface_m2 }} m²,
+      culture alimentaire {{ z.culture_alimentaire_autorisee|yesno:"autorisée,interdite" }}</li>
+{% endfor %}</ul>
+{% endblock %}

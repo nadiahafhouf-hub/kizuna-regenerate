@@ -1,0 +1,212 @@
+{
+  "parcelle_id": "GAB-001",
+  "date_mesure": "2026-11-22",
+  "region": "Gabes",
+  "origine": {
+    "lat": 33.88,
+    "lon": 10.09,
+    "point": "coin_nord_ouest"
+  },
+  "largeur_m": 30,
+  "longueur_m": 30,
+  "taille_case_m": 10,
+  "texture_sol": "sablo-limoneux",
+  "cases": [
+    {
+      "ligne": 0,
+      "col": 0,
+      "couleur": "ROUGE",
+      "source": "capteur",
+      "CE_dS_m": 9.5,
+      "pH": 7.9,
+      "Cd_mg_kg": 4.2,
+      "Pb_mg_kg": 120
+    },
+    {
+      "ligne": 0,
+      "col": 1,
+      "couleur": "ROUGE",
+      "source": "idw",
+      "CE_dS_m": 8.8,
+      "pH": 7.8,
+      "Cd_mg_kg": 3.6,
+      "Pb_mg_kg": 95
+    },
+    {
+      "ligne": 0,
+      "col": 2,
+      "couleur": "ORANGE",
+      "source": "capteur",
+      "CE_dS_m": 6.9,
+      "pH": 7.7,
+      "Cd_mg_kg": 1.8,
+      "Pb_mg_kg": 60
+    },
+    {
+      "ligne": 1,
+      "col": 0,
+      "couleur": "ROUGE",
+      "source": "idw",
+      "CE_dS_m": 8.1,
+      "pH": 7.8,
+      "Cd_mg_kg": 3.1,
+      "Pb_mg_kg": 88
+    },
+    {
+      "ligne": 1,
+      "col": 1,
+      "couleur": "ORANGE",
+      "source": "idw",
+      "CE_dS_m": 6.5,
+      "pH": 7.6,
+      "Cd_mg_kg": 1.6,
+      "Pb_mg_kg": 55
+    },
+    {
+      "ligne": 1,
+      "col": 2,
+      "couleur": "VERT",
+      "source": "idw",
+      "CE_dS_m": 4.8,
+      "pH": 7.4,
+      "Cd_mg_kg": 0.8,
+      "Pb_mg_kg": 35
+    },
+    {
+      "ligne": 2,
+      "col": 0,
+      "couleur": "ORANGE",
+      "source": "capteur",
+      "CE_dS_m": 6.2,
+      "pH": 7.7,
+      "Cd_mg_kg": 1.4,
+      "Pb_mg_kg": 52
+    },
+    {
+      "ligne": 2,
+      "col": 1,
+      "couleur": "VERT",
+      "source": "idw",
+      "CE_dS_m": 4.5,
+      "pH": 7.3,
+      "Cd_mg_kg": 0.7,
+      "Pb_mg_kg": 30
+    },
+    {
+      "ligne": 2,
+      "col": 2,
+      "couleur": "VERT",
+      "source": "capteur",
+      "CE_dS_m": 3.9,
+      "pH": 7.2,
+      "Cd_mg_kg": 0.5,
+      "Pb_mg_kg": 22
+    }
+  ],
+  "zones": [
+    {
+      "id": "Z1",
+      "couleur": "ROUGE",
+      "cases": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          0
+        ]
+      ],
+      "surface_m2": 300,
+      "culture_alimentaire_autorisee": false,
+      "traitement": {
+        "strategie": "phytoextraction",
+        "plantes": [
+          "Atriplex halimus",
+          "Noccaea caerulescens"
+        ],
+        "microbes": [
+          "Glomus mosseae",
+          "Rhizophagus irregularis",
+          "Bacillus subtilis MR1"
+        ],
+        "amendements": [
+          "biochar"
+        ],
+        "mois_avant_sain": 10
+      }
+    },
+    {
+      "id": "Z2",
+      "couleur": "ORANGE",
+      "cases": [
+        [
+          0,
+          2
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          0
+        ]
+      ],
+      "surface_m2": 300,
+      "culture_alimentaire_autorisee": false,
+      "traitement": {
+        "strategie": "phytostabilisation",
+        "plantes": [
+          "Atriplex halimus",
+          "Noccaea caerulescens"
+        ],
+        "microbes": [
+          "Glomus mosseae",
+          "Bacillus subtilis MR1"
+        ],
+        "amendements": [
+          "biochar"
+        ],
+        "mois_avant_sain": 3
+      }
+    },
+    {
+      "id": "Z3",
+      "couleur": "VERT",
+      "cases": [
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          2,
+          2
+        ]
+      ],
+      "surface_m2": 300,
+      "culture_alimentaire_autorisee": true,
+      "traitement": {
+        "strategie": "culture",
+        "plantes": [
+          "Grenadier",
+          "Olivier"
+        ],
+        "microbes": [
+          "Azospirillum brasilense",
+          "Glomus mosseae"
+        ],
+        "amendements": [],
+        "mois_avant_sain": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Cultures · Kizuna{% endblock %}
+{% block content %}
+<h1>Bloc 2 · Conseiller cultures</h1>
+<p class="todo">À faire sur <code>bloc-2</code> : pop-up « terre nue ou plantée », upload photo
+   (Gemini Vision, réponse JSON), formulaire culture / espacement / irrigation, score d'optimalité.</p>
+
+<div class="grid">
+{% for z in zones %}
+  <div class="card">
+    <h3>{{ z.id }} <span class="badge {{ z.couleur }}">{{ z.couleur }}</span></h3>
+    <p>{{ z.surface_m2 }} m² · CE max {{ z.ce_max }} dS/m ·
+       culture alimentaire {{ z.culture_alimentaire_autorisee|yesno:"autorisée,interdite" }}</p>
+    <p><strong>Cultures compatibles (terre nue) :</strong></p>
+    <ul>{% for c in z.cultures %}<li>{{ c.nom }} — tolérance CE {{ c.ce_seuil }} dS/m, {{ c.usage }}</li>
+        {% empty %}<li>Aucune : phytoremédiation uniquement.</li>{% endfor %}</ul>
+  </div>
+{% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Kizuna Regenerate</h1>
+<p>Diagnostic des sols, conseil cultural, irrigation solaire et passeport traçable —
+   eau · énergie · agriculture.</p>
+
+<div class="grid">
+  {% for b in blocs %}
+  <a class="card" href="{% url b.url %}" style="text-decoration:none;color:inherit">
+    <h3>Bloc {{ b.num }} · {{ b.nom }}</h3>
+    <p>{{ b.desc }}</p>
+  </a>
+  {% endfor %}
+</div>
+
+<h2>Parcelles</h2>
+{% if parcelles %}
+<ul>{% for p in parcelles %}<li>{{ p }} — {{ p.region }} ({{ p.largeur_m }}×{{ p.longueur_m }} m)</li>{% endfor %}</ul>
+{% else %}
+<p>Aucune parcelle. Ajoutez-en via <a href="/admin/">l'admin</a>.</p>
+{% endif %}
+
+<h2>Sources de pollution suivies</h2>
+{% if sources %}
+<ul>{% for s in sources %}<li>{{ s }} — {{ s.get_type_source_display }}, rayon {{ s.rayon_influence_km }} km</li>{% endfor %}</ul>
+{% else %}
+<p>Aucune source configurée.</p>
+{% endif %}
+{% endblock %}
