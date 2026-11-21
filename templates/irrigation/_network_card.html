@@ -1,0 +1,59 @@
+{% load ui %}{% comment %}
+Bloc 3 · carte « réseau goutte-à-goutte » insérée dans la page Crops (mode « Already planted »).
+Chargée et recalculée en HTMX par irrigation:network_card ; le bouton reprend zone / culture / irrigation
+du formulaire du bloc 2 (#planted-form).
+{% endcomment %}
+<div class="flex flex-wrap items-start justify-between gap-3">
+  {% include "components/section_header.html" with title=T.network.card_title hint=T.network.card_hint icon="waypoints" tone="water" %}
+  <a href="{% url 'irrigation:network' parcel.id %}" class="inline-flex items-center gap-1.5 rounded-xl bg-white px-3 py-2 text-xs font-semibold text-water-700 ring-1 ring-water-400/40 hover:bg-water-50">
+    <i data-lucide="external-link" class="h-3.5 w-3.5"></i>{{ T.network.card_open }}
+  </a>
+</div>
+
+{% if erreur %}<div class="mb-4 rounded-xl bg-zred-bg px-4 py-3 text-sm text-zred">{{ erreur }}</div>{% endif %}
+
+<div class="grid gap-5 lg:grid-cols-5">
+  <div class="lg:col-span-3">
+    {% if net and net.statut == "OK" and net.image_trace %}
+      <a href="{% url 'irrigation:network' parcel.id %}"><img src="{{ net.image_trace.url }}" alt="{{ T.network.result_title }}" class="w-full rounded-xl ring-1 ring-sand-200"></a>
+      {% if legende_source %}<p class="mt-2 text-xs text-muted">{{ legende_source }}</p>{% endif %}
+    {% elif net and net.statut == "ERREUR" %}
+      <div class="rounded-xl bg-zred-bg px-4 py-3 text-sm text-zred">{{ net.message }}</div>
+    {% else %}
+      <div class="grid h-56 place-items-center rounded-xl bg-sand-50 text-center text-sm text-muted ring-1 ring-sand-200">
+        <div class="px-6"><i data-lucide="satellite" class="mx-auto mb-2 h-8 w-8 text-water-400"></i>{{ T.network.card_empty }}</div>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="space-y-4 lg:col-span-2">
+    <button type="button"
+            hx-post="{% url 'irrigation:network_card' parcel.id %}" hx-target="#network-card" hx-swap="innerHTML"
+            hx-include="#planted-form [name=zone], #planted-form [name=crop], #planted-form [name=irrigation]"
+            hx-indicator="#network-loading" hx-disabled-elt="this"
+            class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-water-600 px-5 py-3 font-semibold text-white shadow-soft transition hover:bg-water-700 disabled:opacity-60">
+      <i data-lucide="waypoints" class="h-4 w-4"></i>{% if net %}{{ T.network.recompute }}{% else %}{{ T.network.card_compute }}{% endif %}
+    </button>
+    <p class="text-xs text-muted">{{ T.network.card_uses }}</p>
+    <p id="network-loading" class="htmx-indicator flex items-center gap-2 text-sm text-muted"><i data-lucide="loader-circle" class="h-4 w-4 animate-spin"></i>{{ T.network.computing }}</p>
+
+    {% if net and net.statut == "OK" %}
+    <div class="grid grid-cols-2 gap-2">
+      <div class="rounded-xl bg-water-50 p-3"><p class="text-xs text-muted">{{ T.network.kpi_opt }}</p><p class="text-xl font-bold tabular-nums text-water-700">{{ net.conso_optimale_m3_an|floatformat:0 }} m³</p></div>
+      <div class="rounded-xl bg-zgreen-bg p-3"><p class="text-xs text-muted">{{ T.network.kpi_saved }}</p>
+        <p class="text-xl font-bold tabular-nums text-zgreen">{% if net.conso_actuelle_m3_an %}-{{ net.economie_pct|floatformat:0 }} %{% else %}—{% endif %}</p></div>
+    </div>
+    {% if ia %}<p class="flex items-center gap-1.5 rounded-xl bg-olive-50 px-3 py-2 text-xs text-olive-800"><i data-lucide="sparkles" class="h-3.5 w-3.5"></i>{{ T.network.ia_title }} : {{ ia.n_plantes }} {{ T.network.ia_plants }}{% if ia.culture_probable %} · {{ ia.culture_probable }}{% endif %}</p>{% endif %}
+    <ul class="space-y-2">
+      {% for c in net.conseil %}
+      <li class="rounded-xl bg-sand-50 p-3 text-sm ring-1 ring-sand-200">
+        <p class="font-semibold text-olive-900">{{ c.zone }} · {{ c.culture|label }}</p>
+        <p class="text-muted">{{ c.n_plantes }} {{ T.network.plants_word }} · {{ c.goutteurs_par_plante|floatformat:"-1" }} {{ T.network.emitters }} {{ c.debit_goutteur_l_h|floatformat:"-1" }} L/h {{ T.network.per_plant }}</p>
+        {% if c.maintenant %}<p class="mt-1 text-water-700">{{ T.network.this_month }} · {{ c.maintenant.litres_plante_jour }} {{ T.network.l_plant_day }} · {{ c.maintenant.duree_min }} min
+          {% if c.maintenant.tous_les_jours == 1 %}{{ T.network.every_day }}{% else %}{{ T.network.every }} {{ c.maintenant.tous_les_jours }} {{ T.network.days }}{% endif %}</p>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+</div>

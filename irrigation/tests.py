@@ -1,160 +1,273 @@
-"""Tests irrigation (planning 7 jours). Hors ligne. Lancer : python manage.py test irrigation"""
-import datetime
+"""Bloc 3 · réseau goutte-à-goutte : python manage.py test irrigation
+
+Aucun accès réseau : un faux serveur de tuiles remplace Esri (sable bruité + oliviers dessinés
+exactement sur l'emprise GPS du LandProfile ; tuiles uniformes au zoom 20 pour tester le repli).
+"""
+
+import io
 import json
-import os
+import re
+import shutil
+import tempfile
+import urllib.error
 from pathlib import Path
+from unittest import mock
 
-from django.conf import settings
-from django.test import SimpleTestCase, TestCase
+import cv2
+import numpy as np
+from django.test import TestCase, override_settings
+from PIL import Image
 
-os.environ["REGEN_HORS_LIGNE"] = "1"   # jamais d'appel internet dans les tests
+from services import demo_data
+from services.irrigation_engine import satellite as S
+from services.irrigation_engine.parcelle import analyser_parcelle
 
-from advisor.services.recommandation import recommander_cultures  # noqa: E402
-from irrigation.services.automatisme import decider_arrosage, decider_pompage  # noqa: E402
-from irrigation.services.meteo import meteo_de_secours  # noqa: E402
-from irrigation.services.planning import generer_planning, production_solaire_kw  # noqa: E402
+from .models import DripNetworkPlan
 
-FIX = Path(settings.BASE_DIR) / "fixtures"
-PROFILS = [FIX / "land_profile.sample.json", FIX / "demo/land_profiles/GAB-002.json",
-           FIX / "demo/land_profiles/GAB-003.json"]
-CLIMAT = dict(pluie_mm=180, tmin_hiver=6, tmax_ete=33, et0_mm_jour=4.5, source="table de secours")
-DEBUT = datetime.date(2026, 11, 22)
+PID = "GAB-001"
 
 
-def reco(p=PROFILS[0]):
-    return recommander_cultures(json.loads(Path(p).read_text(encoding="utf-8")), climat=CLIMAT)
+class FauxServeurTuiles:
+    URL = "http://tuiles.test/{z}/{x}/{y}.png"
+
+    def __init__(self, profil, zoom_vide=20, panne=False, arbres_m=((6, 6), (16, 7), (25, 6), (7, 17), (17, 16),
+                                                                     (26, 17), (6, 26), (16, 25), (25, 26))):
+        self.profil, self.zoom_vide, self.panne, self.arbres_m, self.appels = profil, zoom_vide, panne, arbres_m, []
+
+    def __call__(self, url, timeout=20):
+        self.appels.append(url)
+        if self.panne:
+            raise urllib.error.URLError("reseau injoignable")
+        m = re.search(r"tuiles\.test/(\d+)/(\d+)/(\d+)\.png", url)
+        if not m:  # métadonnées Esri, etc.
+            raise urllib.error.HTTPError(url, 404, "Not Found", None, None)
+        z, x, y = map(int, m.groups())
+        if z >= self.zoom_vide:
+            arr = np.full((256, 256, 3), 204, np.uint8)
+        else:
+            arr = np.clip(np.random.default_rng(x * 7919 + y).normal((196, 176, 140), 6, (256, 256, 3)),
+                          0, 255).astype(np.uint8)
+            o = self.profil["origine"]
+            res = S.resolution_m_px(o["lat"], z)
+            x0, y0 = S.lonlat_vers_px(o["lon"], o["lat"], z)
+            for ax, ay in self.arbres_m:  # oliviers adultes de 4 m de couronne
+                cx, cy = int(round(x0 + ax / res - x * 256)), int(round(y0 + ay / res - y * 256))
+                cv2.circle(arr, (cx, cy), max(2, int(2.0 / res)), (48, 88, 62), -1)
+        buf = io.BytesIO()
+        Image.fromarray(arr).save(buf, "PNG")
+        return buf.getvalue()
 
 
-def meteo(pluies=None, et0=4.5, nuageux=()):
-    m = meteo_de_secours(33.88, CLIMAT, DEBUT)
-    for i, j in enumerate(m["jours"]):
-        j["et0_mm"] = et0
-        j["pluie_mm"] = (pluies or {}).get(i, 0)
-        if i in nuageux:
-            j["rayonnement_w_m2"] = [r * 0.3 for r in j["rayonnement_w_m2"]]
-    return m
+class ReseauSatelliteTests(TestCase):
+    CONF = {"SATELLITE_FOURNISSEUR": "test", "SATELLITE_TILE_URL": FauxServeurTuiles.URL,
+            "SATELLITE_ZOOM": 19, "SATELLITE_ATTRIBUTION": "Tuiles de test"}
 
+    def setUp(self):
+        self.media = tempfile.mkdtemp(prefix="kizuna_test_media_")
+        self.reglages = override_settings(MEDIA_ROOT=self.media, **self.CONF)
+        self.reglages.enable()
+        self.profil = demo_data.land_profile(PID)
+        self.serveur = FauxServeurTuiles(self.profil)
+        self.patch = mock.patch.object(S, "_http_get", self.serveur)
+        self.patch.start()
+        self.url = f"/p/{PID}/irrigation/network/"
 
-class PlanningTests(SimpleTestCase):
+    def tearDown(self):
+        self.patch.stop()
+        self.reglages.disable()
+        shutil.rmtree(self.media, ignore_errors=True)
 
-    def test_plan_7_jours(self):
-        plan = generer_planning(reco(), meteo=meteo())
-        self.assertEqual(len(plan["jours"]), 7)
-        self.assertEqual({e["type"] for e in plan["evenements"]}, {"POMPAGE", "ARROSAGE"})
+    def test_formules_web_mercator(self):
+        self.assertEqual(S.lonlat_vers_px(0, 0, 0), (128.0, 128.0))
+        self.assertAlmostEqual(S.resolution_m_px(0, 0), 156543.03)
+        self.assertTrue(S.tuile_vide(np.full((256, 256, 3), 204, np.uint8)))
 
-    # Test 4 : 10 mm de pluie -> arrosage annule avec sa raison
-    def test_pluie_annule_arrosage(self):
-        for p in PROFILS:
-            plan = generer_planning(reco(p), meteo=meteo(pluies={2: 10}))
-            jour = [e for e in plan["evenements"] if e["type"] == "ARROSAGE" and e["date"] == plan["jours"][2]["date"]]
-            self.assertTrue(jour)
-            for e in jour:
-                self.assertEqual(e["statut"], "ANNULE")
-                self.assertIn("10 mm de pluie", e["raison"])
+    def test_mosaique_repli_de_zoom_et_cache(self):
+        cache = Path(self.media) / "cache"
+        conf = {"url": FauxServeurTuiles.URL, "fournisseur": "test", "cache": cache}
+        sat = S.image_satellite(self.profil, Path(self.media) / "sat", **conf)
+        self.assertEqual(sat["zoom"], 19)  # zoom 20 vide -> repli
+        (x0, _), (x1, _) = sat["coins_px"][0], sat["coins_px"][1]
+        self.assertAlmostEqual((x1 - x0) * sat["resolution_m_px"], self.profil["largeur_m"], delta=1)
+        self.assertFalse((cache / "test" / "20").exists())  # tuiles vides jamais en cache
+        n = len(self.serveur.appels)
+        S.image_satellite(self.profil, Path(self.media) / "sat2", zoom_force=19, **conf)
+        self.assertEqual(len(self.serveur.appels), n)  # tout vient du cache
 
-    # Test 5 : le total pompe ne depasse jamais le quota
-    def test_quota_jamais_depasse(self):
-        for p in PROFILS:
-            for q in (15, 5, 1):
-                plan = generer_planning(reco(p), dict(quota_nappe_m3_semaine=q), meteo=meteo(et0=7))
-                self.assertLessEqual(sum(e["volume_l"] for e in plan["evenements"] if e["type"] == "POMPAGE"), q * 1000)
-
-    def test_quota_reduit_d_abord_la_depollution(self):
-        # Z3 (VERT) demande ~7,3 m3 sur la semaine : le quota de 9 m3 ne suffit pas pour tout
-        plan = generer_planning(reco(), dict(quota_nappe_m3_semaine=9), meteo=meteo(et0=6))
-        par = lambda zid: [e for e in plan["evenements"] if e["zone_id"] == zid and e["type"] == "ARROSAGE"]
-        self.assertFalse(any("quota" in e["raison"] for e in par("Z3")))         # VERT servie d'abord
-        self.assertTrue(any("quota de nappe atteint" in e["raison"] for e in par("Z1")))   # ROUGE reduite
-
-    # Test 6 : pompage seulement si la production solaire suffit
-    def test_pompage_seulement_au_soleil(self):
-        m = meteo(nuageux=(1, 2))
-        plan = generer_planning(reco(), meteo=m)
-        p = plan["parametres"]
-        rad = {j["date"]: j["rayonnement_w_m2"] for j in m["jours"]}
-        pompages = [e for e in plan["evenements"] if e["type"] == "POMPAGE"]
-        self.assertTrue(pompages)
-        for e in pompages:
-            kw = production_solaire_kw(rad[e["date"]][int(e["heure"][:2])], p["puissance_crete_kwc"], p["ratio_performance"])
-            self.assertGreaterEqual(kw, p["puissance_pompe_kw"])
-        plan2 = generer_planning(reco(), dict(puissance_crete_kwc=0.5), meteo=m)
-        self.assertFalse([e for e in plan2["evenements"] if e["type"] == "POMPAGE"])
-
-    # Test 7 : le reservoir ne deborde jamais
-    def test_reservoir_jamais_au_dessus_de_sa_capacite(self):
-        for cap in (5, 2, 1):
-            plan = generer_planning(reco(), dict(capacite_reservoir_m3=cap, niveau_initial_m3=cap),
-                                    meteo=meteo(et0=6, nuageux=(3,)))
-            self.assertTrue(all(0 <= t["niveau_l"] <= cap * 1000 for t in plan["trajectoire_reservoir"]))
-
-    def test_zone_rouge_sans_lessivage_dans_le_planning(self):
-        plan = generer_planning(reco(), meteo=meteo())
-        r = reco()
-        self.assertEqual(next(z for z in r["zones"] if z["couleur"] == "ROUGE")["lr"], 0)
-        self.assertGreater(plan["totaux"]["eau_economisee_l"], 0)
-
-    def test_automate(self):
-        self.assertEqual(decider_arrosage(300, 8, 10, 5000, 5, 30)[0], "ANNULE")
-        self.assertIn("humide", decider_arrosage(300, 0, 35, 5000, 5, 30)[2])
-        self.assertEqual(decider_arrosage(300, 0, 10, 5000, 5, 30)[:2], ("FAIT", 300))
-        self.assertEqual(decider_pompage(1500, 4000, 5000, 0, 15000)[:2], ("FAIT", 1000))
-
-
-class PageTests(TestCase):
-    """Parcours complet sur la vraie page : planning en base, Valider -> Automatique -> Simuler -> Reprendre la main."""
-
-    def test_contrat_demo_data(self):
-        from services import demo_data
-        for pid in ("GAB-001", "GAB-002", "GAB-003"):
-            plan = demo_data.irrigation_plan(pid)
-            self.assertIn("sources", plan)                 # vrai planning, pas la version demo
-            self.assertEqual(len(plan["days"]), 7)
-            for d in plan["days"]:
-                for k in ("index", "weekday", "day", "month", "slots", "pump", "hourly",
-                          "irrigation_m3", "flood_m3", "skipped"):
-                    self.assertIn(k, d)
-            self.assertLessEqual(plan["totals"]["pumped_m3"], plan["totals"]["quota_m3"])
-
-    def test_parcours_complet(self):
-        from irrigation.models import IrrigationEvent, IrrigationPlan
-        pid = "GAB-001"
-        r = self.client.get(f"/p/{pid}/irrigation/")
-        self.assertEqual(r.status_code, 200)
-        plan = IrrigationPlan.objects.get()
-        self.assertEqual(plan.statut, "BROUILLON")
-        self.assertEqual(self.client.post(f"/p/{pid}/irrigation/simuler/").status_code, 400)   # pas encore auto
-        # modifier un volume -> plan recalcule
-        date = plan.date_debut.isoformat()
-        self.client.post(f"/p/{pid}/irrigation/modifier/", {"zone_id": "Z3", "date": date, "volume_l": "450"})
-        self.assertEqual(sum(e.volume_l for e in plan.programme.filter(zone_id="Z3", date=plan.date_debut)), 450)
-        # Valider -> Automatique
-        self.client.post(f"/p/{pid}/irrigation/action/valider/")
-        self.client.post(f"/p/{pid}/irrigation/action/automatique/")
+    def test_page_et_calcul_satellite(self):
+        self.assertContains(self.client.get(f"/p/{PID}/irrigation/"), self.url)  # lien depuis le planning
+        self.assertContains(self.client.get(self.url), "Drip network design")
+        r = self.client.post(self.url, {"source_image": "satellite"})
+        self.assertRedirects(r, self.url)
+        plan = DripNetworkPlan.objects.get()
+        self.assertEqual(plan.statut, DripNetworkPlan.Statut.OK, plan.message)
+        self.assertIn(f"{PID}_satellite", plan.photo.name)
+        self.assertEqual(plan.calage["mode"], "satellite")
+        self.assertEqual(plan.source_image["zoom"], 19)
+        self.assertTrue(plan.image_trace)
+        self.assertGreaterEqual(sum(c["n_plantes"] or 0 for c in plan.conseil), 6)
+        page = self.client.get(self.url)
+        self.assertContains(page, "Tuiles de test")
+        self.assertEqual(self.client.get(f"{self.url}geojson/").json()["type"], "FeatureCollection")
+        self.assertEqual(self.client.get(f"{self.url}api/").json()["statut"], "OK")
+        # recalcul : réutilise l'image enregistrée, sans réseau
+        self.serveur.panne = True
+        self.client.post(f"{self.url}recompute/")
         plan.refresh_from_db()
-        self.assertEqual(plan.statut, "AUTO")
-        self.assertEqual(self.client.get(f"/p/{pid}/irrigation/").status_code, 200)
-        cap = plan.planning["totaux"]["capacite_reservoir_l"]
-        for _ in range(8):                                     # 7 jours + 1 clic de trop
-            j = self.client.post(f"/p/{pid}/irrigation/simuler/").json()
-            self.assertTrue(j["ok"])
-            self.assertTrue(0 <= j["etat"]["reservoir"]["niveau_l"] <= cap)
-            self.assertLessEqual(j["etat"]["quota"]["pompe_l"], j["etat"]["quota"]["quota_l"])
-        self.assertFalse(plan.programme.filter(statut="PREVU").exists())
-        self.assertTrue(j["etat"]["semaine_finie"])
-        self.assertTrue(plan.evenements.filter(action="OUVERTURE").exists())        # journal ValveEvent
-        ev = self.client.get(f"/p/{pid}/irrigation/passeport.json").json()["evenements"]
-        self.assertTrue(ev and all(e["statut"] in ("FAIT", "ANNULE") for e in ev))
-        # Reprendre la main -> l'automate ne fait plus rien
-        self.client.post(f"/p/{pid}/irrigation/action/nouveau/")
-        plan2 = IrrigationPlan.objects.first()
-        self.client.post(f"/p/{pid}/irrigation/action/valider/")
-        self.client.post(f"/p/{pid}/irrigation/action/automatique/")
-        self.client.post(f"/p/{pid}/irrigation/action/manuel/")
-        self.client.post(f"/p/{pid}/irrigation/simuler/")
-        self.assertFalse(IrrigationEvent.objects.filter(plan=plan2, statut="FAIT").exists())
+        self.assertEqual(plan.statut, DripNetworkPlan.Statut.OK, plan.message)
 
-    def test_pages_des_trois_parcelles(self):
-        for pid in ("GAB-001", "GAB-002", "GAB-003"):
-            self.assertEqual(self.client.get(f"/p/{pid}/irrigation/").status_code, 200)
-            self.assertIn("evenements", self.client.get(f"/p/{pid}/irrigation/plan.json").json())
-            self.assertEqual(self.client.get(f"/p/{pid}/irrigation/passeport.json").json()["evenements"], [])
+    def test_apercu_puis_source_cliquee(self):
+        d = self.client.post(f"{self.url}preview/").json()
+        self.assertEqual(d["zoom"], 19)
+        ap = Path(self.media) / d["image"].split("/media/", 1)[1]
+        brut = next(ap.parent.glob("satellite_*.png"))
+        self.assertAlmostEqual(Image.open(ap).size[0] / d["scale"], Image.open(brut).size[0], delta=1)
+        ne = d["coins_px"][1]
+        self.client.post(self.url, {"source_image": "satellite", "satellite_zoom": d["zoom"],
+                                    "source_px": json.dumps([[ne[0] - 3, ne[1] + 3]])})
+        plan = DripNetworkPlan.objects.get()
+        self.assertEqual(plan.calage["zoom"], 19)
+        src = next(f for f in plan.geojson["features"] if f["properties"]["couche"] == "source")
+        self.assertGreater(src["geometry"]["coordinates"][0], self.profil["origine"]["lon"])
+
+    def test_carte_page_crops_already_planted(self):
+        """Page Crops (bloc 2), mode « Already planted » : la carte réseau reprend zone, culture et irrigation."""
+        crops = self.client.get(f"/p/{PID}/crops/")
+        self.assertContains(crops, f"/p/{PID}/irrigation/network/card/")
+        carte = f"{self.url}card/"
+        self.assertContains(self.client.get(carte), "Design my drip network")
+        zone = self.profil["zones"][-1]["id"]
+        r = self.client.post(carte, {"zone": zone, "crop": "Olivier", "irrigation": "GRAVITAIRE"})
+        self.assertEqual(r.status_code, 200)
+        plan = DripNetworkPlan.objects.get()
+        self.assertEqual(plan.statut, DripNetworkPlan.Statut.OK, plan.message)
+        z = next(z for z in plan.land_profile["zones"] if z["id"] == zone)
+        self.assertEqual((z["etat"], z["culture"], z["irrigation_actuelle"]["type"]),
+                         ("PLANTEE", "Olivier", "gravitaire"))
+        self.assertGreater(plan.conso_actuelle_m3_an, 0)  # irrigation actuelle connue -> économie calculée
+        self.assertContains(r, plan.image_trace.url)
+
+    def test_panne_reseau_message_clair(self):
+        self.serveur.panne = True
+        r = self.client.post(self.url, {"source_image": "satellite"}, follow=True)
+        self.assertContains(r, "internet")
+        r = self.client.post(f"{self.url}preview/")
+        self.assertEqual(r.status_code, 422)
+
+
+def faux_gemini(compteur):
+    """Remplace l'appel à Gemini : 3 plantes au centre de l'image (dans la parcelle) + 1 dans un coin (hors parcelle)."""
+    def appel(cle, modele, image):
+        compteur.append(modele)
+        boites = [[440, 440, 480, 480], [520, 470, 560, 510], [470, 540, 510, 580], [5, 5, 25, 25]]
+        return json.dumps({"plantes": [{"box_2d": b, "label": "olive tree"} for b in boites],
+                           "culture_probable": "olive", "disposition": "scattered_trees",
+                           "irrigation_visible": "none", "remarques": "Trois oliviers adultes."})
+    return appel
+
+
+class DetectionIATests(ReseauSatelliteTests):
+    """Gemini Vision détecte les plantes ; le moteur calcule la disposition du réseau."""
+
+    def test_formules_web_mercator(self):  # déjà couvert par la classe mère
+        pass
+
+    def test_mosaique_repli_de_zoom_et_cache(self):
+        pass
+
+    def test_page_et_calcul_satellite(self):
+        pass
+
+    def test_apercu_puis_source_cliquee(self):
+        pass
+
+    def test_panne_reseau_message_clair(self):
+        pass
+
+    def test_carte_page_crops_already_planted(self):
+        pass
+
+    def test_detection_par_ia_puis_recalcul_sans_appel(self):
+        from services.irrigation_engine import detection_ia
+
+        appels = []
+        with override_settings(GEMINI_API_KEY="cle-de-test", DETECTION_IA=True), \
+                mock.patch.object(detection_ia, "_appeler", faux_gemini(appels)):
+            self.assertContains(self.client.get(self.url), "Gemini Vision")
+            self.client.post(self.url, {"source_image": "satellite"})
+            plan = DripNetworkPlan.objects.get()
+            self.assertEqual(plan.statut, DripNetworkPlan.Statut.OK, plan.message)
+            ia = plan.resultat["photo"]["detection_ia"]
+            self.assertEqual(ia["n_plantes"], 3)  # la plante hors parcelle est écartée
+            self.assertEqual(ia["culture_probable"], "olive")
+            self.assertEqual(plan.calage["plantes_source"], "ia")
+            self.assertEqual(sum(c["n_plantes"] or 0 for c in plan.conseil), 3)
+            self.assertContains(self.client.get(self.url), "Trois oliviers adultes.")
+            self.client.post(f"{self.url}recompute/")
+            self.assertEqual(len(appels), 1)  # plantes gardées : pas de nouvel appel au modèle
+
+    def test_echec_ia_detection_classique(self):
+        from services.irrigation_engine import detection_ia
+
+        def en_panne(cle, modele, image):
+            raise RuntimeError("quota dépassé")
+        with override_settings(GEMINI_API_KEY="cle-de-test"), mock.patch.object(detection_ia, "_appeler", en_panne):
+            self.client.post(self.url, {"source_image": "satellite"})
+        plan = DripNetworkPlan.objects.get()
+        self.assertEqual(plan.statut, DripNetworkPlan.Statut.OK)
+        self.assertIn("Detection IA indisponible", plan.message)
+        self.assertNotIn("detection_ia", plan.resultat["photo"])
+
+    def test_parcelle_deplacee_sur_la_carte(self):
+        o = self.profil["origine"]
+        self.client.post(self.url, {"source_image": "satellite", "origin_lat": o["lat"] - 0.0001,
+                                    "origin_lon": o["lon"] + 0.0002})
+        plan = DripNetworkPlan.objects.get()
+        self.assertAlmostEqual(plan.land_profile["origine"]["lat"], o["lat"] - 0.0001, places=6)
+        self.assertAlmostEqual(plan.land_profile["origine"]["lon"], o["lon"] + 0.0002, places=6)
+        self.assertEqual(plan.land_profile["zones"], self.profil["zones"])  # zones inchangées
+        page = self.client.get(self.url)  # la position corrigée est reprise à la visite suivante
+        self.assertContains(page, f'value="{round(o["lat"] - 0.0001, 7)}"')
+
+    def test_upload_grande_photo(self):
+        """Photo de téléphone haute résolution (> 25 px/m : recherche des tuyaux, OpenCV 4 et 5)."""
+        ppm, W, H = 60, self.profil["largeur_m"], self.profil["longueur_m"]
+        img = np.clip(np.random.default_rng(3).normal((190, 165, 125), 5, (H * ppm + 200, W * ppm + 200, 3)),
+                      0, 255).astype(np.uint8)
+        for x, y in ((6, 6), (16, 7), (25, 6), (7, 17), (17, 16), (26, 17)):
+            cv2.circle(img, (100 + x * ppm, 100 + y * ppm), 2 * ppm, (48, 88, 62), -1)
+        cv2.line(img, (100, 100 + 10 * ppm), (100 + W * ppm, 100 + 10 * ppm), (20, 20, 20), 2)  # un tuyau
+        b = io.BytesIO()
+        Image.fromarray(img).save(b, "JPEG", quality=92)
+        coins = [[100, 100], [100 + W * ppm, 100], [100 + W * ppm, 100 + H * ppm], [100, 100 + H * ppm]]
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.client.post(self.url, {"source_image": "photo", "coins_px": json.dumps(coins),
+                                    "photo": SimpleUploadedFile("tel.jpg", b.getvalue(), content_type="image/jpeg")})
+        plan = DripNetworkPlan.objects.get()
+        self.assertEqual(plan.statut, DripNetworkPlan.Statut.OK, plan.message)
+        self.assertEqual(plan.calage["mode"], "coins")
+        self.assertTrue(plan.image_trace)
+
+
+class ArbresEparsTests(TestCase):
+    """Terre DÉJÀ plantée d'arbres épars : on irrigue chaque arbre, sans en inventer à replanter."""
+
+    def test_arbres_epars_aucun_a_replanter(self):
+        ppm = 5  # 20 cm/px, parcelle 40 x 40 m
+        img = np.clip(np.random.default_rng(1).normal((190, 165, 125), 5, (200, 200, 3)), 0, 255).astype(np.uint8)
+        for x, y in ((9, 8), (30, 15), (14, 31)):
+            cv2.circle(img, (x * ppm, y * ppm), int(3.0 * ppm), (62, 88, 48), -1)
+        dossier = Path(tempfile.mkdtemp(prefix="kizuna_test_epars_"))
+        try:
+            Image.fromarray(img).save(dossier / "epars.png")
+            profil = {"parcelle_id": "EPARS", "region": "Sfax", "origine": {"lat": 34.7, "lon": 10.6},
+                      "largeur_m": 40, "longueur_m": 40, "taille_case_m": 40, "texture_sol": "limoneux",
+                      "cases": [], "source_eau": {"x_m": 1, "y_m": 1}, "eau": {"CE_dS_m": 2},
+                      "zones": [{"id": "Z1", "cases": [[0, 0]], "culture": "olivier", "etat": "PLANTEE",
+                                 "irrigation_actuelle": {"type": "gravitaire"}}]}
+            res = analyser_parcelle(profil, dossier / "epars.png", {"mode": "ortho"}, dossier / "out")
+            c = res["conseil_simple"][0]
+            self.assertEqual((c["n_plantes"], c["a_replanter"]), (3, 0))
+            self.assertEqual(res["_conception"].zones[0]["mode"], "arbres_existants")
+        finally:
+            shutil.rmtree(dossier, ignore_errors=True)

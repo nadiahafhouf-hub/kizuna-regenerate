@@ -11,6 +11,13 @@
       <h1 class="mt-1 text-3xl font-bold tracking-tight text-olive-900 sm:text-4xl">{{ T.irrigation.title }}</h1>
       <p class="mt-1 max-w-2xl text-muted">{{ T.irrigation.subtitle }}</p>
     </div>
+    <div class="flex flex-wrap items-center gap-3">
+      <!-- Réseau goutte-à-goutte (image satellite) -->
+      <a href="{% url 'irrigation:network' parcel.id %}" title="{{ T.network.open_hint }}"
+         class="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-water-700 shadow-soft ring-1 ring-water-400/40 transition hover:-translate-y-0.5 hover:bg-water-50 hover:shadow-lift">
+        <i data-lucide="waypoints" class="h-4 w-4"></i>{{ T.network.open }}
+      </a>
+    </div>
   </section>
 
   {% if plan_db %}{% with st=plan_db.statut %}

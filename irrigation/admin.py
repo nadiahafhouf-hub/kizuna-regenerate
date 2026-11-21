@@ -1,7 +1,7 @@
 from django.contrib import admin
 
-from .models import (IrrigationEvent, IrrigationPlan, IrrigationSettings, SoilMoistureReading, ValveEvent,
-                     ValveState)
+from .models import (DripNetworkPlan, IrrigationEvent, IrrigationPlan, IrrigationSettings, SoilMoistureReading,
+                     ValveEvent, ValveState)
 
 admin.site.register(IrrigationPlan)
 admin.site.register(ValveEvent)
@@ -21,3 +21,9 @@ class IrrigationEventAdmin(admin.ModelAdmin):
 
 admin.site.register(ValveState)
 admin.site.register(SoilMoistureReading)
+
+
+@admin.register(DripNetworkPlan)
+class DripNetworkPlanAdmin(admin.ModelAdmin):
+    list_display = ("parcelle_id", "statut", "economie_pct", "created_at")
+    list_filter = ("statut",)

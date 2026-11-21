@@ -1,0 +1,192 @@
+{% extends "base.html" %}{% load ui static %}
+{% block title %}{{ T.network.title }} · {{ parcel.id }}{% endblock %}
+{% block content %}
+{{ net_config|json_script:"net-config" }}
+
+<!-- En-tête -->
+<section class="reveal flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+  <div>
+    <p class="flex items-center gap-1.5 text-sm font-medium text-water-600"><i data-lucide="waypoints" class="h-4 w-4"></i>{{ parcel.name }} · {{ parcel.area_m2|num }} {{ T.app.m2 }}</p>
+    <h1 class="mt-1 text-3xl font-bold tracking-tight text-olive-900 sm:text-4xl">{{ T.network.title }}</h1>
+    <p class="mt-1 max-w-2xl text-muted">{{ T.network.subtitle }}</p>
+  </div>
+  <a href="{% url 'irrigation:index' parcel.id %}" class="inline-flex items-center gap-2 self-start rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-olive-800 shadow-soft ring-1 ring-sand-200 transition hover:-translate-y-0.5 hover:shadow-lift lg:self-auto">
+    <i data-lucide="arrow-left" class="h-4 w-4"></i>{{ T.network.back }}
+  </a>
+</section>
+
+{% for m in messages %}
+<div class="mt-4 rounded-xl px-4 py-3 text-sm {% if m.tags == 'error' %}bg-zred-bg text-zred{% else %}bg-zgreen-bg text-zgreen{% endif %}">{{ m }}</div>
+{% endfor %}
+
+<div class="mt-6 grid gap-6 lg:grid-cols-5">
+  <!-- Formulaire : image + clics -->
+  <section class="reveal rounded-2xl bg-white p-4 shadow-soft ring-1 ring-sand-200 sm:p-6 lg:col-span-2" style="animation-delay: 80ms">
+    {% include "components/section_header.html" with title=T.network.image_title icon="satellite" tone="water" %}
+    <form id="net-form" method="post" enctype="multipart/form-data">{% csrf_token %}
+      <div class="flex flex-col gap-2 sm:flex-row lg:flex-col xl:flex-row">
+        <label class="flex flex-1 cursor-pointer items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium ring-1 ring-sand-200 has-[:checked]:bg-water-50 has-[:checked]:ring-water-400">
+          <input type="radio" name="source_image" value="satellite" checked class="accent-water-600">{{ T.network.source_satellite }}
+        </label>
+        <label class="flex flex-1 cursor-pointer items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium ring-1 ring-sand-200 has-[:checked]:bg-water-50 has-[:checked]:ring-water-400">
+          <input type="radio" name="source_image" value="photo" class="accent-water-600">{{ T.network.source_photo }}
+        </label>
+      </div>
+
+      <!-- Carte dynamique : la parcelle se déplace pour corriger sa position GPS -->
+      <div class="mt-4">
+        <p class="flex items-center justify-between gap-2 text-sm font-semibold text-olive-900">
+          <span class="flex items-center gap-1.5"><i data-lucide="map" class="h-4 w-4 text-water-600"></i>{{ T.network.live_title }}</span>
+          <span class="text-xs font-normal text-muted">{% if google %}{{ T.network.live_google }}{% else %}{{ T.network.live_esri }}{% endif %}</span>
+        </p>
+        <div id="net-live-map" class="mt-2 h-72 overflow-hidden rounded-xl bg-sand-100 ring-1 ring-sand-200"></div>
+        <p class="mt-1 text-xs text-muted">{{ T.network.live_hint }}</p>
+        <input type="hidden" name="origin_lat" value="{{ origin.lat|stringformat:'s' }}">
+        <input type="hidden" name="origin_lon" value="{{ origin.lon|stringformat:'s' }}">
+      </div>
+
+      <p class="mt-3 flex flex-wrap items-center gap-1.5 rounded-xl px-3 py-2 text-xs {% if ia_active %}bg-olive-50 text-olive-800{% else %}bg-sand-100 text-muted{% endif %}">
+        <i data-lucide="{% if ia_active %}sparkles{% else %}scan{% endif %}" class="h-3.5 w-3.5"></i>
+        {% if ia_active %}{{ T.network.ia_on }}{% else %}{{ T.network.ia_off }}{% endif %}
+        <span class="ml-auto">{{ T.network.imagery }} : <b>{{ fournisseur }}</b></span>
+      </p>
+
+      <div id="net-block-satellite" class="mt-3">
+        <p class="text-sm text-muted">{{ T.network.satellite_hint }}</p>
+        <button type="button" id="net-preview" class="mt-3 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-water-700 ring-1 ring-water-400/50 transition hover:bg-water-50 disabled:opacity-60">
+          <i data-lucide="scan-eye" class="h-4 w-4"></i>{{ T.network.preview }}
+        </button>
+        <div id="net-preview-info" class="mt-2 text-sm text-muted"></div>
+      </div>
+      <div id="net-block-photo" class="mt-3 hidden">
+        <p class="text-sm text-muted">{{ T.network.photo_hint }}</p>
+        <input type="file" name="photo" accept="image/*" class="mt-2 block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-olive-100 file:px-3 file:py-2 file:font-semibold file:text-olive-800">
+      </div>
+
+      <!-- Outil de clic -->
+      <div class="mt-4 flex flex-wrap gap-2 text-sm">
+        <button type="button" data-net-mode="coins" class="rounded-full px-3 py-1.5 ring-1 ring-sand-200">① {{ T.network.corners }} <span id="net-n-coins">0/4</span></button>
+        <button type="button" data-net-mode="source" class="rounded-full px-3 py-1.5 ring-1 ring-sand-200">② {{ T.network.source }} <span id="net-n-source">0/1</span></button>
+        <button type="button" data-net-mode="plantes" class="rounded-full px-3 py-1.5 ring-1 ring-sand-200">③ {{ T.network.plants }} <span id="net-n-plantes">0</span></button>
+        <button type="button" id="net-undo" class="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 ring-1 ring-sand-200"><i data-lucide="undo-2" class="h-3.5 w-3.5"></i>{{ T.network.undo }}</button>
+      </div>
+      <p id="net-help" class="mt-2 text-sm text-muted"></p>
+      <div class="mt-2 overflow-hidden rounded-xl bg-sand-100">
+        <canvas id="net-canvas" class="hidden w-full cursor-crosshair touch-manipulation" width="10" height="10"></canvas>
+      </div>
+      <input type="hidden" name="coins_px"><input type="hidden" name="source_px"><input type="hidden" name="plantes_px"><input type="hidden" name="satellite_zoom">
+
+      <button id="net-submit" type="submit" class="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-olive-700 px-5 py-3 font-semibold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-olive-800 hover:shadow-lift disabled:opacity-70">
+        <i data-lucide="waypoints" class="h-4 w-4"></i><span>{{ T.network.compute }}</span>
+      </button>
+    </form>
+  </section>
+
+  <!-- Résultat -->
+  <section class="reveal rounded-2xl bg-white p-4 shadow-soft ring-1 ring-sand-200 sm:p-6 lg:col-span-3" style="animation-delay: 140ms">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      {% include "components/section_header.html" with title=T.network.result_title hint=T.network.result_hint icon="map" tone="olive" %}
+      {% if net %}
+      <form method="post" action="{% url 'irrigation:network_recompute' parcel.id %}">{% csrf_token %}
+        <button class="inline-flex items-center gap-1.5 rounded-xl bg-white px-3 py-2 text-xs font-semibold text-muted ring-1 ring-sand-200 hover:bg-sand-50"><i data-lucide="refresh-cw" class="h-3.5 w-3.5"></i>{{ T.network.recompute }}</button>
+      </form>
+      {% endif %}
+    </div>
+    {% if net and net.statut == "OK" and net.image_trace %}
+      <a href="{{ net.image_trace.url }}" target="_blank"><img src="{{ net.image_trace.url }}" alt="{{ T.network.result_title }}" class="w-full rounded-xl ring-1 ring-sand-200"></a>
+      {% if legende_source %}<p class="mt-2 text-xs text-muted">{{ legende_source }}</p>{% endif %}
+      {% if ia %}
+      <div class="mt-3 rounded-xl bg-olive-50 p-3 text-sm ring-1 ring-olive-200">
+        <p class="flex items-center gap-1.5 font-semibold text-olive-900"><i data-lucide="sparkles" class="h-4 w-4"></i>{{ T.network.ia_title }} · {{ ia.modele }}</p>
+        <p class="mt-1"><b>{{ ia.n_plantes }}</b> {{ T.network.ia_plants }}
+          {% if ia.culture_probable %} · {{ T.network.ia_crop }} : {{ ia.culture_probable }}{% endif %}
+          {% if ia.disposition %} · {{ T.network.ia_layout }} : {{ ia.disposition }}{% endif %}
+          {% if ia.irrigation_visible %} · {{ T.network.ia_irrigation }} : {{ ia.irrigation_visible }}{% endif %}</p>
+        {% if ia.remarques %}<p class="mt-1 text-muted">{{ ia.remarques }}</p>{% endif %}
+      </div>
+      {% endif %}
+    {% elif net and net.statut == "ERREUR" %}
+      <div class="rounded-xl bg-zred-bg px-4 py-3 text-sm text-zred">{{ net.message }}</div>
+    {% else %}
+      <div class="grid h-64 place-items-center rounded-xl bg-sand-50 text-center text-sm text-muted ring-1 ring-dashed ring-sand-200">
+        <div><i data-lucide="satellite" class="mx-auto mb-2 h-8 w-8 text-water-400"></i>{{ T.network.no_result }}</div>
+      </div>
+    {% endif %}
+  </section>
+</div>
+
+{% if net and net.statut == "OK" %}
+<!-- KPIs -->
+<section class="mt-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+  {% if net.conso_actuelle_m3_an %}
+  {% include "components/kpi_card.html" with icon="waves" label=T.network.kpi_now value=net.conso_actuelle_m3_an unit="m³" hint=T.network.kpi_now_hint tone="sun" delay=40 %}
+  {% else %}
+  <div class="reveal rounded-2xl bg-white p-4 shadow-soft ring-1 ring-sand-200 sm:p-5"><p class="text-sm font-medium text-muted">{{ T.network.kpi_now }}</p>
+    <p class="mt-2 text-3xl font-bold text-muted sm:text-4xl">—</p><p class="mt-1 text-xs text-muted">{{ T.network.kpi_unknown }}</p></div>
+  {% endif %}
+  {% include "components/kpi_card.html" with icon="droplet" label=T.network.kpi_opt value=net.conso_optimale_m3_an unit="m³" hint=T.network.kpi_opt_hint tone="water" delay=100 %}
+  {% if net.conso_actuelle_m3_an %}
+  {% include "components/kpi_card.html" with icon="leaf" label=T.network.kpi_saved value=net.economie_pct unit="%" hint=T.network.kpi_saved_hint tone="green" delay=160 %}
+  {% else %}
+  <div class="reveal rounded-2xl bg-white p-4 shadow-soft ring-1 ring-sand-200 sm:p-5"><p class="text-sm font-medium text-muted">{{ T.network.kpi_saved }}</p>
+    <p class="mt-2 text-3xl font-bold text-muted sm:text-4xl">—</p><p class="mt-1 text-xs text-muted">{{ T.network.kpi_unknown }}</p></div>
+  {% endif %}
+  {% include "components/kpi_card.html" with icon="clock" label=T.network.kpi_hours value=net.heures_pompage_pointe unit="h" hint=T.network.kpi_hours_hint tone="olive" decimals=1 delay=220 %}
+</section>
+
+<!-- Conseils par zone -->
+<section class="reveal mt-6 rounded-2xl bg-white p-4 shadow-soft ring-1 ring-sand-200 sm:p-6">
+  {% include "components/section_header.html" with title=T.network.advice_title icon="sprout" tone="olive" %}
+  <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+    {% for c in net.conseil %}
+    <div class="rounded-2xl bg-sand-50 p-4 ring-1 ring-sand-200">
+      <p class="font-semibold text-olive-900">{{ c.zone }} · {{ c.culture|label }}</p>
+      <p class="mt-1 text-sm">{{ c.n_plantes }} {{ T.network.plants_word }}{% if c.a_replanter %} ({{ c.a_replanter }} {{ T.network.replant }}){% endif %}</p>
+      <p class="text-sm text-muted">{{ c.goutteurs_par_plante|floatformat:"-1" }} {{ T.network.emitters }} {{ c.debit_goutteur_l_h|floatformat:"-1" }} L/h {{ T.network.per_plant }} · {{ c.longueur_rampes_m|floatformat:0 }} m {{ T.network.of_drip_line }}</p>
+      {% if c.maintenant %}
+      <p class="mt-3 rounded-xl bg-water-50 px-3 py-2 text-sm text-water-700"><b>{{ T.network.this_month }} ({{ c.maintenant.mois }})</b> · {{ c.maintenant.litres_plante_jour }} {{ T.network.l_plant_day }} · {{ T.network.water_for }} {{ c.maintenant.duree_min }} min
+        {% if c.maintenant.tous_les_jours == 1 %}{{ T.network.every_day }}{% else %}{{ T.network.every }} {{ c.maintenant.tous_les_jours }} {{ T.network.days }}{% endif %}</p>
+      {% endif %}
+      {% if c.pointe %}
+      <p class="mt-2 text-xs text-muted">{{ T.network.peak_month }} ({{ c.pointe.mois }}) · {{ c.pointe.litres_plante_jour }} {{ T.network.l_plant_day }} · {{ c.pointe.duree_min }} min
+        {% if c.pointe.tous_les_jours == 1 %}{{ T.network.every_day }}{% else %}{{ T.network.every }} {{ c.pointe.tous_les_jours }} {{ T.network.days }}{% endif %}</p>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% if net.message %}
+  <details class="mt-4 rounded-xl bg-sun-50 px-4 py-3 text-sm text-sun-700"><summary class="cursor-pointer font-semibold">{{ T.network.warnings }}</summary><p class="mt-2 whitespace-pre-line">{{ net.message }}</p></details>
+  {% endif %}
+</section>
+
+<!-- Carte + détails -->
+<section class="mt-6 grid gap-6 lg:grid-cols-2">
+  <div class="reveal rounded-2xl bg-white p-4 shadow-soft ring-1 ring-sand-200 sm:p-6">
+    {% include "components/section_header.html" with title=T.network.map_title hint=T.network.map_hint icon="map-pinned" tone="water" %}
+    <div id="net-map" class="h-80 overflow-hidden rounded-xl ring-1 ring-sand-200"></div>
+  </div>
+  <div class="reveal rounded-2xl bg-white p-4 shadow-soft ring-1 ring-sand-200 sm:p-6">
+    {% include "components/section_header.html" with title=T.network.details icon="microscope" tone="olive" %}
+    <div class="grid gap-3 sm:grid-cols-2">
+      {% if net.image_photo_analysee %}<figure><img src="{{ net.image_photo_analysee.url }}" class="rounded-xl ring-1 ring-sand-200" alt=""><figcaption class="mt-1 text-xs text-muted">{{ T.network.seen }}</figcaption></figure>{% endif %}
+      {% if net.image_plan %}<figure><img src="{{ net.image_plan.url }}" class="rounded-xl ring-1 ring-sand-200" alt=""><figcaption class="mt-1 text-xs text-muted">{{ T.network.plan_scale }}</figcaption></figure>{% endif %}
+    </div>
+    {% if net.rapport %}<a href="{{ net.rapport.url }}" target="_blank" class="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-water-700 hover:underline"><i data-lucide="file-text" class="h-4 w-4"></i>{{ T.network.report }}</a>{% endif %}
+  </div>
+</section>
+
+<section class="reveal mt-6 rounded-2xl bg-white p-4 shadow-soft ring-1 ring-sand-200 sm:p-6">
+  {% include "components/section_header.html" with title=T.network.recommendations icon="list-checks" tone="olive" %}
+  <ul class="divide-y divide-sand-100 text-sm">
+    {% for r in res.recommandations %}
+    <li class="flex gap-3 py-2"><span class="w-20 shrink-0 font-semibold {% if r.priorite == 'Haute' %}text-zred{% elif r.priorite == 'Moyenne' %}text-zorange{% else %}text-muted{% endif %}">{{ r.priorite }}</span>
+      <span><b>{{ r.titre }}</b> <span class="text-muted">· {{ r.zone }}</span><br><span class="text-muted">{{ r.detail }}</span></span></li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{% vstatic 'js/network_clicker.js' %}"></script>
+{% endblock %}
