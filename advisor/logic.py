@@ -93,10 +93,33 @@ def crop_recommendations_ui(pid):
             "avertissements": reco["avertissements"]}
 
 
+def _nom_en(cle, nom, meta):
+    """Libelle anglais d'une plante de la base (memes noms que les cartes de la page)."""
+    nom_cat = NOM_CATALOGUE.get(cle)
+    if nom_cat and nom_cat in meta["crops"]:
+        return meta["crops"][nom_cat]["en"]
+    return HORS_CATALOGUE.get(cle, (nom, None))[0]
+
+
+def _reco_en_anglais(reco):
+    """Copie de la recommandation avec les noms de cultures en anglais (les noms latins restent)."""
+    import copy
+    meta = _meta()
+    r = copy.deepcopy(reco)
+    for z in r["zones"]:
+        if z["couleur"] == "VERT":
+            z["culture"] = _nom_en(z["cle"], z["culture"], meta)
+            for a in z["alternatives"]:
+                a["nom"] = _nom_en(a["cle"], a["nom"], meta)
+        elif z["cle"] in MELANGES:
+            z["culture"] = " + ".join(MELANGES[z["cle"]])
+    return r
+
+
 def plan_png(pid):
     """Dessine le plan dans media/advisor/plans/ (lu aussi par le passeport). Renvoie le chemin relatif."""
     rel = f"advisor/plans/plan_{pid}.png"
     chemin = Path(settings.MEDIA_ROOT) / rel
     chemin.parent.mkdir(parents=True, exist_ok=True)
-    dessiner_plan(recommandation(pid), str(chemin))
+    dessiner_plan(_reco_en_anglais(recommandation(pid)), str(chemin))
     return rel
