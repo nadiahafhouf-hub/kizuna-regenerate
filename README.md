@@ -134,3 +134,18 @@ Fusion dans `main` par pull request. Les clés API restent dans `.env`, jamais d
 - `python manage.py bloc1_experiment` : courbe erreur IDW vs nombre de points (fixtures/bloc1/experience_capteurs.json).
 - `python manage.py bloc1_extract_lucas <LUCAS_TOPSOIL_v1.xlsx>` : extrait des sols méditerranéens calcaires.
 - Parcours agriculteur : `/parcels/new/` → plan des capteurs → saisie des relevés → diagnostic.
+
+## Bloc 1 — couche satellite (Sentinel-2)
+
+- Images **Copernicus Sentinel-2 L2A** via le catalogue public Earth Search (AWS) : **aucun compte**.
+  Par case de 10 m : NDVI (vigueur), NDMI (stress hydrique), indice de sel de surface (sol nu seulement).
+- **Le satellite ne mesure jamais Cd ni Pb.** Il sert à : (1) tester une fusion « régression + IDW des résidus »
+  pour la **CE**, adoptée seulement si la validation croisée fait mieux que l'IDW seul (≥ 10 %), sinon IDW conservé ;
+  (2) des **observations par zone** (stress hydrique, sol nu, sel de surface, couvert) ; (3) des **points de contrôle**
+  (cases non mesurées anormales → confiance réduite).
+- Contrat LandProfile inchangé ; champs ajoutés : `satellite`, `fusion_ce`, `points_controle`, `cases[].satellite`,
+  `zones[].observations`.
+- `python manage.py bloc1_satellite [ids…]` : analyse ; pour les parcelles de démo le résultat est mis en cache dans
+  `fixtures/bloc1/satellite/` → **démo instantanée et hors ligne**. Les nouvelles parcelles sont analysées
+  automatiquement à l'ouverture du diagnostic (~20-40 s).
+- Attribution affichée : « Contains modified Copernicus Sentinel data ».
