@@ -16,7 +16,8 @@ from services import demo_data
 from .geo import land_profile_to_geojson
 from .models import LandProfile, SensorReading
 from .pipeline import construire_land_profile
-from .sampling import centre_case, distance_km, plan_capteurs
+from .sampling import (AIRE_MAX_M2, centre_case, dimensions_depuis_hectares, distance_km,
+                       origine_depuis_centre, plan_capteurs)
 from .satellite import SatelliteIndisponible
 from .satellite_fusion import appliquer_satellite
 
@@ -172,32 +173,40 @@ def _prochain_id():
 
 
 def new_parcel(request):
-    """L'agriculteur donne la taille de sa terre et clique son coin nord-ouest sur la carte."""
+    """L'agriculteur est sur sa terre : sa position GPS (ou un clic sur la carte) = le CENTRE de la
+    terre ; il donne la surface en hectares (terre carrée) ou ses dimensions exactes. On couvre
+    TOUTE la terre (jusqu'à 20 ha) avec la grille de 10 m."""
     T = get_strings()
-    values, error = {"largeur": 30, "longueur": 30, "region": "Gabes"}, None
-    # lien de test : /parcels/new/?lat=..&lon=.. pré-place le coin nord-ouest (on peut encore cliquer ailleurs)
+    values, error = {"hectares": 1, "region": "Gabes", "forme": "carre"}, None
+    # lien de test : /parcels/new/?lat=..&lon=.. pré-place le centre de la terre (on peut encore cliquer ailleurs)
     for k in ("lat", "lon", "nom"):
         if request.GET.get(k):
             values[k] = request.GET[k]
     if request.method == "POST":
         values = request.POST
         try:
-            largeur, longueur = int(float(values["largeur"])), int(float(values["longueur"]))
             lat, lon = float(values["lat"]), float(values["lon"])
-            if not (10 <= largeur <= 500 and 10 <= longueur <= 500 and -90 < lat < 90 and -180 < lon < 180):
+            if values.get("forme") == "dims" or not values.get("hectares"):
+                largeur, longueur = int(float(values["largeur"])), int(float(values["longueur"]))
+            else:
+                largeur, longueur = dimensions_depuis_hectares(float(values["hectares"].replace(",", ".")))
+            if not (10 <= largeur <= 1000 and 10 <= longueur <= 1000 and largeur * longueur <= AIRE_MAX_M2
+                    and -90 < lat < 90 and -180 < lon < 180):
                 raise ValueError
-        except (KeyError, ValueError):
+        except (KeyError, ValueError, AttributeError):
             error = T["newparcel"]["invalid"]
         else:
+            o_lat, o_lon = origine_depuis_centre(lat, lon, largeur, longueur)
             p = Parcel.objects.create(
                 parcelle_id=_prochain_id(), nom=values.get("nom", "")[:120],
                 agriculteur=values.get("agriculteur", "")[:120], region=values.get("region", "")[:80] or "Gabes",
-                origine_lat=lat, origine_lon=lon, largeur_m=largeur, longueur_m=longueur, taille_case_m=10,
+                origine_lat=o_lat, origine_lon=o_lon, largeur_m=largeur, longueur_m=longueur, taille_case_m=10,
                 texture_sol=values.get("texture") if values.get("texture") in TEXTURES else "")
             return redirect("diagnostics:plan", p.parcelle_id)
     return render(request, "diagnostics/new_parcel.html", {
         "values": values, "error": error, "textures": TEXTURES,
         "sources": demo_data.pollution_sources(), "all_parcels": demo_data.parcels(),
+        "regle": {"aire_max_ha": AIRE_MAX_M2 / 10_000},
     })
 
 
@@ -215,15 +224,15 @@ def plan(request, pid):
     return render(request, "diagnostics/plan.html", ctx)
 
 
-def simulate(request, pid):
+def _mesures_simulees(pid):
     """Démo : relevés réalistes pour chaque point du plan (générateur diagnostics.synthetic)."""
     import numpy as np
 
+    from .sampling import cap_vers
     from .synthetic import generer_parcelle, mesurer
     g, p = _plan(pid)
     c_lat, c_lon = centre_case(g["lat"], g["lon"], (p["nb_lignes"] - 1) / 2, (p["nb_colonnes"] - 1) / 2, g["taille"])
     src = min(demo_data.pollution_sources(), key=lambda s: distance_km(c_lat, c_lon, s["lat"], s["lon"]))
-    from .sampling import cap_vers
     d = distance_km(c_lat, c_lon, src["lat"], src["lon"])
     rng = np.random.default_rng()
     verite = generer_parcelle(p["nb_lignes"], p["nb_colonnes"], g["taille"], distance_km=d,
@@ -233,8 +242,26 @@ def simulate(request, pid):
     for m in mes:
         m["Cu_mg_kg"] = round(float(18 + 6 * m["Cd_mg_kg"] * rng.uniform(0.7, 1.3)), 1)
         m["Zn_mg_kg"] = round(float(55 + 25 * m["Cd_mg_kg"] * rng.uniform(0.7, 1.3)), 1)
-    return JsonResponse({"distance_km": round(d, 2), "source": src["name"], "texture": verite["texture"],
-                         "readings": {q["id"]: m for q, m in zip(p["points"], mes)}})
+    return {"distance_km": round(d, 2), "source": src["name"], "texture": verite["texture"],
+            "readings": {q["id"]: m for q, m in zip(p["points"], mes)}}
+
+
+def simulate(request, pid):
+    return JsonResponse(_mesures_simulees(pid))
+
+
+@require_POST
+def quick_diagnostic(request, pid):
+    """Bouton « Obtenir le diagnostic » du plan (démo) : relevés simulés → diagnostic complet."""
+    if not demo_data.is_db_parcel(pid):
+        return redirect("diagnostics:index", pid)
+    g, p = _plan(pid)
+    sim = _mesures_simulees(pid)
+    mesures = [{"id": q["id"], "ligne": q["ligne"], "col": q["col"], "lat": q["lat"], "lon": q["lon"],
+                **sim["readings"][q["id"]]} for q in p["points"]]
+    _calculer_et_enregistrer(request, pid, g, mesures, date.today().isoformat(), g["texture"] or sim["texture"],
+                             simule=True)
+    return redirect("diagnostics:index", pid)
 
 
 def _tri_labo(point_id, valeurs, texture):
@@ -284,6 +311,12 @@ def readings(request, pid):
         return render(request, "diagnostics/readings.html", ctx)
 
     when = request.POST.get("date") or ctx["today"]
+    _calculer_et_enregistrer(request, pid, g, mesures, when, texture)
+    return redirect("diagnostics:index", pid)
+
+
+def _calculer_et_enregistrer(request, pid, g, mesures, when, texture, simule=False):
+    """Pipeline du bloc 1 → LandProfile + SensorReading en base (+ satellite déjà lu réutilisé)."""
     parcelle = Parcel.objects.get(parcelle_id=pid)
     if texture in TEXTURES and texture != parcelle.texture_sol:
         parcelle.texture_sol = texture
@@ -292,6 +325,7 @@ def readings(request, pid):
                                  region=g["region"], texture_sol=texture, taille_m=g["taille"])
     tri = [t for t in (_tri_labo(m["id"], m, texture) for m in mesures) if t]
     lp["tri_labo"] = tri or None
+    lp["releves_simules"] = simule
     # même parcelle, même géométrie : on réutilise la dernière image satellite (pas de nouvel appel réseau)
     precedent = LandProfile.objects.filter(parcel=parcelle).order_by("-created_at").first()
     if precedent and (precedent.data.get("satellite") or {}).get("cases"):
@@ -304,7 +338,7 @@ def readings(request, pid):
                       lon=m["lon"], ce_ds_m=m["CE_dS_m"], ph=m["pH"], cd_mg_kg=m["Cd_mg_kg"], pb_mg_kg=m["Pb_mg_kg"])
         for m in mesures])
     request.session.pop(f"readings_{pid}", None)
-    return redirect("diagnostics:index", pid)
+    return lp
 
 
 # ───────────────────────── Couche satellite (Sentinel-2) ─────────────────────────

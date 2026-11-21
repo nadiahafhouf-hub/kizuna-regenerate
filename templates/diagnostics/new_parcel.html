@@ -2,7 +2,7 @@
 {% block title %}{{ T.newparcel.title }}{% endblock %}
 {% block content %}
 {{ sources|json_script:"sources-data" }}
-<div x-data="newParcel({{ values.largeur|default:30 }}, {{ values.longueur|default:30 }}, '{{ values.lat|default:'' }}', '{{ values.lon|default:'' }}')">
+<div x-data="newParcel({{ values.hectares|default:1 }}, '{{ values.forme|default:'carre' }}', {{ values.largeur|default:100 }}, {{ values.longueur|default:100 }}, '{{ values.lat|default:'' }}', '{{ values.lon|default:'' }}', {{ regle.aire_max_ha|floatformat:0 }})">
   <section class="reveal">
     <p class="flex items-center gap-1.5 text-sm font-medium text-olive-600"><i data-lucide="map-pin-plus" class="h-4 w-4"></i>{{ T.app.name }}</p>
     <h1 class="mt-1 text-3xl font-bold tracking-tight text-olive-900 sm:text-4xl">{{ T.newparcel.title }}</h1>
@@ -16,43 +16,66 @@
   <form method="post" class="mt-6 grid gap-6 lg:grid-cols-5">
     {% csrf_token %}
     <div class="reveal space-y-4 rounded-2xl bg-white p-5 shadow-soft ring-1 ring-sand-200 sm:p-6 lg:col-span-2">
-      <label class="block"><span class="text-sm font-medium">{{ T.newparcel.name }}</span>
-        <input name="nom" value="{{ values.nom|default:'' }}" placeholder="Oasis plot" class="mt-1 w-full rounded-xl border-0 bg-sand-50 px-3 py-2.5 text-sm ring-1 ring-sand-200 focus:ring-2 focus:ring-olive-600"></label>
-      <div class="grid grid-cols-2 gap-3">
-        <label class="block"><span class="text-sm font-medium">{{ T.newparcel.farmer }}</span>
-          <input name="agriculteur" value="{{ values.agriculteur|default:'' }}" class="mt-1 w-full rounded-xl border-0 bg-sand-50 px-3 py-2.5 text-sm ring-1 ring-sand-200 focus:ring-2 focus:ring-olive-600"></label>
-        <label class="block"><span class="text-sm font-medium">{{ T.newparcel.region }}</span>
-          <input name="region" value="{{ values.region|default:'Gabes' }}" class="mt-1 w-full rounded-xl border-0 bg-sand-50 px-3 py-2.5 text-sm ring-1 ring-sand-200 focus:ring-2 focus:ring-olive-600"></label>
-      </div>
-      <div class="grid grid-cols-2 gap-3">
-        <label class="block"><span class="text-sm font-medium">{{ T.newparcel.width }}</span>
-          <input name="largeur" type="number" min="10" max="500" step="1" required x-model.number="w" @input="draw()" inputmode="numeric" class="mt-1 w-full rounded-xl border-0 bg-sand-50 px-3 py-2.5 text-sm tabular-nums ring-1 ring-sand-200 focus:ring-2 focus:ring-olive-600"></label>
-        <label class="block"><span class="text-sm font-medium">{{ T.newparcel.length }}</span>
-          <input name="longueur" type="number" min="10" max="500" step="1" required x-model.number="l" @input="draw()" inputmode="numeric" class="mt-1 w-full rounded-xl border-0 bg-sand-50 px-3 py-2.5 text-sm tabular-nums ring-1 ring-sand-200 focus:ring-2 focus:ring-olive-600"></label>
-      </div>
-      <label class="block"><span class="text-sm font-medium">{{ T.newparcel.texture }}</span>
-        <select name="texture" class="mt-1 w-full rounded-xl border-0 bg-sand-50 px-3 py-2.5 text-sm ring-1 ring-sand-200 focus:ring-2 focus:ring-olive-600">
-          <option value="">{{ T.newparcel.texture_auto }}</option>
-          {% for t in textures %}<option value="{{ t }}" {% if values.texture == t %}selected{% endif %}>{{ t|label }}</option>{% endfor %}
-        </select></label>
-
+      <!-- Position -->
       <div>
-        <p class="text-sm font-medium">{{ T.newparcel.location }}</p>
+        <p class="text-sm font-semibold">{{ T.newparcel.location }}</p>
         <p class="text-xs text-muted">{{ T.newparcel.location_hint }}</p>
         <div class="mt-2 flex flex-wrap items-center gap-2">
-          <button type="button" @click="gps()" class="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-olive-800 ring-1 ring-olive-200 hover:bg-olive-50">
-            <i data-lucide="locate-fixed" class="h-3.5 w-3.5"></i>{{ T.newparcel.use_gps }}
+          <button type="button" @click="gps()" class="inline-flex items-center gap-1.5 rounded-lg bg-olive-700 px-3 py-2 text-xs font-semibold text-white hover:bg-olive-800">
+            <span :class="locating && 'animate-spin'"><i data-lucide="locate-fixed" class="h-3.5 w-3.5"></i></span>
+            <span x-text="locating ? UI.newparcel.locating : UI.newparcel.use_gps"></span>
           </button>
           <span class="font-mono text-xs text-muted" x-text="lat ? (lat.toFixed(5) + ', ' + lon.toFixed(5)) : '—'"></span>
         </div>
+        <p x-show="gpsError" x-cloak class="mt-2 rounded-lg bg-sun-50 px-3 py-2 text-xs text-sun-700 ring-1 ring-sun-300/60" x-text="UI.newparcel.gps_denied"></p>
         <input type="hidden" name="lat" :value="lat"><input type="hidden" name="lon" :value="lon">
+      </div>
+
+      <!-- Surface -->
+      <div class="space-y-3 border-t border-sand-100 pt-4">
+        <label class="block"><span class="text-sm font-semibold">{{ T.newparcel.hectares }}</span>
+          <div class="relative mt-1">
+            <input name="hectares" type="number" min="0.01" :max="maxHa" step="any" inputmode="decimal" x-model.number="ha" @input="draw()" :disabled="forme === 'dims'"
+                   class="w-full rounded-xl border-0 bg-sand-50 py-2.5 pl-3 pr-12 text-lg font-semibold tabular-nums ring-1 ring-sand-200 focus:ring-2 focus:ring-olive-600 disabled:opacity-50">
+            <span class="pointer-events-none absolute inset-y-0 right-3 grid place-items-center text-sm text-muted">ha</span>
+          </div>
+          <span class="mt-1 block text-[11px] text-muted" x-text="UI.newparcel.hectares_hint.replace('{max}', maxHa)"></span>
+        </label>
+        <div class="flex flex-wrap gap-2 text-xs">
+          <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 ring-1" :class="forme === 'carre' ? 'bg-olive-50 ring-olive-600 text-olive-900' : 'ring-sand-200 text-muted'">
+            <input type="radio" name="forme" value="carre" x-model="forme" @change="draw()" class="accent-olive-700">{{ T.newparcel.shape_square }}</label>
+          <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 ring-1" :class="forme === 'dims' ? 'bg-olive-50 ring-olive-600 text-olive-900' : 'ring-sand-200 text-muted'">
+            <input type="radio" name="forme" value="dims" x-model="forme" @change="draw()" class="accent-olive-700">{{ T.newparcel.shape_dims }}</label>
+        </div>
+        <div x-show="forme === 'dims'" x-cloak class="grid grid-cols-2 gap-3">
+          <label class="block"><span class="text-xs font-medium">{{ T.newparcel.width }}</span>
+            <input name="largeur" type="number" min="10" max="1000" step="10" x-model.number="w" @input="draw()" class="mt-1 w-full rounded-xl border-0 bg-sand-50 px-3 py-2 text-sm tabular-nums ring-1 ring-sand-200 focus:ring-2 focus:ring-olive-600"></label>
+          <label class="block"><span class="text-xs font-medium">{{ T.newparcel.length }}</span>
+            <input name="longueur" type="number" min="10" max="1000" step="10" x-model.number="l" @input="draw()" class="mt-1 w-full rounded-xl border-0 bg-sand-50 px-3 py-2 text-sm tabular-nums ring-1 ring-sand-200 focus:ring-2 focus:ring-olive-600"></label>
+        </div>
       </div>
 
       <!-- Aperçu -->
       <div class="grid grid-cols-3 gap-2 rounded-2xl bg-sand-50 p-3 text-center ring-1 ring-sand-200">
-        <div><p class="text-[11px] text-muted">{{ T.newparcel.area }}</p><p class="font-bold tabular-nums"><span x-text="(w*l).toLocaleString('en-US')"></span> m²</p></div>
-        <div><p class="text-[11px] text-muted">{{ T.newparcel.cells }}</p><p class="font-bold tabular-nums" x-text="Math.ceil(l/10)*Math.ceil(w/10)"></p></div>
-        <div><p class="text-[11px] text-muted">{{ T.plan.survey_points }}</p><p class="font-bold tabular-nums text-olive-800" x-text="Math.max(5, Math.ceil(w*l/400))"></p></div>
+        <div><p class="text-[11px] text-muted">{{ T.newparcel.area }}</p><p class="font-bold tabular-nums"><span x-text="(dims()[0]*dims()[1]/10000).toLocaleString('en-US', {maximumFractionDigits: 2})"></span> ha</p>
+          <p class="text-[10px] text-muted" x-text="dims()[0] + ' × ' + dims()[1] + ' m'"></p></div>
+        <div><p class="text-[11px] text-muted">{{ T.newparcel.cells }}</p><p class="font-bold tabular-nums" x-text="(Math.ceil(dims()[1]/10)*Math.ceil(dims()[0]/10)).toLocaleString('en-US')"></p></div>
+        <div><p class="text-[11px] text-muted">{{ T.plan.survey_points }}</p><p class="font-bold tabular-nums text-olive-800" x-text="points()"></p></div>
+      </div>
+
+      <!-- Détails -->
+      <div class="grid grid-cols-2 gap-3 border-t border-sand-100 pt-4">
+        <label class="col-span-2 block"><span class="text-xs font-medium">{{ T.newparcel.name }}</span>
+          <input name="nom" value="{{ values.nom|default:'' }}" placeholder="Oasis plot" class="mt-1 w-full rounded-xl border-0 bg-sand-50 px-3 py-2 text-sm ring-1 ring-sand-200 focus:ring-2 focus:ring-olive-600"></label>
+        <label class="block"><span class="text-xs font-medium">{{ T.newparcel.farmer }}</span>
+          <input name="agriculteur" value="{{ values.agriculteur|default:'' }}" class="mt-1 w-full rounded-xl border-0 bg-sand-50 px-3 py-2 text-sm ring-1 ring-sand-200 focus:ring-2 focus:ring-olive-600"></label>
+        <label class="block"><span class="text-xs font-medium">{{ T.newparcel.region }}</span>
+          <input name="region" value="{{ values.region|default:'Gabes' }}" class="mt-1 w-full rounded-xl border-0 bg-sand-50 px-3 py-2 text-sm ring-1 ring-sand-200 focus:ring-2 focus:ring-olive-600"></label>
+        <label class="col-span-2 block"><span class="text-xs font-medium">{{ T.newparcel.texture }}</span>
+          <select name="texture" class="mt-1 w-full rounded-xl border-0 bg-sand-50 px-3 py-2 text-sm ring-1 ring-sand-200 focus:ring-2 focus:ring-olive-600">
+            <option value="">{{ T.newparcel.texture_auto }}</option>
+            {% for t in textures %}<option value="{{ t }}" {% if values.texture == t %}selected{% endif %}>{{ t|label }}</option>{% endfor %}
+          </select></label>
       </div>
 
       <button type="submit" :disabled="!lat"
@@ -62,7 +85,7 @@
     </div>
 
     <div class="reveal order-first overflow-hidden rounded-2xl bg-white shadow-soft ring-1 ring-sand-200 lg:order-none lg:col-span-3" style="animation-delay: 100ms">
-      <div id="new-map" class="h-[420px] cursor-crosshair sm:h-[560px] lg:h-full lg:min-h-[560px]"></div>
+      <div id="new-map" class="h-[420px] cursor-crosshair sm:h-[560px] lg:h-full lg:min-h-[620px]"></div>
     </div>
   </form>
 </div>
@@ -72,36 +95,61 @@
 <script src="{% vstatic 'js/map.js' %}"></script>
 <script>
   document.addEventListener("alpine:init", () => {
-    Alpine.data("newParcel", (w0, l0, lat0, lon0) => {
-      let map, layer;
+    Alpine.data("newParcel", (ha0, forme0, w0, l0, lat0, lon0, maxHa) => {
+      let map, layer, marker;
+      const round10 = (v) => Math.max(10, Math.round(v / 10) * 10);
       return {
-        w: w0, l: l0, lat: lat0 ? parseFloat(lat0) : null, lon: lon0 ? parseFloat(lon0) : null,
+        ha: ha0, forme: forme0, w: w0, l: l0, maxHa,
+        lat: lat0 ? parseFloat(lat0) : null, lon: lon0 ? parseFloat(lon0) : null,
+        locating: false, gpsError: false,
+        // même règle que diagnostics.sampling (côté serveur)
+        dims() {
+          if (this.forme === "dims") return [this.w || 10, this.l || 10];
+          const side = Math.sqrt(Math.max(0.01, this.ha || 0) * 10000);
+          return [round10(side), round10(side)];
+        },
+        points() {
+          const [w, l] = this.dims(), a = w * l;
+          return a <= 10000 ? Math.max(5, Math.ceil(a / 400)) : 25 + Math.ceil((a - 10000) / 2500);
+        },
         init() {
           this.$nextTick(() => {
             map = satelliteMap("new-map", { dragging: true });
-            map.setView(this.lat ? [this.lat, this.lon] : [33.8835, 10.068], this.lat ? 18 : 15);
+            map.setView(this.lat ? [this.lat, this.lon] : [33.8835, 10.068], this.lat ? 17 : 15);
             setTimeout(() => map.invalidateSize(), 250);
             layer = L.layerGroup().addTo(map);
             JSON.parse(document.getElementById("sources-data").textContent).forEach((s) =>
               L.circle([s.lat, s.lon], { radius: s.radius_km * 1000, color: "#fff", weight: 1.5, dashArray: "6 6", fillColor: "#1E2316", fillOpacity: 0.12, interactive: false }).addTo(map));
-            map.on("click", (e) => { this.lat = e.latlng.lat; this.lon = e.latlng.lng; this.draw(true); });
-            if (this.lat) this.draw(false);
+            map.on("click", (e) => this.place(e.latlng.lat, e.latlng.lng, true));
+            if (this.lat) this.draw(true); else this.gps();
           });
         },
+        place(lat, lon, zoom) { this.lat = lat; this.lon = lon; this.draw(zoom); },
         draw(zoom) {
-          if (!map || !this.lat || !(this.w > 0) || !(this.l > 0)) return;
+          if (!map || !this.lat) return;
           layer.clearLayers();
+          const [w, l] = this.dims();
           const mLat = 1 / 111320, mLon = 1 / (111320 * Math.cos(this.lat * Math.PI / 180));
-          const south = this.lat - this.l * mLat, east = this.lon + this.w * mLon;
-          L.rectangle([[south, this.lon], [this.lat, east]], { color: "#F5CB5C", weight: 3, fillColor: "#F5CB5C", fillOpacity: 0.12 }).addTo(layer);
-          for (let x = 10; x < this.w; x += 10) L.polyline([[this.lat, this.lon + x * mLon], [south, this.lon + x * mLon]], { color: "#fff", weight: 1, opacity: 0.8 }).addTo(layer);
-          for (let y = 10; y < this.l; y += 10) L.polyline([[this.lat - y * mLat, this.lon], [this.lat - y * mLat, east]], { color: "#fff", weight: 1, opacity: 0.8 }).addTo(layer);
-          L.circleMarker([this.lat, this.lon], { radius: 7, color: "#fff", weight: 3, fillColor: "#4A5A2A", fillOpacity: 1 }).addTo(layer).bindTooltip("NW", { permanent: true, direction: "left" });
-          if (zoom) map.fitBounds([[south, this.lon], [this.lat, east]], { padding: [60, 60], maxZoom: 19 });
+          const north = this.lat + (l / 2) * mLat, south = this.lat - (l / 2) * mLat;
+          const west = this.lon - (w / 2) * mLon, east = this.lon + (w / 2) * mLon;
+          L.rectangle([[south, west], [north, east]], { color: "#F5CB5C", weight: 3, fillColor: "#F5CB5C", fillOpacity: 0.1, interactive: false }).addTo(layer);
+          // grille de 10 m (allégée au-delà de 60 lignes pour rester fluide)
+          const step = Math.max(10, 10 * Math.ceil(Math.max(w, l) / 600));
+          for (let x = step; x < w; x += step) L.polyline([[north, west + x * mLon], [south, west + x * mLon]], { color: "#fff", weight: 1, opacity: 0.7, interactive: false }).addTo(layer);
+          for (let y = step; y < l; y += step) L.polyline([[north - y * mLat, west], [north - y * mLat, east]], { color: "#fff", weight: 1, opacity: 0.7, interactive: false }).addTo(layer);
+          if (!marker) {
+            marker = L.marker([this.lat, this.lon], { draggable: true }).addTo(map);
+            marker.on("dragend", (e) => { const p = e.target.getLatLng(); this.place(p.lat, p.lng, false); });
+          } else marker.setLatLng([this.lat, this.lon]);
+          if (zoom) map.fitBounds([[south, west], [north, east]], { padding: [50, 50], maxZoom: 19 });
         },
         gps() {
-          if (!navigator.geolocation) return;
-          navigator.geolocation.getCurrentPosition((p) => { this.lat = p.coords.latitude; this.lon = p.coords.longitude; this.draw(true); });
+          if (!navigator.geolocation) { this.gpsError = true; return; }
+          this.locating = true; this.gpsError = false;
+          navigator.geolocation.getCurrentPosition(
+            (p) => { this.locating = false; this.place(p.coords.latitude, p.coords.longitude, true); },
+            () => { this.locating = false; this.gpsError = true; },
+            { enableHighAccuracy: true, timeout: 10000 });
         },
       };
     });

@@ -18,8 +18,19 @@
       <i data-lucide="printer" class="h-4 w-4"></i>{{ T.plan.print }}
     </button>
     {% if is_db %}
-    <a href="{% url 'diagnostics:readings' parcel.id %}" class="inline-flex items-center gap-2 rounded-xl bg-olive-700 px-5 py-3 font-semibold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-olive-800">
+    <a href="{% url 'diagnostics:readings' parcel.id %}" class="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-3 font-semibold text-olive-800 shadow-soft ring-1 ring-sand-200 hover:shadow-lift">
       <i data-lucide="clipboard-pen-line" class="h-4 w-4"></i>{{ T.plan.enter_readings }}
+    </a>
+    <form method="post" action="{% url 'diagnostics:quick_diagnostic' parcel.id %}" x-data="{ busy: false }" @submit="busy = true">
+      {% csrf_token %}
+      <button type="submit" :disabled="busy" title="{{ T.plan.get_diagnostic_hint }}"
+              class="inline-flex items-center gap-2 rounded-xl bg-olive-700 px-5 py-3 font-semibold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-olive-800 disabled:opacity-60">
+        <span :class="busy && 'animate-spin'"><i data-lucide="scan-search" class="h-4 w-4"></i></span>{{ T.plan.get_diagnostic }}
+      </button>
+    </form>
+    {% elif has_profile %}
+    <a href="{% url 'diagnostics:index' parcel.id %}" class="inline-flex items-center gap-2 rounded-xl bg-olive-700 px-5 py-3 font-semibold text-white shadow-soft hover:bg-olive-800">
+      <i data-lucide="scan-search" class="h-4 w-4"></i>{{ T.plan.get_diagnostic }}
     </a>
     {% endif %}
   </div>
@@ -90,6 +101,20 @@
   </div>
   {% endif %}
 </section>
+{% if is_db %}
+<section class="no-print reveal mt-6 flex flex-col gap-3 rounded-2xl bg-olive-50 p-5 ring-1 ring-olive-200 sm:flex-row sm:items-center sm:justify-between">
+  <div>
+    <p class="font-semibold text-olive-900">{{ T.plan.next_title }}: {{ T.plan.get_diagnostic }}</p>
+    <p class="text-sm text-muted">{{ T.plan.get_diagnostic_hint }}</p>
+  </div>
+  <form method="post" action="{% url 'diagnostics:quick_diagnostic' parcel.id %}" x-data="{ busy: false }" @submit="busy = true">
+    {% csrf_token %}
+    <button type="submit" :disabled="busy" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-olive-700 px-5 py-3 font-semibold text-white shadow-soft hover:bg-olive-800 disabled:opacity-60 sm:w-auto">
+      <span :class="busy && 'animate-spin'"><i data-lucide="scan-search" class="h-4 w-4"></i></span>{{ T.plan.get_diagnostic }}<i data-lucide="arrow-right" class="h-4 w-4"></i>
+    </button>
+  </form>
+</section>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
