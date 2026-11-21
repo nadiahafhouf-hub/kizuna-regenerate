@@ -76,6 +76,8 @@ Calculs sans Django dans `advisor/services/` (testables seuls), branchés sur l'
 - Eau d'irrigation : `ce_eau_dS_m` du LandProfile si mesurée, sinon valeur typique de la région
   (Gabès ≈ 3,5 dS/m, ordre de grandeur à confirmer).
 - JSON complet (pour le bloc 4) : `GET /p/<id>/crops/recommandation.json` · plan PNG : `GET /p/<id>/crops/plan/`.
+- Page Crops : **carte satellite** du plan (zones, plantes, goutte-à-goutte, vannes, réservoir, pompe ; `static/js/crops_map.js`)
+  et onglet **plan détaillé** (PNG, aussi pour le passeport).
 - Tests : `python manage.py test advisor` (hors ligne).
 
 ## Irrigation — planning 7 jours (tâche du bloc 2)
@@ -91,8 +93,12 @@ Calculs sans Django dans `irrigation/services/`, branchés via `irrigation/logic
   le réservoir ne déborde jamais ; on remplit d'avance avant les jours sans soleil.
 - Paramètres modifiables dans l'admin : **Paramètres d'irrigation** (pompe, panneaux, réservoir, quota, seuils).
   Par défaut 2,0 kWc : avec 1,0 kWc × 0,8 la pompe de 0,75 kW ne démarre presque jamais en hiver.
-- JSON : `GET /p/<id>/irrigation/plan.json` · passeport (bloc 4) : `GET /p/<id>/irrigation/passeport.json`
-  (événements FAIT / ANNULE de la semaine écoulée, simulés).
+- **Planning enregistré en base** (`IrrigationPlan` + `IrrigationEvent`, vannes `ValveState`, humidité simulée
+  `SoilMoistureReading`, journal `ValveEvent`). Parcours sur la page : **Valider → Passer en automatique →
+  Simuler la journée suivante / Reprendre la main** (seuls les boutons utiles sont affichés), **Modifier un volume**
+  (recalcule tout), **Nouveau planning**. Avant chaque arrosage, l'automate vérifie la pluie et l'humidité simulée.
+- JSON : `GET /p/<id>/irrigation/plan.json` · état en direct : `etat.json` · passeport (bloc 4) :
+  `GET /p/<id>/irrigation/passeport.json` (événements FAIT / ANNULE déjà passés selon l'horloge simulée).
 - Tests : `python manage.py test irrigation` (hors ligne).
 
 ## `services/` — code récupéré de l'ancien projet

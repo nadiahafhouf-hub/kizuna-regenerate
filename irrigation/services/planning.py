@@ -29,6 +29,7 @@ PARAMETRES_DEFAUT = dict(
 PRIORITE = {"VERT": 1, "ORANGE": 2, "ROUGE": 3}
 NOM_PRIORITE = {1: "cultures (VERT)", 2: "depollution ORANGE", 3: "depollution ROUGE"}
 ZONE_RESERVOIR = "RESERVOIR"
+POMPAGE_MIN_L = 50
 
 
 def production_solaire_kw(rayonnement_w_m2, kwc, ratio):
@@ -168,7 +169,7 @@ def generer_planning(recommandation, parametres=None, meteo=None, date_debut=Non
         for h in heures_ok:
             v = min(debit_l_h, cible - niveau, cap_l - niveau, quota_l - total_pompe)
             v = math.floor(v)
-            if v <= 0:
+            if v < POMPAGE_MIN_L:          # on ne demarre pas la pompe pour quelques litres
                 break
             niveau += v
             total_pompe += v

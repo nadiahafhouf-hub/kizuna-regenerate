@@ -9,6 +9,7 @@ from pathlib import Path
 
 from django.conf import settings
 
+from .services.geo import geojson_plan
 from .services.plan_image import dessiner_plan
 from .services.recommandation import charger_plantes, recommander_cultures
 
@@ -83,7 +84,11 @@ def crop_recommendations_ui(pid):
             cles = [r["cle"]] + [a["cle"] for a in r["alternatives"]]
             crops = [_carte(c, plantes, meta, r["ce_max_dS_m"], i == 0) for i, c in enumerate(cles) if c in plantes]
             out.append({"zone": z, "remediation": [], "crops": crops, "bloc2": bloc2})
-    return {"zones": out, "climat": reco["climat"], "ce_eau_dS_m": reco.get("ce_eau_dS_m"),
+    try:
+        geo = geojson_plan(reco)
+    except Exception:          # la carte est un plus : jamais bloquante
+        geo = None
+    return {"zones": out, "climat": reco["climat"], "geo": geo, "ce_eau_dS_m": reco.get("ce_eau_dS_m"),
             "ce_eau_source": reco.get("ce_eau_source"), "besoin_total_litres_jour": reco["besoin_total_litres_jour"],
             "avertissements": reco["avertissements"]}
 
