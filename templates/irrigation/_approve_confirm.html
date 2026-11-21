@@ -1,0 +1,11 @@
+<p class="text-muted">{{ T.irrigation.approve_confirm }}</p>
+<ul class="mt-4 space-y-2 text-sm">
+  <li class="flex items-center gap-3 rounded-xl bg-water-50 px-3 py-2.5"><i data-lucide="sunrise" class="h-4 w-4 text-water-600"></i><span><b>06:00</b> · {{ T.irrigation.irrigation_slot }} · {{ plan.totals.irrigation_m3|floatformat:1 }} m³ / 7 d</span></li>
+  <li class="flex items-center gap-3 rounded-xl bg-sun-50 px-3 py-2.5"><i data-lucide="sun" class="h-4 w-4 text-sun-700"></i><span><b>11:00</b> · {{ T.irrigation.pumping_slot }} · {{ plan.totals.pump_kwh|floatformat:1 }} kWh / 7 d</span></li>
+</ul>
+<div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+  <button type="button" @click="$dispatch('close-modal')" class="rounded-xl px-4 py-2.5 font-semibold text-muted hover:bg-sand-100">{{ T.app.cancel }}</button>
+  <button type="button" @click="$dispatch('approve-plan')" class="inline-flex items-center justify-center gap-2 rounded-xl bg-olive-700 px-5 py-2.5 font-semibold text-white transition hover:bg-olive-800">
+    <i data-lucide="check-check" class="h-4 w-4"></i>{{ T.irrigation.approve_yes }}
+  </button>
+</div>

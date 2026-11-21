@@ -1,7 +1,7 @@
 <div class="border-b border-sand-200 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/70">
   <ol class="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto px-4 py-3 sm:px-6 lg:px-8" aria-label="Parcel journey">
     {% for s in steps %}
-    <li class="flex min-w-0 flex-1 items-center gap-1 sm:gap-2">
+    <li class="flex items-center gap-1 sm:gap-2 {% if s.state == 'current' %}shrink-0 sm:min-w-0 sm:flex-1{% else %}min-w-0 flex-1{% endif %}">
       <a href="{{ s.url }}" {% if s.state == "current" %}aria-current="step"{% endif %}
          class="group flex min-w-0 items-center gap-2 rounded-xl px-2 py-1.5 transition hover:bg-sand-100 {% if s.state == 'current' %}bg-olive-50{% endif %}">
         <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full text-sm font-semibold transition
