@@ -1,0 +1,110 @@
+{
+ "aleatoire_80_20": {
+  "n": 4337,
+  "positifs": 241,
+  "taux_positifs_pct": 5.6,
+  "auc": 0.84,
+  "precision_moyenne": 0.384,
+  "tri_labo": {
+   "rappel_vise_pct": 90,
+   "seuil_probabilite": 0.195,
+   "echantillons_envoyes_au_labo_pct": 49.6,
+   "analyses_economisees_pct": 50.4,
+   "precision_des_envoyes_pct": 10.1
+  }
+ },
+ "importance": [
+  {
+   "variable": "Cu_mg_kg",
+   "baisse_auc": 0.1239
+  },
+  {
+   "variable": "Zn_mg_kg",
+   "baisse_auc": 0.0864
+  },
+  {
+   "variable": "occupation",
+   "baisse_auc": 0.0497
+  },
+  {
+   "variable": "Pb_mg_kg",
+   "baisse_auc": 0.0229
+  },
+  {
+   "variable": "Fe_mg_kg",
+   "baisse_auc": 0.0208
+  },
+  {
+   "variable": "Cr_mg_kg",
+   "baisse_auc": 0.0137
+  },
+  {
+   "variable": "Co_mg_kg",
+   "baisse_auc": 0.0113
+  },
+  {
+   "variable": "texture",
+   "baisse_auc": 0.0088
+  },
+  {
+   "variable": "Mn_mg_kg",
+   "baisse_auc": 0.0085
+  },
+  {
+   "variable": "Ni_mg_kg",
+   "baisse_auc": 0.0048
+  },
+  {
+   "variable": "OC",
+   "baisse_auc": 0.0037
+  },
+  {
+   "variable": "pH",
+   "baisse_auc": 0.0018
+  }
+ ],
+ "test_mediterranee": {
+  "n": 5219,
+  "positifs": 144,
+  "taux_positifs_pct": 2.8,
+  "auc": 0.737,
+  "precision_moyenne": 0.193,
+  "tri_labo": {
+   "rappel_vise_pct": 90,
+   "seuil_probabilite": 0.113,
+   "echantillons_envoyes_au_labo_pct": 72.2,
+   "analyses_economisees_pct": 27.8,
+   "precision_des_envoyes_pct": 3.4
+  },
+  "pays": [
+   "CY",
+   "EL",
+   "ES",
+   "HR",
+   "IT",
+   "MT",
+   "PT",
+   "SI"
+  ]
+ },
+ "reference_plomb_seul_auc": 0.57,
+ "donnees": {
+  "source": "LUCAS Heavy Metals 2009 (ESDAC/JRC)",
+  "echantillons": 21684,
+  "cible": "Cd >= 1.0 mg/kg",
+  "variables": [
+   "Pb_mg_kg",
+   "Zn_mg_kg",
+   "Cu_mg_kg",
+   "Ni_mg_kg",
+   "Cr_mg_kg",
+   "Mn_mg_kg",
+   "Fe_mg_kg",
+   "Co_mg_kg",
+   "pH",
+   "OC",
+   "texture",
+   "occupation"
+  ]
+ }
+}
