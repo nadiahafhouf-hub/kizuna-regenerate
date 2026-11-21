@@ -20,13 +20,29 @@ from .models import DripNetworkPlan
 
 def config_satellite():
     """Paramètres du téléchargement des images satellite (settings.SATELLITE_*)."""
+    fournisseur = getattr(settings, "SATELLITE_FOURNISSEUR", "esri")
     return {
-        "fournisseur": getattr(settings, "SATELLITE_FOURNISSEUR", "esri"),
+        "fournisseur": fournisseur,
         "url": getattr(settings, "SATELLITE_TILE_URL", None),
         "zoom": getattr(settings, "SATELLITE_ZOOM", 19),
         "attribution": getattr(settings, "SATELLITE_ATTRIBUTION", None),
-        "cache": str(Path(settings.MEDIA_ROOT) / "tiles_cache"),
+        # conditions Google Maps Platform : pas de stockage durable des tuiles
+        "cache": None if fournisseur == "google" else str(Path(settings.MEDIA_ROOT) / "tiles_cache"),
     }
+
+
+def config_ia():
+    """Détection des plantes par Gemini Vision (None = détection classique OpenCV)."""
+    cle = getattr(settings, "GEMINI_API_KEY", "")
+    if not (cle and getattr(settings, "DETECTION_IA", True)):
+        return None
+    return {"cle": cle, "modele": getattr(settings, "GEMINI_MODEL", "gemini-2.5-flash")}
+
+
+def options_moteur():
+    # plantees_seulement : la page réseau concerne des terres DÉJÀ plantées ; une zone où rien n'est
+    # détecté n'a pas de réseau (la terre nue relève du bloc 2, étape Crops)
+    return {"satellite": config_satellite(), "ia": config_ia(), "plantees_seulement": True}
 
 
 def _json_sur(o):
@@ -51,8 +67,9 @@ def calculer(plan):
     tmp = Path(tempfile.mkdtemp(prefix="reseau_"))
     try:
         res = analyser_parcelle(plan.land_profile, plan.photo.path if plan.photo else None,
-                                plan.calage or None, tmp, options={"satellite": config_satellite()})
+                                plan.calage or None, tmp, options=options_moteur())
         sat = res.pop("satellite", None)
+        det = res.pop("detection_ia", None)
         geo = res.pop("geojson")
         b = res["bilan"]
         pid = plan.parcelle_id
@@ -63,6 +80,9 @@ def calculer(plan):
                 garde = {k: v for k, v in (plan.calage or {}).items() if k in ("source_px", "plantes_px")}
                 plan.calage = {"mode": "satellite", "coins_px": sat["coins_px"], "zoom": sat["zoom"],
                                "source_image": sat["source_image"], **garde}
+            if det:  # plantes trouvées par l'IA : gardées, le recalcul ne rappelle pas le modèle
+                plan.calage = {**(plan.calage or {}), "plantes_px": det["plantes_px"],
+                               "plantes_diam_px": det["plantes_diam_px"], "plantes_source": "ia"}
             plan.resultat = _json_sur(res)
             plan.geojson = geo
             plan.conso_actuelle_m3_an = float(b["actuel_m3_an"])

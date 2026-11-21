@@ -195,12 +195,14 @@ class PhotoTerrain(Terrain):
         self.vision_info = {"arbres": info_a, "basse": info_b}
         self.plants = []
         self.crown_labels = np.zeros((self.h, self.w), np.int32)
-        manuels = self.px_vers_m(
-            (getattr(self, "calage", None) or {}).get("plantes_px") or []
-        )
+        cal = getattr(self, "calage", None) or {}
+        source_ia = cal.get("plantes_source") == "ia"  # plantes trouvees par le modele de vision
+        dpx = cal.get("plantes_diam_px") or []
+        manuels = [(q, dpx[i] if i < len(dpx) else None)
+                   for i, q in enumerate(self.px_vers_m(cal.get("plantes_px") or []))]
         W, H = self.cfg["dimensions_m"]["largeur"], self.cfg["dimensions_m"]["longueur"]
-        manuels = [q for q in manuels if 0 <= q[0] <= W and 0 <= q[1] <= H]
-        self.photo_info["plantes_cliquees"] = len(manuels)
+        manuels = [(q, d) for q, d in manuels if 0 <= q[0] <= W and 0 <= q[1] <= H]
+        self.photo_info["plantes_ia" if source_ia else "plantes_cliquees"] = len(manuels)
         for zid, (z, m) in enumerate(zip(zones, self.zone_masks)):
             crop = get_crop(z["culture"])
             tree = crop["type"] in ("arbre", "arbuste")
@@ -227,8 +229,8 @@ class PhotoTerrain(Terrain):
                     f"{'haute' if tree else ''} visible sur la photo."
                 )
             mz = [
-                q
-                for q in manuels
+                (q, d)
+                for q, d in manuels
                 if m[
                     min(int(q[1] * self.ppm_y), self.h - 1),
                     min(int(q[0] * self.ppm_x), self.w - 1),
@@ -236,24 +238,26 @@ class PhotoTerrain(Terrain):
             ]
             if (
                 mz
-            ):  # l'agriculteur a clique ses plantes : elles remplacent la detection automatique
+            ):  # plantes cliquees par l'agriculteur ou trouvees par l'IA : elles remplacent la detection
                 z["plantee"] = True
                 z["_plantes_cliquees"] = len(mz)
-                for x, y in mz:
-                    self.plants.append(
-                        {
-                            "x": x,
-                            "y": y,
-                            "zone": zid,
-                            "diam_m": crop["diam_couronne_m"]
-                            * (
-                                min(1.0, max(0.3, z["age_ans"] / 8))
-                                if z.get("age_ans")
-                                else 1.0
-                            ),
-                        }
-                    )
+                d_def = crop["diam_couronne_m"] * (
+                    min(1.0, max(0.3, z["age_ans"] / 8)) if z.get("age_ans") else 1.0
+                )
+                for (x, y), d_px in mz:
+                    # diametre mesure par l'IA (pixels de la photo d'origine -> metres)
+                    d_m = float(np.clip(d_px / self._nat, 0.3, 15.0)) if d_px else d_def
+                    self.plants.append({"x": x, "y": y, "zone": zid, "diam_m": d_m})
                 continue
+            if source_ia:
+                if z.get("_plantee_auto"):  # l'IA n'a rien vu ici : zone non plantee
+                    z["plantee"] = False
+                    continue
+                if z["plantee"]:
+                    self.warnings.append(
+                        f"Zone {z['nom']} declaree plantee mais l'IA n'y a trouve aucune plante : "
+                        "detection classique utilisee pour cette zone."
+                    )
             if not z["plantee"]:
                 continue
             if tree:
@@ -631,12 +635,25 @@ def analyser_parcelle(
     out.mkdir(parents=True, exist_ok=True)
     cfg = config_depuis_diagnostic(diag, options)
     photo, calage, sat = _calage_satellite(diag, photo, calage, out, options)
+    calage, det, av_ia = _detection_ia(photo, calage, options)
     T = PhotoTerrain(cfg, diag, photo, calage).run()
-    T.warnings = cfg["avertissements_entree"] + (sat or {}).get("avertissements", []) + T.warnings
+    T.warnings = cfg["avertissements_entree"] + (sat or {}).get("avertissements", []) + av_ia + T.warnings
+    if det:
+        T.photo_info["detection_ia"] = det["info"]
     if sat:
         T.photo_info["mode_calage"] = "satellite"
         T.photo_info["source_image"] = sat["source_image"]
+    # terre deja plantee : pas de "nouvelle plantation" inventee dans les zones ou rien n'est vu
+    # (seulement si au moins une zone est plantee, sinon il n'y aurait aucun reseau)
+    if (options or {}).get("plantees_seulement") and any(z.get("plantee") for z in T.zones):
+        cfg["plantees_seulement"] = True
     C = Conception(T).run()
+    for zd in C.zones:
+        if zd.get("non_plantee"):
+            T.warnings.append(
+                f"Zone {zd['nom']} : aucune plante detectee, pas de reseau propose "
+                "(terre nue : voir l'etape Crops pour choisir quoi planter)."
+            )
     res = analyser(cfg, T, C)
     _complements(res, cfg, T, C)
     imgs = {
@@ -676,8 +693,33 @@ def analyser_parcelle(
     )
     if sat:
         res["satellite"] = {k: v for k, v in sat.items() if k != "avertissements"}
+    if det:
+        res["detection_ia"] = det  # plantes_px / plantes_diam_px : a garder pour un recalcul sans IA
     res["_conception"] = C  # pour la generation des evenements (non serialise)
     return res
+
+
+def _detection_ia(photo, calage, options):
+    """Plantes detectees par un modele de vision (options["ia"] = {"cle", "modele"}), sauf si
+    l'agriculteur a deja clique ses plantes. En cas d'echec : detection classique + avertissement."""
+    ia = (options or {}).get("ia")
+    if not (photo and ia and ia.get("cle")) or (calage or {}).get("plantes_px"):
+        return calage, None, []
+    from PIL import Image
+    from .detection_ia import DetectionIAErreur, detecter_plantes
+
+    calage = dict(calage or {"mode": "ortho"})
+    coins = calage.get("coins_px")
+    if not coins:  # image deja cadree sur la parcelle
+        w, h = Image.open(photo).size
+        coins = [[0, 0], [w - 1, 0], [w - 1, h - 1], [0, h - 1]]
+    try:
+        det = detecter_plantes(photo, coins, ia["cle"], ia.get("modele") or "gemini-2.5-flash",
+                               appel=ia.get("appel"))
+    except DetectionIAErreur as e:
+        return calage, None, [f"Detection IA indisponible ({e}) : detection classique utilisee."]
+    calage.update(plantes_px=det["plantes_px"], plantes_diam_px=det["plantes_diam_px"], plantes_source="ia")
+    return calage, det, []
 
 
 def _calage_satellite(diag, photo, calage, out, options):
@@ -687,7 +729,8 @@ def _calage_satellite(diag, photo, calage, out, options):
         return photo, calage, None
     from . import satellite as S
 
-    extra = {k: calage[k] for k in ("source_px", "plantes_px") if calage.get(k)}
+    extra = {k: calage[k] for k in ("source_px", "plantes_px", "plantes_diam_px", "plantes_source")
+             if calage.get(k)}
     if photo and calage.get("coins_px"):  # image deja telechargee (recalcul) : pas de reseau
         si = calage.get("source_image") or {}
         sat = {"image": str(photo), "coins_px": calage["coins_px"], "source_image": si,
@@ -705,7 +748,11 @@ def _complements(res, cfg, T, C):
     prio = {"Haute": 0, "Moyenne": 1, "Basse": 2, "Info": 3}
     clim = cfg["climat"] if isinstance(cfg["climat"], dict) else CLIMATS[cfg["climat"]]
     res["sol_zones"] = cfg["_sols"]
-    for zc, sol, zinfo, zr in zip(cfg["zones"], cfg["_sols"], T.zones, res["zones"]):
+    par_nom = {z["nom"]: z for z in res["zones"]}  # res["zones"] omet les zones sans reseau
+    for zc, sol, zinfo in zip(cfg["zones"], cfg["_sols"], T.zones):
+        zr = par_nom.get(zinfo["nom"])
+        if zr is None:
+            continue
         nom = zinfo["nom"]
         zr["sol"] = sol
         zr["couverture_photo_pct"] = round(100 * zc.get("_couverture", 0), 1)

@@ -33,6 +33,24 @@
         </label>
       </div>
 
+      <!-- Carte dynamique : la parcelle se déplace pour corriger sa position GPS -->
+      <div class="mt-4">
+        <p class="flex items-center justify-between gap-2 text-sm font-semibold text-olive-900">
+          <span class="flex items-center gap-1.5"><i data-lucide="map" class="h-4 w-4 text-water-600"></i>{{ T.network.live_title }}</span>
+          <span class="text-xs font-normal text-muted">{% if google %}{{ T.network.live_google }}{% else %}{{ T.network.live_esri }}{% endif %}</span>
+        </p>
+        <div id="net-live-map" class="mt-2 h-72 overflow-hidden rounded-xl bg-sand-100 ring-1 ring-sand-200"></div>
+        <p class="mt-1 text-xs text-muted">{{ T.network.live_hint }}</p>
+        <input type="hidden" name="origin_lat" value="{{ origin.lat|stringformat:'s' }}">
+        <input type="hidden" name="origin_lon" value="{{ origin.lon|stringformat:'s' }}">
+      </div>
+
+      <p class="mt-3 flex flex-wrap items-center gap-1.5 rounded-xl px-3 py-2 text-xs {% if ia_active %}bg-olive-50 text-olive-800{% else %}bg-sand-100 text-muted{% endif %}">
+        <i data-lucide="{% if ia_active %}sparkles{% else %}scan{% endif %}" class="h-3.5 w-3.5"></i>
+        {% if ia_active %}{{ T.network.ia_on }}{% else %}{{ T.network.ia_off }}{% endif %}
+        <span class="ml-auto">{{ T.network.imagery }} : <b>{{ fournisseur }}</b></span>
+      </p>
+
       <div id="net-block-satellite" class="mt-3">
         <p class="text-sm text-muted">{{ T.network.satellite_hint }}</p>
         <button type="button" id="net-preview" class="mt-3 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-water-700 ring-1 ring-water-400/50 transition hover:bg-water-50 disabled:opacity-60">
@@ -77,6 +95,16 @@
     {% if net and net.statut == "OK" and net.image_trace %}
       <a href="{{ net.image_trace.url }}" target="_blank"><img src="{{ net.image_trace.url }}" alt="{{ T.network.result_title }}" class="w-full rounded-xl ring-1 ring-sand-200"></a>
       {% if legende_source %}<p class="mt-2 text-xs text-muted">{{ legende_source }}</p>{% endif %}
+      {% if ia %}
+      <div class="mt-3 rounded-xl bg-olive-50 p-3 text-sm ring-1 ring-olive-200">
+        <p class="flex items-center gap-1.5 font-semibold text-olive-900"><i data-lucide="sparkles" class="h-4 w-4"></i>{{ T.network.ia_title }} · {{ ia.modele }}</p>
+        <p class="mt-1"><b>{{ ia.n_plantes }}</b> {{ T.network.ia_plants }}
+          {% if ia.culture_probable %} · {{ T.network.ia_crop }} : {{ ia.culture_probable }}{% endif %}
+          {% if ia.disposition %} · {{ T.network.ia_layout }} : {{ ia.disposition }}{% endif %}
+          {% if ia.irrigation_visible %} · {{ T.network.ia_irrigation }} : {{ ia.irrigation_visible }}{% endif %}</p>
+        {% if ia.remarques %}<p class="mt-1 text-muted">{{ ia.remarques }}</p>{% endif %}
+      </div>
+      {% endif %}
     {% elif net and net.statut == "ERREUR" %}
       <div class="rounded-xl bg-zred-bg px-4 py-3 text-sm text-zred">{{ net.message }}</div>
     {% else %}

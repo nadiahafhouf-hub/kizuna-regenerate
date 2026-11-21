@@ -268,7 +268,5 @@ def tuyaux(rgb_native, valid_native, ppm_native, veg_native=None, longueur_min_m
     )
     if lines is None:
         return []
-    return [
-        [[float(l[0][0]), float(l[0][1])], [float(l[0][2]), float(l[0][3])]]
-        for l in lines
-    ]
+    # OpenCV 4 renvoie (N, 1, 4), OpenCV 5 renvoie (N, 4) : on normalise
+    return [[[float(a), float(b)], [float(c), float(d)]] for a, b, c, d in np.asarray(lines).reshape(-1, 4)]

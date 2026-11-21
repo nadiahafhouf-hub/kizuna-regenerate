@@ -104,6 +104,8 @@
   btnPreview.addEventListener("click", async () => {
     const fd = new FormData();
     fd.append("csrfmiddlewaretoken", form.querySelector("[name=csrfmiddlewaretoken]").value);
+    fd.append("origin_lat", form.querySelector("input[name=origin_lat]").value);
+    fd.append("origin_lon", form.querySelector("input[name=origin_lon]").value);
     btnPreview.disabled = true; info.className = "mt-2 text-sm text-muted"; info.textContent = S.previewing;
     try {
       const r = await fetch(cfg.previewUrl, { method: "POST", body: fd });
@@ -125,8 +127,81 @@
 
   vider();
 
-  // Petite carte : réseau en GPS sur l'imagerie Esri
+  // ---------------------------------------------------------------- Google Maps (chargé une seule fois)
+  let googlePret = null;
+  function chargerGoogle() {
+    if (!cfg.googleKey) return Promise.reject(new Error("no key"));
+    if (!googlePret) googlePret = new Promise((ok, ko) => {
+      window.__netGoogle = () => ok(window.google);
+      const s = document.createElement("script");
+      s.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(cfg.googleKey) + "&callback=__netGoogle&loading=async&v=weekly";
+      s.async = true; s.onerror = () => ko(new Error("Google Maps"));
+      document.head.appendChild(s);
+    });
+    return googlePret;
+  }
+
+  // ---------------------------------------------------------------- carte dynamique : parcelle déplaçable
+  // Même approximation que services/irrigation_engine/geo.py (origine = coin nord-ouest)
+  const P = cfg.parcel, M_LAT = 111320;
+  const bornes = (lat, lon) => ({ north: lat, south: lat - P.longueur / M_LAT, west: lon,
+                                  east: lon + P.largeur / (M_LAT * Math.cos(lat * Math.PI / 180)) });
+  function setOrigin(lat, lon) {
+    form.querySelector("input[name=origin_lat]").value = lat.toFixed(7);
+    form.querySelector("input[name=origin_lon]").value = lon.toFixed(7);
+    if (pret && source() === "satellite") { vider(); info.textContent = S.moved; }  // l'aperçu ne correspond plus
+  }
+  const live = document.getElementById("net-live-map");
+  function carteLeaflet() {
+    if (!window.L) return;
+    const b = bornes(P.lat, P.lon);
+    const map = L.map(live, { scrollWheelZoom: false }).fitBounds([[b.south, b.west], [b.north, b.east]], { padding: [40, 40] });
+    // zoom natif = celui réellement disponible chez Esri pour cette parcelle (sinon tuiles grises)
+    L.tileLayer(cfg.tiles, { maxZoom: 21, maxNativeZoom: cfg.zoom || 18, attribution: cfg.attribution }).addTo(map);
+    const rect = L.rectangle([[b.south, b.west], [b.north, b.east]], { color: "#ff1744", weight: 3, fillOpacity: 0.08 }).addTo(map);
+    const coin = L.marker([b.north, b.west], { draggable: true, title: "NW" }).addTo(map);
+    coin.on("drag", (e) => { const c = e.target.getLatLng(), n = bornes(c.lat, c.lng); rect.setBounds([[n.south, n.west], [n.north, n.east]]); });
+    coin.on("dragend", (e) => { const c = e.target.getLatLng(); setOrigin(c.lat, c.lng); });
+  }
+  if (live && P.lat != null) {
+    chargerGoogle().then((g) => {
+      const b = bornes(P.lat, P.lon);
+      const map = new g.maps.Map(live, { mapTypeId: "satellite", tilt: 0, streetViewControl: false,
+                                         mapTypeControl: false, fullscreenControl: true, gestureHandling: "cooperative" });
+      map.fitBounds(b, 40);
+      const rect = new g.maps.Rectangle({ map, bounds: b, draggable: true, strokeColor: "#ff1744", strokeWeight: 3, fillOpacity: 0.08 });
+      rect.addListener("dragend", () => {
+        const r = rect.getBounds(), lat = r.getNorthEast().lat(), lon = r.getSouthWest().lng();
+        rect.setBounds(bornes(lat, lon));  // taille exacte de la parcelle à la nouvelle latitude
+        setOrigin(lat, lon);
+      });
+    }).catch(carteLeaflet);
+  }
+
+  // ---------------------------------------------------------------- carte du résultat (réseau en GPS)
+  const STYLE = { parcelle: { color: "#fff", weight: 3, fill: false }, zone: { weight: 1, fillOpacity: 0.15 },
+    rampe: { color: "#4FA3D9", weight: 1.5 }, porte_rampe: { color: "#F5CB5C", weight: 3 },
+    conduite_principale: { color: "#1E2316", weight: 5 } };
+  const ZC = { ROUGE: "#B83227", ORANGE: "#B85C0E", VERT: "#23774A", JAUNE: "#E8A916" };
+  const POINTS = { plante_existante: ["#3cdc3c", 4], plante_a_planter: ["#ff8c00", 4], vanne: ["#000", 5], source: ["#1F6FA8", 7] };
   const el = document.getElementById("net-map");
+  if (el && cfg.geojsonUrl && cfg.googleKey) {
+    Promise.all([chargerGoogle(), fetch(cfg.geojsonUrl).then((r) => r.json())]).then(([g, geo]) => {
+      const map = new g.maps.Map(el, { mapTypeId: "satellite", tilt: 0, streetViewControl: false, mapTypeControl: false });
+      map.data.addGeoJson(geo);
+      map.data.setStyle((f) => {
+        const c = f.getProperty("couche"), s = STYLE[c] || {}, p = POINTS[c];
+        if (p) return { icon: { path: g.maps.SymbolPath.CIRCLE, scale: p[1], fillColor: p[0], fillOpacity: 0.95, strokeColor: "#000", strokeWeight: 1 } };
+        const col = c === "zone" ? (ZC[String(f.getProperty("couleur") || "").toUpperCase()] || "#6B6F5E") : (s.color || "#fff");
+        return { strokeColor: col, strokeWeight: s.weight || 1, fillColor: col, fillOpacity: s.fill === false ? 0 : (s.fillOpacity || 0) };
+      });
+      const b = new g.maps.LatLngBounds();
+      map.data.forEach((f) => f.getGeometry().forEachLatLng((ll) => b.extend(ll)));
+      map.fitBounds(b, 20);
+    }).catch(() => carteResultatLeaflet());
+  } else carteResultatLeaflet();
+
+  function carteResultatLeaflet() {
   if (el && cfg.geojsonUrl && window.L) {
     const map = L.map(el, { scrollWheelZoom: false });
     L.tileLayer(cfg.tiles, { maxZoom: 21, maxNativeZoom: cfg.zoom || 18, attribution: cfg.attribution }).addTo(map);
@@ -145,5 +220,6 @@
       }).addTo(map);
       map.fitBounds(layer.getBounds(), { padding: [20, 20] });
     });
+  }
   }
 })();

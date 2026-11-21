@@ -166,6 +166,9 @@ class Conception:
         if not mask.any():
             d["vide"] = True
             return d
+        if self.cfg.get("plantees_seulement") and not zinfo.get("plantee"):
+            d["vide"] = d["non_plantee"] = True  # terre deja plantee ailleurs : pas de plantation inventee ici
+            return d
         if crop["systeme"] == "aspersion" and not zinfo.get("interdire_aspersion"):
             return self._zone_aspersion(zinfo, crop, mask, d)
 

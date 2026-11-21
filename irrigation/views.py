@@ -100,10 +100,27 @@ def _calage_depuis_post(post, photo):
     return cal
 
 
+def _profil(request, pid, plan=None):
+    """LandProfile de la parcelle, avec l'origine GPS corrigée sur la carte dynamique si elle est envoyée
+    (sinon celle du dernier calcul, sinon celle du diagnostic). Les cases et les zones ne changent pas."""
+    profile = dict(demo_data.land_profile(pid))
+    if plan is not None and plan.land_profile.get("origine"):
+        profile["origine"] = dict(plan.land_profile["origine"])
+    try:
+        lat, lon = float(request.POST["origin_lat"]), float(request.POST["origin_lon"])
+        if -85 < lat < 85 and -180 <= lon <= 180:
+            profile["origine"] = {**profile.get("origine", {}), "lat": round(lat, 7), "lon": round(lon, 7),
+                                  "point": "coin_nord_ouest"}
+    except (KeyError, ValueError):
+        pass
+    return profile
+
+
 def network_page(request, pid):
     """Réseau goutte-à-goutte optimal : image satellite automatique (ou photo), tracé, conseils, carte."""
     ctx = journey_context(pid, "irrigation")
-    profile = demo_data.land_profile(pid)
+    dernier = DripNetworkPlan.objects.filter(parcelle_id=pid).first()
+    profile = _profil(request, pid, dernier)
     if request.method == "POST":
         photo = request.FILES.get("photo") if request.POST.get("source_image") == "photo" else None
         try:
@@ -116,19 +133,28 @@ def network_page(request, pid):
         except Exception as e:
             messages.error(request, f"{get_strings()['network']['err_analysis']} {e}")
         return redirect("irrigation:network", pid=pid)
-    plan = DripNetworkPlan.objects.filter(parcelle_id=pid).first()
+    plan = dernier
+    o = profile.get("origine") or {}
+    res = (plan.resultat or {}) if plan else {}
     ctx.update({
         "net": plan,
-        "res": (plan.resultat or {}) if plan else {},
+        "res": res,
+        "ia": (res.get("photo") or {}).get("detection_ia"),
+        "ia_active": network.config_ia() is not None,
+        "google": bool(settings.GOOGLE_MAPS_BROWSER_KEY),
+        "fournisseur": network.config_satellite()["fournisseur"],
+        "origin": o,
         "legende_source": sat_engine.legende_source(plan.source_image) if plan else "",
-        "map_tiles": sat_engine.FOURNISSEURS["esri"]["url"],
-        "map_attribution": sat_engine.FOURNISSEURS["esri"]["attribution"],
         "net_config": {
             "previewUrl": reverse("irrigation:network_preview", args=[pid]),
             "geojsonUrl": reverse("irrigation:network_geojson", args=[pid]) if plan and plan.geojson else None,
             "tiles": sat_engine.FOURNISSEURS["esri"]["url"],
             "attribution": sat_engine.FOURNISSEURS["esri"]["attribution"],
             "zoom": (plan.source_image or {}).get("zoom", 18) if plan else 18,
+            # carte dynamique : parcelle déplaçable (Google Maps si clé navigateur, sinon Leaflet + Esri)
+            "googleKey": settings.GOOGLE_MAPS_BROWSER_KEY or None,
+            "parcel": {"lat": o.get("lat"), "lon": o.get("lon"),
+                       "largeur": profile.get("largeur_m"), "longueur": profile.get("longueur_m")},
         },
     })
     return render(request, "irrigation/network.html", ctx)
@@ -148,7 +174,7 @@ def network_recompute(request, pid):
 @require_http_methods(["GET", "POST"])
 def network_preview(request, pid):
     """AJAX : télécharge l'image satellite de l'emprise et renvoie l'aperçu (contour + grille des cases)."""
-    profile = demo_data.land_profile(pid)
+    profile = _profil(request, pid, DripNetworkPlan.objects.filter(parcelle_id=pid).first())
     dossier = Path(settings.MEDIA_ROOT) / "irrigation" / "network" / "previews" / pid
     if dossier.exists():  # un seul aperçu par parcelle
         for f in dossier.glob("*.png"):

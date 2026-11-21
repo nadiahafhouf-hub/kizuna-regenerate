@@ -138,6 +138,97 @@ class ReseauSatelliteTests(TestCase):
         self.assertEqual(r.status_code, 422)
 
 
+def faux_gemini(compteur):
+    """Remplace l'appel à Gemini : 3 plantes au centre de l'image (dans la parcelle) + 1 dans un coin (hors parcelle)."""
+    def appel(cle, modele, image):
+        compteur.append(modele)
+        boites = [[440, 440, 480, 480], [520, 470, 560, 510], [470, 540, 510, 580], [5, 5, 25, 25]]
+        return json.dumps({"plantes": [{"box_2d": b, "label": "olive tree"} for b in boites],
+                           "culture_probable": "olive", "disposition": "scattered_trees",
+                           "irrigation_visible": "none", "remarques": "Trois oliviers adultes."})
+    return appel
+
+
+class DetectionIATests(ReseauSatelliteTests):
+    """Gemini Vision détecte les plantes ; le moteur calcule la disposition du réseau."""
+
+    def test_formules_web_mercator(self):  # déjà couvert par la classe mère
+        pass
+
+    def test_mosaique_repli_de_zoom_et_cache(self):
+        pass
+
+    def test_page_et_calcul_satellite(self):
+        pass
+
+    def test_apercu_puis_source_cliquee(self):
+        pass
+
+    def test_panne_reseau_message_clair(self):
+        pass
+
+    def test_detection_par_ia_puis_recalcul_sans_appel(self):
+        from services.irrigation_engine import detection_ia
+
+        appels = []
+        with override_settings(GEMINI_API_KEY="cle-de-test", DETECTION_IA=True), \
+                mock.patch.object(detection_ia, "_appeler", faux_gemini(appels)):
+            self.assertContains(self.client.get(self.url), "Gemini Vision")
+            self.client.post(self.url, {"source_image": "satellite"})
+            plan = DripNetworkPlan.objects.get()
+            self.assertEqual(plan.statut, DripNetworkPlan.Statut.OK, plan.message)
+            ia = plan.resultat["photo"]["detection_ia"]
+            self.assertEqual(ia["n_plantes"], 3)  # la plante hors parcelle est écartée
+            self.assertEqual(ia["culture_probable"], "olive")
+            self.assertEqual(plan.calage["plantes_source"], "ia")
+            self.assertEqual(sum(c["n_plantes"] or 0 for c in plan.conseil), 3)
+            self.assertContains(self.client.get(self.url), "Trois oliviers adultes.")
+            self.client.post(f"{self.url}recompute/")
+            self.assertEqual(len(appels), 1)  # plantes gardées : pas de nouvel appel au modèle
+
+    def test_echec_ia_detection_classique(self):
+        from services.irrigation_engine import detection_ia
+
+        def en_panne(cle, modele, image):
+            raise RuntimeError("quota dépassé")
+        with override_settings(GEMINI_API_KEY="cle-de-test"), mock.patch.object(detection_ia, "_appeler", en_panne):
+            self.client.post(self.url, {"source_image": "satellite"})
+        plan = DripNetworkPlan.objects.get()
+        self.assertEqual(plan.statut, DripNetworkPlan.Statut.OK)
+        self.assertIn("Detection IA indisponible", plan.message)
+        self.assertNotIn("detection_ia", plan.resultat["photo"])
+
+    def test_parcelle_deplacee_sur_la_carte(self):
+        o = self.profil["origine"]
+        self.client.post(self.url, {"source_image": "satellite", "origin_lat": o["lat"] - 0.0001,
+                                    "origin_lon": o["lon"] + 0.0002})
+        plan = DripNetworkPlan.objects.get()
+        self.assertAlmostEqual(plan.land_profile["origine"]["lat"], o["lat"] - 0.0001, places=6)
+        self.assertAlmostEqual(plan.land_profile["origine"]["lon"], o["lon"] + 0.0002, places=6)
+        self.assertEqual(plan.land_profile["zones"], self.profil["zones"])  # zones inchangées
+        page = self.client.get(self.url)  # la position corrigée est reprise à la visite suivante
+        self.assertContains(page, f'value="{round(o["lat"] - 0.0001, 7)}"')
+
+    def test_upload_grande_photo(self):
+        """Photo de téléphone haute résolution (> 25 px/m : recherche des tuyaux, OpenCV 4 et 5)."""
+        ppm, W, H = 60, self.profil["largeur_m"], self.profil["longueur_m"]
+        img = np.clip(np.random.default_rng(3).normal((190, 165, 125), 5, (H * ppm + 200, W * ppm + 200, 3)),
+                      0, 255).astype(np.uint8)
+        for x, y in ((6, 6), (16, 7), (25, 6), (7, 17), (17, 16), (26, 17)):
+            cv2.circle(img, (100 + x * ppm, 100 + y * ppm), 2 * ppm, (48, 88, 62), -1)
+        cv2.line(img, (100, 100 + 10 * ppm), (100 + W * ppm, 100 + 10 * ppm), (20, 20, 20), 2)  # un tuyau
+        b = io.BytesIO()
+        Image.fromarray(img).save(b, "JPEG", quality=92)
+        coins = [[100, 100], [100 + W * ppm, 100], [100 + W * ppm, 100 + H * ppm], [100, 100 + H * ppm]]
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.client.post(self.url, {"source_image": "photo", "coins_px": json.dumps(coins),
+                                    "photo": SimpleUploadedFile("tel.jpg", b.getvalue(), content_type="image/jpeg")})
+        plan = DripNetworkPlan.objects.get()
+        self.assertEqual(plan.statut, DripNetworkPlan.Statut.OK, plan.message)
+        self.assertEqual(plan.calage["mode"], "coins")
+        self.assertTrue(plan.image_trace)
+
+
 class ArbresEparsTests(TestCase):
     """Terre DÉJÀ plantée d'arbres épars : on irrigue chaque arbre, sans en inventer à replanter."""
 
