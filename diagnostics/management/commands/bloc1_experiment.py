@@ -23,7 +23,7 @@ from diagnostics.sampling import disposition, nb_points_recommande
 from diagnostics.synthetic import generer_parcelle, mesurer
 
 SORTIE = Path(settings.BASE_DIR) / "fixtures" / "bloc1" / "experience_capteurs.json"
-TAILLES = [(30, 30), (50, 50), (100, 100)]
+TAILLES = [(30, 30), (50, 50), (100, 100), (220, 220), (450, 450)]  # 0,09 ha → 20 ha
 
 
 def evaluer(w, l, n, champs, rng, taille=10):
@@ -64,21 +64,23 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--champs", type=int, default=150, help="parcelles simulees par point de la courbe")
+        parser.add_argument("--champs-grandes", type=int, default=30, help="idem pour les parcelles > 1 ha (plus lentes)")
         parser.add_argument("--seed", type=int, default=42)
 
     def handle(self, champs, seed, **opts):
+        champs_grandes = opts.get("champs_grandes", 30)
         rng = np.random.default_rng(seed)
         resultats = []
         for w, l in TAILLES:
             nl, nc = math.ceil(l / 10), math.ceil(w / 10)
             reco = nb_points_recommande(w, l)
-            ns = sorted({n for n in [3, 4, 5, 6, 8, 10, 12, 16, 20, 25, 30, 36, 45, 60]
+            ns = sorted({n for n in [3, 4, 5, 6, 8, 10, 12, 16, 20, 25, 30, 36, 45, 60, 80, 103, 140]
                          if n <= nl * nc} | {reco})
             courbe = []
             self.stdout.write(f"\nParcelle {w} x {l} m ({nl * nc} cases) - recommande : {reco} points")
             self.stdout.write("   n | couleur OK | rouges manques | Cd RMSE | Cd err. rel.")
             for n in ns:
-                r = evaluer(w, l, n, champs, rng)
+                r = evaluer(w, l, n, champs if w * l <= 10_000 else champs_grandes, rng)
                 courbe.append(r)
                 mark = "  <- regle" if n == reco else ""
                 self.stdout.write(f"{n:4d} | {r['couleur_correcte_pct']:9.1f}% | {r['rouges_manques_pct']:13.1f}% |"
