@@ -1,4 +1,4 @@
-"""Bloc 3 : lien entre Django et le moteur de réseau goutte-à-goutte (services/irrigation_engine).
+﻿"""Bloc 3 : lien entre Django et le moteur de réseau goutte-à-goutte (services/irrigation_engine).
 
 Le moteur lit directement le LandProfile du contrat (origine au coin nord-ouest, cases, zones,
 traitement) : aucune conversion n'est nécessaire. Aucune logique agronomique ici.
@@ -36,7 +36,7 @@ def config_ia():
     cle = getattr(settings, "GEMINI_API_KEY", "")
     if not (cle and getattr(settings, "DETECTION_IA", True)):
         return None
-    return {"cle": cle, "modele": getattr(settings, "GEMINI_MODEL", "gemini-2.5-flash")}
+    return {"cle": cle, "modele": getattr(settings, "GEMINI_MODEL", "gemini-3.8-flash")}
 
 
 def options_moteur():

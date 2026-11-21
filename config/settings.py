@@ -1,4 +1,4 @@
-"""Paramètres Django — Kizuna Regenerate.
+﻿"""Paramètres Django — Kizuna Regenerate.
 
 Les secrets (clé Django, clés API) sont lus depuis le fichier .env à la racine,
 qui n'est JAMAIS commité. Voir .env.example.
@@ -22,7 +22,7 @@ ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "localhost,127.0.
 
 # Clés API (vides = mode dégradé / règles locales)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 
 # Bloc 3 : reseau goutte-a-goutte (services/irrigation_engine)
 # Google Maps : cle serveur (Map Tiles API, image analysee) et cle navigateur (Maps JavaScript API,

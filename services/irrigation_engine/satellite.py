@@ -292,8 +292,30 @@ def date_image_esri(lon, lat, timeout=8):
     return None
 
 
+# =========================================================================== image plus nette
+def ameliorer(rgb, res_m_px):
+    """Rend l'image plus lisible pour la detection (aucun detail n'est invente) :
+    agrandissement x2 (Lanczos) si l'image est grossiere (> 0,3 m/px), contraste local (CLAHE)
+    sur la luminance, puis accentuation des contours (masque flou). Renvoie (image, facteur)."""
+    k = 2 if res_m_px > 0.3 else 1
+    # 1. enlever les blocs de compression JPEG des tuiles (sinon l'accentuation les amplifie)
+    img = cv2.fastNlMeansDenoisingColored(rgb, None, 4, 4, 5, 15)
+    if k > 1:
+        img = cv2.resize(img, None, fx=k, fy=k, interpolation=cv2.INTER_CUBIC)
+        img = cv2.bilateralFilter(img, 5, 18, 3)  # lisse les marches d'escalier, garde les bords
+    # 2. contraste local doux : couronnes sombres plus visibles sur le sol clair
+    lab = cv2.cvtColor(img, cv2.COLOR_RGB2LAB)
+    lab[..., 0] = cv2.createCLAHE(clipLimit=1.4, tileGridSize=(4, 4)).apply(lab[..., 0])
+    img = cv2.cvtColor(lab, cv2.COLOR_LAB2RGB)
+    # 3. accentuation legere des contours (masque flou)
+    flou = cv2.GaussianBlur(img, (0, 0), 1.5 * k)
+    img = cv2.addWeighted(img, 1.3, flou, -0.3, 0)
+    return img, k
+
+
 # =========================================================================== point d'entree
-def image_satellite(diag, dossier, zoom_force=None, date=True, nom="satellite.png", **config):
+def image_satellite(diag, dossier, zoom_force=None, date=True, nom="satellite.png", ameliorer_image=True,
+                    **config):
     """Telecharge, assemble et recadre l'image satellite de la parcelle.
 
     Renvoie {"image", "coins_px", "resolution_m_px", "zoom", "fournisseur", "attribution",
@@ -330,8 +352,12 @@ def image_satellite(diag, dossier, zoom_force=None, date=True, nom="satellite.pn
     dossier = Path(dossier)
     dossier.mkdir(parents=True, exist_ok=True)
     chemin = dossier / nom
-    Image.fromarray(img).save(chemin)
     res = resolution_m_px(lat_c, z)
+    facteur = 1
+    if ameliorer_image:
+        img, facteur = ameliorer(img, res)
+        pts, box = pts * facteur, [v * facteur for v in box]  # coordonnees dans l'image agrandie
+    Image.fromarray(img).save(chemin)
     av = []
     if essais:
         av.append("Image satellite : " + "; ".join(essais) + f" -> zoom {z} utilise.")
@@ -354,13 +380,16 @@ def image_satellite(diag, dossier, zoom_force=None, date=True, nom="satellite.pn
         "taille_px": [int(img.shape[1]), int(img.shape[0])],
         "date": (info_date or {}).get("date"),
         "capteur": (info_date or {}).get("capteur"),
+        "ameliore": bool(ameliorer_image),
+        "agrandissement": facteur,
         "avertissements": av,
     }
 
 
 def source_image(sat):
     """Resume a stocker dans res["photo"]["source_image"] et dans le calage du plan."""
-    return {k: sat.get(k) for k in ("fournisseur", "attribution", "zoom", "resolution_m_px", "date", "capteur")}
+    return {k: sat.get(k) for k in ("fournisseur", "attribution", "zoom", "resolution_m_px", "date", "capteur",
+                                    "ameliore", "agrandissement")}
 
 
 def lignes_source(si):
@@ -371,6 +400,8 @@ def lignes_source(si):
         f"{si.get('resolution_m_px', 0):.2f} m/pixel"
     if si.get("date"):
         t += f" · prise de vue du {si['date']}"
+    if si.get("ameliore"):
+        t += " · image nettoyee" + (f" (agrandie x{si['agrandissement']})" if (si.get("agrandissement") or 1) > 1 else "")
     return [t, f"© {si.get('attribution')}"]
 
 

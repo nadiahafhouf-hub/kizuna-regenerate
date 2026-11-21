@@ -1,4 +1,4 @@
-"""Point d'entree pour REGEN : diagnostic JSON de la parcelle (grille de cases + zones) + photo reelle.
+﻿"""Point d'entree pour REGEN : diagnostic JSON de la parcelle (grille de cases + zones) + photo reelle.
 
 from services.irrigation_engine.parcelle import analyser_parcelle
 res = analyser_parcelle(diagnostic, photo="drone.jpg",
@@ -714,7 +714,7 @@ def _detection_ia(photo, calage, options):
         w, h = Image.open(photo).size
         coins = [[0, 0], [w - 1, 0], [w - 1, h - 1], [0, h - 1]]
     try:
-        det = detecter_plantes(photo, coins, ia["cle"], ia.get("modele") or "gemini-2.5-flash",
+        det = detecter_plantes(photo, coins, ia["cle"], ia.get("modele") or "gemini-3.8-flash",
                                appel=ia.get("appel"))
     except DetectionIAErreur as e:
         return calage, None, [f"Detection IA indisponible ({e}) : detection classique utilisee."]

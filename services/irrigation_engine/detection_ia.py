@@ -1,4 +1,4 @@
-"""Détection des plantes par un modèle de vision (Gemini) sur l'image vue du dessus.
+﻿"""Détection des plantes par un modèle de vision (Gemini) sur l'image vue du dessus.
 
 Le modèle repère chaque arbre / arbuste / plant DANS le contour de la parcelle et décrit ce qu'il voit
 (culture probable, disposition, irrigation visible). La DISPOSITION DU RÉSEAU (rampes, goutteurs,
@@ -6,7 +6,7 @@ secteurs, diamètres, durées) reste calculée par le moteur à partir de ces pl
 ne sait pas dimensionner un réseau hydraulique.
 
     from services.irrigation_engine.detection_ia import detecter_plantes
-    det = detecter_plantes("satellite.png", coins_px, cle="...", modele="gemini-2.5-flash")
+    det = detecter_plantes("satellite.png", coins_px, cle="...", modele="gemini-3.8-flash")
     det["plantes_px"], det["plantes_diam_px"], det["info"]
 
 Sans clé ou en cas d'erreur : DetectionIAErreur (le moteur revient alors à la détection classique).
@@ -72,9 +72,24 @@ def _appeler(cle, modele, image):
     cfg = {"response_mime_type": "application/json", "temperature": 0.1}
     if "2.5" in modele:  # Gemini 2.5 : pas de « réflexion » pour la détection (recommandation Google)
         cfg["thinking_config"] = types.ThinkingConfig(thinking_budget=0)
-    rep = _client(cle).models.generate_content(
-        model=modele, contents=[image, PROMPT], config=types.GenerateContentConfig(**cfg))
-    return rep.text or ""
+    import time
+
+    client = _client(cle)  # garder une référence : sinon le client est fermé avant la fin de la requête
+    try:
+        for essai in range(3):  # modèle surchargé (503) ou quota par minute (429) : on réessaie
+            try:
+                rep = client.models.generate_content(
+                    model=modele, contents=[image, PROMPT], config=types.GenerateContentConfig(**cfg))
+                return rep.text or ""
+            except Exception as e:
+                if essai == 2 or not any(c in str(e) for c in ("503", "429", "UNAVAILABLE", "RESOURCE_EXHAUSTED")):
+                    raise
+                time.sleep(4 * (essai + 1))
+    finally:
+        try:
+            client.close()
+        except Exception:
+            pass
 
 
 def _lire_json(texte):
@@ -85,7 +100,7 @@ def _lire_json(texte):
     return json.loads(m.group(0))
 
 
-def detecter_plantes(chemin_image, coins_px, cle, modele="gemini-2.5-flash", appel=None):
+def detecter_plantes(chemin_image, coins_px, cle, modele="gemini-3.8-flash", appel=None):
     """Renvoie {"plantes_px": [[x, y]...], "plantes_diam_px": [d...], "info": {...}} en pixels de l'image
     d'origine. `appel(cle, modele, image_pil) -> texte` est remplaçable (tests)."""
     if not cle:
