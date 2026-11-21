@@ -37,6 +37,15 @@
     {% include "components/kpi_card.html" with icon="cylinder" label=T.irrigation.kpi_reservoir value=plan.system.reservoir_m3 unit="m³" hint=reservoir_hint tone="water" delay=220 %}
   </section>
 
+  {% if plan.sources %}
+  <section class="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 rounded-2xl bg-white px-4 py-3 text-sm shadow-soft ring-1 ring-sand-200">
+    <span class="inline-flex items-center gap-1.5 font-semibold" title="{{ T.irrigation.quota_hint }}"><i data-lucide="gauge" class="h-4 w-4 text-water-600"></i>{{ T.irrigation.quota }}
+      <b class="tabular-nums">{{ plan.totals.pumped_m3 }} / {{ plan.totals.quota_m3 }} m³</b></span>
+    <span class="text-muted">{{ T.irrigation.pump_rule }} ({{ plan.system.pump_kw }} kW, {{ plan.system.solar_kwp }} kWp).</span>
+    <span class="w-full text-xs text-muted">{{ T.irrigation.sources }}: {{ T.irrigation.weather_src }} {{ plan.sources.meteo }} · {{ T.irrigation.climate_src }} {{ plan.sources.climat }} · {{ T.irrigation.water_ec }} {{ plan.sources.ce_eau_dS_m }} dS/m · {{ T.irrigation.estimates }}</span>
+  </section>
+  {% endif %}
+
   <!-- Planning 7 jours -->
   <section class="reveal mt-8 rounded-2xl bg-white p-4 shadow-soft ring-1 ring-sand-200 sm:p-6" style="animation-delay: 200ms">
     <div class="flex flex-wrap items-start justify-between gap-3">
@@ -73,14 +82,17 @@
           <div class="mt-3 flex items-center gap-1.5 rounded-xl bg-sand-100 px-2.5 py-2 text-xs font-medium text-muted">
             <i data-lucide="cloud-rain" class="h-3.5 w-3.5"></i>{{ T.irrigation.skipped }}
           </div>
+          {% if d.skip_reason %}<p class="mt-1 text-[11px] text-muted">{{ d.skip_reason }}</p>{% endif %}
           {% else %}
           <div class="mt-3 rounded-xl bg-water-600 px-2.5 py-2 text-white shadow-sm">
             <p class="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-white/80"><i data-lucide="sunrise" class="h-3.5 w-3.5"></i>{{ d.slots.0.start }} · {{ T.irrigation.irrigation_slot }}</p>
             <p class="mt-0.5 text-base font-bold tabular-nums">{{ d.irrigation_m3|floatformat:2 }} m³</p>
             <ul class="mt-1 space-y-0.5 text-[11px] text-white/85">
-              {% for s in d.slots %}<li class="flex justify-between gap-2"><span>{{ s.zone }} · {{ s.start }}</span><span class="tabular-nums">{{ s.volume_m3|floatformat:2 }}</span></li>{% endfor %}
+              {% if d.zone_totals %}{% for s in d.zone_totals %}<li class="flex justify-between gap-2"><span>{{ s.zone }} · {{ s.doses }} {{ T.irrigation.doses }}</span><span class="tabular-nums">{{ s.volume_m3|floatformat:2 }}</span></li>{% endfor %}
+              {% else %}{% for s in d.slots %}<li class="flex justify-between gap-2"><span>{{ s.zone }} · {{ s.start }}</span><span class="tabular-nums">{{ s.volume_m3|floatformat:2 }}</span></li>{% endfor %}{% endif %}
             </ul>
           </div>
+          {% for r in d.reductions %}<p class="mt-1 text-[11px] text-zorange">{{ r }}</p>{% endfor %}
           {% endif %}
 
           <!-- Créneau pompage solaire (midi) -->

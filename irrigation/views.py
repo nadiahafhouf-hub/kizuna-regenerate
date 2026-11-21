@@ -6,6 +6,7 @@ from django.views.decorators.http import require_POST
 from core.strings import get_strings
 from core.views import journey_context
 from services import demo_data
+from .logic import evenements_pour_passeport, plan_complet
 
 
 def _approved(request, parcel):
@@ -49,3 +50,17 @@ def reset(request, pid):
     """Remet la démo à zéro (plan à valider)."""
     request.session[f"irrigation_approved_{pid}"] = False
     return JsonResponse({"mode": "PENDING"})
+
+
+def plan_json(request, pid):
+    """Planning complet (événements avec raisons, réservoir heure par heure, totaux) en JSON."""
+    demo_data.parcel(pid)
+    _, _, plan = plan_complet(pid)
+    return JsonResponse(plan, json_dumps_params={"ensure_ascii": False})
+
+
+def passeport_json(request, pid):
+    """Sortie pour le passeport (bloc 4) : événements FAIT / ANNULE de la semaine écoulée."""
+    demo_data.parcel(pid)
+    return JsonResponse({"parcelle_id": pid, "evenements": evenements_pour_passeport(pid)},
+                        json_dumps_params={"ensure_ascii": False})
