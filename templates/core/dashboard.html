@@ -1,0 +1,76 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}{{ T.app.dashboard }}{% endblock %}
+{% block content %}
+<!-- En-tête -->
+<section class="reveal flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+  <div>
+    <p class="text-sm font-medium text-olive-600">{% now "l j F Y" %}</p>
+    <h1 class="mt-1 text-3xl font-bold tracking-tight text-olive-900 sm:text-4xl">{{ T.dashboard.title }}</h1>
+    <p class="mt-1 max-w-xl text-muted">{{ T.dashboard.subtitle }}</p>
+  </div>
+  <a href="{% url 'core:load_demo' %}"
+     class="inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-olive-700 px-5 py-3 font-semibold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-olive-800 hover:shadow-lift focus:outline-none focus-visible:ring-4 focus-visible:ring-olive-200">
+    <i data-lucide="play" class="h-4 w-4"></i>{{ T.dashboard.load_demo }}
+  </a>
+</section>
+
+<!-- KPIs -->
+<section class="mt-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+  {% include "components/kpi_card.html" with icon="droplets" label=T.dashboard.kpi_water value=kpis.water_saved_m3 unit="m³" hint=T.dashboard.kpi_water_hint tone="water" delay=50 %}
+  {% include "components/kpi_card.html" with icon="sun" label=T.dashboard.kpi_solar value=kpis.solar_kwh unit="kWh" hint=T.dashboard.kpi_solar_hint tone="sun" delay=120 %}
+  {% include "components/kpi_card.html" with icon="shield-check" label=T.dashboard.kpi_healthy value=kpis.healthy_pct unit="%" hint=T.dashboard.kpi_healthy_hint tone="green" decimals=1 delay=190 %}
+  {% include "components/kpi_card.html" with icon="map" label=T.dashboard.kpi_parcels value=kpis.parcels unit="" hint=kpis.area_m2|num|add:" m²" tone="olive" delay=260 %}
+</section>
+
+<!-- Parcelles + carte -->
+<section class="mt-8 grid gap-6 lg:grid-cols-5">
+  <div class="grid content-start gap-4 sm:grid-cols-2 lg:col-span-3">
+    {% for p in parcels_list %}
+      {% widthratio forloop.counter0 1 120 as d %}
+      {% include "components/parcel_card.html" with p=p delay=d %}
+    {% endfor %}
+  </div>
+
+  <div class="lg:col-span-2">
+    <div class="reveal overflow-hidden rounded-2xl bg-white shadow-soft ring-1 ring-sand-200 lg:sticky lg:top-20" style="animation-delay: 300ms">
+      <div class="flex items-center justify-between gap-3 px-5 py-4">
+        <h2 class="font-semibold text-olive-900">{{ T.dashboard.map_title }}</h2>
+        <span class="flex items-center gap-1.5 text-xs text-muted"><span class="h-2.5 w-2.5 rounded-full border-2 border-dashed border-ink/60"></span>{{ T.dashboard.pollution_source }}</span>
+      </div>
+      <div id="mini-map" class="h-[340px] sm:h-[460px]"></div>
+    </div>
+  </div>
+</section>
+{{ map_data|json_script:"map-data" }}
+{% endblock %}
+
+{% block scripts %}
+{% load static %}
+<script src="{% static 'js/map.js' %}"></script>
+<script>
+  (function () {
+    const data = JSON.parse(document.getElementById("map-data").textContent);
+    const map = satelliteMap("mini-map");
+    const bounds = L.latLngBounds([]);
+
+    data.sources.forEach((s) => {
+      const c = L.circle([s.lat, s.lon], { radius: s.radius_km * 1000, color: "#FFFFFF", weight: 2, dashArray: "6 6", fillColor: "#1E2316", fillOpacity: 0.18 }).addTo(map);
+      c.bindPopup(`<b>${s.name}</b><br><span style="color:#6B6F5E">${s.pollutants.join(", ")} · ${s.radius_km} km</span>`);
+      L.circleMarker([s.lat, s.lon], { radius: 4, color: "#fff", weight: 2, fillColor: "#1E2316", fillOpacity: 1 }).addTo(map);
+      bounds.extend(L.latLng(s.lat, s.lon).toBounds(s.radius_km * 2000));
+    });
+
+    data.parcels.forEach((p) => {
+      const icon = L.divIcon({
+        className: "",
+        html: `<div style="display:flex;align-items:center;gap:6px;background:#fff;border-radius:999px;padding:4px 10px 4px 6px;box-shadow:0 6px 16px -4px rgba(30,35,22,.35);border:2px solid ${ZONE_HEX[p.worst]};white-space:nowrap;font:600 12px 'DM Sans',sans-serif;color:#1E2316">${ZONE_ICON_SVG[p.worst]}${p.id}</div>`,
+        iconSize: null, iconAnchor: [40, 14],
+      });
+      L.marker(p.center, { icon }).addTo(map)
+        .bindPopup(`<b>${p.name}</b><br><a href="${p.url}" style="color:#4A5A2A;font-weight:600">${UI.dashboard.open_parcel} →</a>`);
+      bounds.extend(p.center);
+    });
+    map.fitBounds(bounds.pad(0.05));
+  })();
+</script>
+{% endblock %}

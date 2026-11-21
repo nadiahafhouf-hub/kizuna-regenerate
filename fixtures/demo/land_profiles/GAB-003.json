@@ -1,0 +1,146 @@
+{
+  "parcelle_id": "GAB-003",
+  "date_mesure": "2026-11-15",
+  "region": "Mareth",
+  "origine": {
+    "lat": 33.625,
+    "lon": 10.295,
+    "point": "coin_nord_ouest"
+  },
+  "largeur_m": 30,
+  "longueur_m": 20,
+  "taille_case_m": 10,
+  "texture_sol": "limoneux",
+  "cases": [
+    {
+      "ligne": 0,
+      "col": 0,
+      "couleur": "VERT",
+      "source": "capteur",
+      "CE_dS_m": 4.6,
+      "pH": 7.4,
+      "Cd_mg_kg": 0.7,
+      "Pb_mg_kg": 28
+    },
+    {
+      "ligne": 0,
+      "col": 1,
+      "couleur": "VERT",
+      "source": "idw",
+      "CE_dS_m": 4.1,
+      "pH": 7.3,
+      "Cd_mg_kg": 0.6,
+      "Pb_mg_kg": 24
+    },
+    {
+      "ligne": 0,
+      "col": 2,
+      "couleur": "ORANGE",
+      "source": "capteur",
+      "CE_dS_m": 6.4,
+      "pH": 7.6,
+      "Cd_mg_kg": 1.2,
+      "Pb_mg_kg": 41
+    },
+    {
+      "ligne": 1,
+      "col": 0,
+      "couleur": "VERT",
+      "source": "idw",
+      "CE_dS_m": 3.8,
+      "pH": 7.2,
+      "Cd_mg_kg": 0.5,
+      "Pb_mg_kg": 21
+    },
+    {
+      "ligne": 1,
+      "col": 1,
+      "couleur": "VERT",
+      "source": "capteur",
+      "CE_dS_m": 3.5,
+      "pH": 7.2,
+      "Cd_mg_kg": 0.4,
+      "Pb_mg_kg": 19
+    },
+    {
+      "ligne": 1,
+      "col": 2,
+      "couleur": "VERT",
+      "source": "idw",
+      "CE_dS_m": 4.9,
+      "pH": 7.4,
+      "Cd_mg_kg": 0.8,
+      "Pb_mg_kg": 30
+    }
+  ],
+  "zones": [
+    {
+      "id": "Z1",
+      "couleur": "ORANGE",
+      "cases": [
+        [
+          0,
+          2
+        ]
+      ],
+      "surface_m2": 100,
+      "culture_alimentaire_autorisee": false,
+      "traitement": {
+        "strategie": "phytostabilisation",
+        "plantes": [
+          "Atriplex halimus",
+          "Noccaea caerulescens"
+        ],
+        "microbes": [
+          "Glomus mosseae",
+          "Bacillus subtilis MR1"
+        ],
+        "amendements": [
+          "biochar"
+        ],
+        "mois_avant_sain": 1
+      }
+    },
+    {
+      "id": "Z2",
+      "couleur": "VERT",
+      "cases": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          1,
+          2
+        ]
+      ],
+      "surface_m2": 500,
+      "culture_alimentaire_autorisee": true,
+      "traitement": {
+        "strategie": "culture",
+        "plantes": [
+          "Grenadier",
+          "Olivier"
+        ],
+        "microbes": [
+          "Azospirillum brasilense",
+          "Glomus mosseae"
+        ],
+        "amendements": [],
+        "mois_avant_sain": 0
+      }
+    }
+  ]
+}

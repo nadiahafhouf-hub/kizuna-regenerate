@@ -1,0 +1,21 @@
+{% comment %}
+Jauge circulaire qui se remplit. Paramètres : value (0-100), max (défaut 100), label, color (ROUGE|ORANGE|VERT|water|sun|olive), size (px, défaut 160), suffix
+{% endcomment %}{% load ui l10n %}
+<div class="relative inline-grid place-items-center" style="width: {{ size|default:160 }}px; height: {{ size|default:160 }}px"
+     x-data="gauge({{ value|unlocalize }}, {{ max|default:100|unlocalize }})">
+  <svg viewBox="0 0 120 120" class="h-full w-full -rotate-90">
+    <circle cx="60" cy="60" r="52" fill="none" stroke="#F3EDE1" stroke-width="10"/>
+    <circle cx="60" cy="60" r="52" fill="none" stroke-width="10" stroke-linecap="round"
+            stroke="{% if color == 'water' %}#1F6FA8{% elif color == 'sun' %}#E8A916{% elif color == 'olive' %}#4A5A2A{% else %}{{ color|zone_ui:'hex' }}{% endif %}"
+            :stroke-dasharray="circ" :stroke-dashoffset="offset"
+            style="transition: stroke-dashoffset 1.2s cubic-bezier(.2,.8,.2,1)"/>
+  </svg>
+  <div class="absolute inset-0 grid place-items-center text-center">
+    <div>
+      <p class="font-bold tabular-nums leading-none tracking-tight" style="font-size: {% widthratio size|default:160 160 40 %}px">
+        <span x-text="Math.round(shown)">{{ value }}</span>{% if suffix %}<span class="text-[0.5em] font-semibold text-muted">{{ suffix }}</span>{% endif %}
+      </p>
+      {% if label %}<p class="mt-1 text-xs font-medium text-muted">{{ label }}</p>{% endif %}
+    </div>
+  </div>
+</div>

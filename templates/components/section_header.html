@@ -1,0 +1,13 @@
+{% comment %}Paramètres : title, hint, icon, tone (olive|water|sun){% endcomment %}
+<div class="mb-4 flex items-start gap-3">
+  {% if icon %}
+  <span class="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl
+    {% if tone == 'water' %}bg-water-50 text-water-600{% elif tone == 'sun' %}bg-sun-50 text-sun-700{% else %}bg-olive-100 text-olive-700{% endif %}">
+    <i data-lucide="{{ icon }}" class="h-[18px] w-[18px]"></i>
+  </span>
+  {% endif %}
+  <div class="min-w-0">
+    <h2 class="text-lg font-semibold tracking-tight text-olive-900">{{ title }}</h2>
+    {% if hint %}<p class="text-sm text-muted">{{ hint }}</p>{% endif %}
+  </div>
+</div>

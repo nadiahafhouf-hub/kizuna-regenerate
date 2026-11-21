@@ -1,0 +1,8 @@
+{% comment %}Empreinte abrégée. Paramètres : hash, label, tone (olive|muted|red){% endcomment %}{% load ui %}
+<span class="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 font-mono text-[11px]
+  {% if tone == 'red' %}bg-zred-bg text-zred ring-1 ring-zred/25{% elif tone == 'muted' %}bg-sand-100 text-muted{% else %}bg-olive-50 text-olive-800 ring-1 ring-olive-200{% endif %}"
+  title="{{ hash }}">
+  <i data-lucide="fingerprint" class="h-3.5 w-3.5"></i>
+  {% if label %}<span class="font-sans font-medium">{{ label }}</span>{% endif %}
+  <span>{{ hash|short_hash:10 }}</span>
+</span>

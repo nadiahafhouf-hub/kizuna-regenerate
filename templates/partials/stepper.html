@@ -1,0 +1,23 @@
+<div class="border-b border-sand-200 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/70">
+  <ol class="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto px-4 py-3 sm:px-6 lg:px-8" aria-label="Parcel journey">
+    {% for s in steps %}
+    <li class="flex min-w-0 flex-1 items-center gap-1 sm:gap-2">
+      <a href="{{ s.url }}" {% if s.state == "current" %}aria-current="step"{% endif %}
+         class="group flex min-w-0 items-center gap-2 rounded-xl px-2 py-1.5 transition hover:bg-sand-100 {% if s.state == 'current' %}bg-olive-50{% endif %}">
+        <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full text-sm font-semibold transition
+          {% if s.state == 'current' %}bg-olive-700 text-white shadow-soft ring-4 ring-olive-100
+          {% elif s.state == 'done' %}bg-olive-100 text-olive-700
+          {% else %}bg-sand-100 text-muted ring-1 ring-sand-200{% endif %}">
+          {% if s.state == "done" %}<i data-lucide="check" class="h-4 w-4"></i>{% else %}{{ forloop.counter }}{% endif %}
+        </span>
+        <span class="min-w-0 {% if s.state != 'current' %}hidden sm:block{% endif %}">
+          <span class="block truncate text-sm font-semibold {% if s.state == 'current' %}text-olive-900{% else %}text-muted group-hover:text-ink{% endif %}">{{ s.label }}</span>
+        </span>
+      </a>
+      {% if not forloop.last %}
+      <span class="h-px min-w-[12px] flex-1 {% if s.state == 'done' %}bg-olive-200{% else %}bg-sand-200{% endif %}"></span>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+</div>

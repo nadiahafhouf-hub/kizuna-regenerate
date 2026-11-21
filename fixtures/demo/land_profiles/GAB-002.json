@@ -1,0 +1,233 @@
+{
+  "parcelle_id": "GAB-002",
+  "date_mesure": "2026-11-18",
+  "region": "Ghannouch",
+  "origine": {
+    "lat": 33.93,
+    "lon": 10.075,
+    "point": "coin_nord_ouest"
+  },
+  "largeur_m": 40,
+  "longueur_m": 30,
+  "taille_case_m": 10,
+  "texture_sol": "sableux",
+  "cases": [
+    {
+      "ligne": 0,
+      "col": 0,
+      "couleur": "ROUGE",
+      "source": "capteur",
+      "CE_dS_m": 13.2,
+      "pH": 7.6,
+      "Cd_mg_kg": 9.8,
+      "Pb_mg_kg": 160
+    },
+    {
+      "ligne": 0,
+      "col": 1,
+      "couleur": "ROUGE",
+      "source": "idw",
+      "CE_dS_m": 12.1,
+      "pH": 7.6,
+      "Cd_mg_kg": 8.4,
+      "Pb_mg_kg": 140
+    },
+    {
+      "ligne": 0,
+      "col": 2,
+      "couleur": "ROUGE",
+      "source": "idw",
+      "CE_dS_m": 10.8,
+      "pH": 7.7,
+      "Cd_mg_kg": 6.9,
+      "Pb_mg_kg": 118
+    },
+    {
+      "ligne": 0,
+      "col": 3,
+      "couleur": "ROUGE",
+      "source": "capteur",
+      "CE_dS_m": 9.4,
+      "pH": 7.8,
+      "Cd_mg_kg": 5.2,
+      "Pb_mg_kg": 96
+    },
+    {
+      "ligne": 1,
+      "col": 0,
+      "couleur": "ROUGE",
+      "source": "idw",
+      "CE_dS_m": 11.5,
+      "pH": 7.5,
+      "Cd_mg_kg": 7.6,
+      "Pb_mg_kg": 130
+    },
+    {
+      "ligne": 1,
+      "col": 1,
+      "couleur": "ROUGE",
+      "source": "idw",
+      "CE_dS_m": 10.2,
+      "pH": 7.6,
+      "Cd_mg_kg": 6.1,
+      "Pb_mg_kg": 104
+    },
+    {
+      "ligne": 1,
+      "col": 2,
+      "couleur": "ORANGE",
+      "source": "capteur",
+      "CE_dS_m": 8.6,
+      "pH": 7.7,
+      "Cd_mg_kg": 2.6,
+      "Pb_mg_kg": 78
+    },
+    {
+      "ligne": 1,
+      "col": 3,
+      "couleur": "ORANGE",
+      "source": "idw",
+      "CE_dS_m": 7.4,
+      "pH": 7.8,
+      "Cd_mg_kg": 2.1,
+      "Pb_mg_kg": 66
+    },
+    {
+      "ligne": 2,
+      "col": 0,
+      "couleur": "ROUGE",
+      "source": "capteur",
+      "CE_dS_m": 9.1,
+      "pH": 7.6,
+      "Cd_mg_kg": 3.4,
+      "Pb_mg_kg": 90
+    },
+    {
+      "ligne": 2,
+      "col": 1,
+      "couleur": "ORANGE",
+      "source": "idw",
+      "CE_dS_m": 7.8,
+      "pH": 7.7,
+      "Cd_mg_kg": 2.4,
+      "Pb_mg_kg": 72
+    },
+    {
+      "ligne": 2,
+      "col": 2,
+      "couleur": "ORANGE",
+      "source": "idw",
+      "CE_dS_m": 6.9,
+      "pH": 7.8,
+      "Cd_mg_kg": 1.9,
+      "Pb_mg_kg": 61
+    },
+    {
+      "ligne": 2,
+      "col": 3,
+      "couleur": "ORANGE",
+      "source": "capteur",
+      "CE_dS_m": 6.3,
+      "pH": 7.9,
+      "Cd_mg_kg": 1.5,
+      "Pb_mg_kg": 54
+    }
+  ],
+  "zones": [
+    {
+      "id": "Z1",
+      "couleur": "ROUGE",
+      "cases": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          0
+        ]
+      ],
+      "surface_m2": 700,
+      "culture_alimentaire_autorisee": false,
+      "traitement": {
+        "strategie": "phytoextraction",
+        "plantes": [
+          "Atriplex halimus",
+          "Noccaea caerulescens"
+        ],
+        "microbes": [
+          "Glomus mosseae",
+          "Rhizophagus irregularis",
+          "Bacillus subtilis MR1"
+        ],
+        "amendements": [
+          "biochar"
+        ],
+        "mois_avant_sain": 26
+      }
+    },
+    {
+      "id": "Z2",
+      "couleur": "ORANGE",
+      "cases": [
+        [
+          1,
+          2
+        ],
+        [
+          1,
+          3
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          2,
+          3
+        ]
+      ],
+      "surface_m2": 500,
+      "culture_alimentaire_autorisee": false,
+      "traitement": {
+        "strategie": "phytostabilisation",
+        "plantes": [
+          "Atriplex halimus",
+          "Noccaea caerulescens"
+        ],
+        "microbes": [
+          "Glomus mosseae",
+          "Bacillus subtilis MR1"
+        ],
+        "amendements": [
+          "biochar"
+        ],
+        "mois_avant_sain": 5
+      }
+    }
+  ]
+}

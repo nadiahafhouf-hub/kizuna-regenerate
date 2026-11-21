@@ -1,0 +1,7 @@
+<span class="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full font-semibold
+  {% if variant == 'solid' %}{{ ui.solid }}{% else %}{{ ui.soft }}{% endif %}
+  {% if size == 'sm' %}px-2 py-0.5 text-[11px]{% elif size == 'lg' %}px-3.5 py-1.5 text-sm{% else %}px-2.5 py-1 text-xs{% endif %}"
+  title="{{ label }}{% if long %} · {{ long }}{% endif %}">
+  <i data-lucide="{{ ui.icon }}" class="{% if size == 'lg' %}h-4 w-4{% else %}h-3.5 w-3.5{% endif %}"></i>
+  <span>{{ label }}{% if long %} · {{ long }}{% endif %}</span>
+</span>

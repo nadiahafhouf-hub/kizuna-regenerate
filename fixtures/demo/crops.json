@@ -1,0 +1,24 @@
+{
+  "_note": "Indicative incomes (TND/ha/year) and recommended spacing for the demo. Keys match services/cultures.py.",
+  "crops": {
+    "Salicorne":       {"en": "Salicornia",      "icon": "sprout",   "income_tnd_ha": 4000,  "spacing_m": 0.3},
+    "Atriplex":        {"en": "Saltbush (Atriplex)", "icon": "leaf", "income_tnd_ha": 3250,  "spacing_m": 1.2},
+    "Orge":            {"en": "Barley",          "icon": "wheat",    "income_tnd_ha": 1800,  "spacing_m": 0.2},
+    "Coton":           {"en": "Cotton",          "icon": "flower-2", "income_tnd_ha": 3000,  "spacing_m": 0.9},
+    "Blé":             {"en": "Wheat",           "icon": "wheat",    "income_tnd_ha": 2500,  "spacing_m": 0.2},
+    "Palmier dattier": {"en": "Date palm",       "icon": "palmtree", "income_tnd_ha": 15000, "spacing_m": 9.0},
+    "Olivier":         {"en": "Olive",           "icon": "trees",    "income_tnd_ha": 6000,  "spacing_m": 7.0},
+    "Grenadier":       {"en": "Pomegranate",     "icon": "apple",    "income_tnd_ha": 10800, "spacing_m": 4.0},
+    "Riz":             {"en": "Rice",            "icon": "wheat",    "income_tnd_ha": 3500,  "spacing_m": 0.2},
+    "Tomate":          {"en": "Tomato",          "icon": "cherry",   "income_tnd_ha": 12000, "spacing_m": 0.5},
+    "Luzerne":         {"en": "Alfalfa",         "icon": "clover",   "income_tnd_ha": 4500,  "spacing_m": 0.2},
+    "Maïs":            {"en": "Maize",           "icon": "wheat",    "income_tnd_ha": 3000,  "spacing_m": 0.7},
+    "Pomme de terre":  {"en": "Potato",          "icon": "carrot",   "income_tnd_ha": 9000,  "spacing_m": 0.35},
+    "Canne à sucre":   {"en": "Sugarcane",       "icon": "sprout",   "income_tnd_ha": 5000,  "spacing_m": 1.5}
+  },
+  "remediation_plants": {
+    "Atriplex halimus":     {"en": "Mediterranean saltbush", "role": "Locks metals in its roots and lowers salinity. Leaves are safe sheep fodder.", "icon": "leaf"},
+    "Noccaea caerulescens": {"en": "Alpine pennycress",      "role": "Cadmium hyperaccumulator. Harvested biomass goes to certified disposal, never to animals.", "icon": "flower"},
+    "Sedum alfredii":       {"en": "Sedum",                  "role": "Fastest cadmium extractor on low-salinity soil. 3–4 harvests per year.", "icon": "flower-2"}
+  }
+}

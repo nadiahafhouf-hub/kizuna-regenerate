@@ -1,27 +1,63 @@
 {% load static %}<!doctype html>
-<html lang="fr">
+<html lang="{{ LANG }}" dir="{{ DIR }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Kizuna Regenerate{% endblock %}</title>
+  <title>{% block title %}{{ T.app.name }}{% endblock %} · {{ T.app.name }}</title>
+  <meta name="description" content="{{ T.app.tagline }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            sand:   {50: "#FAF7F0", 100: "#F3EDE1", 200: "#E6DCC8", 300: "#D6C8AC"},
+            ink:    "#1E2316",
+            muted:  "#6B6F5E",
+            olive:  {50: "#F4F6EC", 100: "#E9EDDC", 200: "#D3DBB8", 600: "#5B6E33", 700: "#4A5A2A", 800: "#3C4A22", 900: "#2F3A1D"},
+            water:  {50: "#E8F3FA", 100: "#D2E7F5", 400: "#4FA3D9", 600: "#1F6FA8", 700: "#185A89"},
+            sun:    {50: "#FDF5DE", 100: "#FBEBC0", 300: "#F5CB5C", 500: "#E8A916", 700: "#8A5A00"},
+            zred:    {DEFAULT: "#B83227", bg: "#FBE9E7"},
+            zorange: {DEFAULT: "#B85C0E", bg: "#FDF0E3"},
+            zgreen:  {DEFAULT: "#23774A", bg: "#E6F4EC"},
+          },
+          fontFamily: {
+            sans: ['"DM Sans"', "system-ui", "sans-serif"],
+            mono: ['"DM Mono"', "ui-monospace", "monospace"],
+          },
+          boxShadow: {
+            soft: "0 1px 2px rgba(30,35,22,.04), 0 6px 20px -6px rgba(30,35,22,.10)",
+            lift: "0 2px 4px rgba(30,35,22,.05), 0 16px 32px -12px rgba(30,35,22,.18)",
+          },
+        },
+      },
+    };
+  </script>
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <script src="https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
   {% block head %}{% endblock %}
 </head>
-<body>
-  <header class="topbar">
-    <a class="brand" href="{% url 'core:home' %}">Kizuna Regenerate</a>
-    <nav>
-      <a href="{% url 'diagnostics:index' %}">1 · Diagnostic</a>
-      <a href="{% url 'advisor:index' %}">2 · Cultures</a>
-      <a href="{% url 'irrigation:index' %}">3 · Irrigation</a>
-      <a href="{% url 'passport:index' %}">4 · Passeport</a>
-    </nav>
-  </header>
-  <main class="container">
+<body class="min-h-screen bg-sand-50 font-sans text-ink antialiased"
+      hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+  {% include "partials/navbar.html" %}
+  {% block stepper %}{% if steps %}{% include "partials/stepper.html" %}{% endif %}{% endblock %}
+
+  <main class="mx-auto max-w-7xl px-4 pb-28 pt-6 sm:px-6 lg:px-8">
     {% block content %}{% endblock %}
   </main>
+
+  {% block chatbot %}{% include "partials/chatbot_panel.html" %}{% endblock %}
+  {% include "partials/toast.html" %}
+
+  {{ T|json_script:"ui-strings" }}
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+  <script src="{% static 'js/app.js' %}"></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

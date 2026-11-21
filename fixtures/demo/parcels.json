@@ -1,0 +1,29 @@
+[
+  {
+    "id": "GAB-001",
+    "name": "Chenini Oasis Plot",
+    "farmer": "Salah B.",
+    "region": "Gabes",
+    "land_profile": "land_profile.sample.json",
+    "irrigation_status": "PENDING",
+    "season": {"water_saved_m3": 142, "solar_kwh": 412}
+  },
+  {
+    "id": "GAB-002",
+    "name": "Ghannouch Coastal Field",
+    "farmer": "Amel K.",
+    "region": "Ghannouch",
+    "land_profile": "demo/land_profiles/GAB-002.json",
+    "irrigation_status": "AUTO",
+    "season": {"water_saved_m3": 196, "solar_kwh": 538}
+  },
+  {
+    "id": "GAB-003",
+    "name": "Mareth Olive Grove",
+    "farmer": "Youssef T.",
+    "region": "Mareth",
+    "land_profile": "demo/land_profiles/GAB-003.json",
+    "irrigation_status": "AUTO",
+    "season": {"water_saved_m3": 88, "solar_kwh": 301}
+  }
+]

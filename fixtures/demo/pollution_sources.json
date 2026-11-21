@@ -1,0 +1,35 @@
+[
+  {
+    "id": "SRC-1",
+    "name": "Phosphate processing complex (GCT)",
+    "type": "INDUSTRY",
+    "lat": 33.9165,
+    "lon": 10.1010,
+    "radius_km": 5.0,
+    "pollutants": ["Cd", "Pb", "F", "SO2"],
+    "active": true,
+    "note": "Approximate position, demo data."
+  },
+  {
+    "id": "SRC-2",
+    "name": "Phosphogypsum coastal discharge",
+    "type": "WASTE",
+    "lat": 33.9010,
+    "lon": 10.1300,
+    "radius_km": 3.0,
+    "pollutants": ["Cd", "Ra-226"],
+    "active": true,
+    "note": "Approximate position, demo data."
+  },
+  {
+    "id": "SRC-3",
+    "name": "Gabes – Mareth national road",
+    "type": "ROAD",
+    "lat": 33.8000,
+    "lon": 10.1500,
+    "radius_km": 0.5,
+    "pollutants": ["Pb"],
+    "active": true,
+    "note": "Traffic corridor, demo data."
+  }
+]

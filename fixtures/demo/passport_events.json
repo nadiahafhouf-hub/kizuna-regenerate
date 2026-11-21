@@ -1,0 +1,45 @@
+{
+  "_note": "Events sealed in each parcel's hash chain. The hashes are computed by services/demo_data.py.",
+  "GAB-001": [
+    {"type": "DIAGNOSTIC", "date": "2026-05-12", "title": "Baseline soil diagnostic",
+     "summary": "9 cells measured. Max Cd 6.1 mg/kg, max salinity 11.8 dS/m.",
+     "data": {"cd_max": 6.1, "ce_max": 11.8, "cells": {"ROUGE": 5, "ORANGE": 3, "VERT": 1}}},
+    {"type": "PLANTING", "date": "2026-05-20", "title": "Remediation planting",
+     "summary": "Saltbush + pennycress on Z1, saltbush on Z2, mycorrhizal inoculation and biochar.",
+     "data": {"Z1": ["Atriplex halimus", "Noccaea caerulescens"], "Z2": ["Atriplex halimus"], "inputs": ["Glomus mosseae", "biochar"]}},
+    {"type": "IRRIGATION", "date": "2026-10-31", "title": "Season irrigation log",
+     "summary": "Solar-powered drip irrigation, 118 m³ used, 142 m³ saved vs flood.",
+     "data": {"used_m3": 118, "saved_m3": 142, "solar_share_pct": 100, "method": "drip"}},
+    {"type": "ANALYSIS", "date": "2026-11-22", "title": "New soil analysis",
+     "summary": "Max Cd down to 4.2 mg/kg. 3 cells are now green (safe for food).",
+     "data": {"cd_max": 4.2, "ce_max": 9.5, "cells": {"ROUGE": 3, "ORANGE": 3, "VERT": 3}}}
+  ],
+  "GAB-002": [
+    {"type": "DIAGNOSTIC", "date": "2026-04-03", "title": "Baseline soil diagnostic",
+     "summary": "12 cells measured. Max Cd 11.4 mg/kg, max salinity 14.6 dS/m.",
+     "data": {"cd_max": 11.4, "ce_max": 14.6, "cells": {"ROUGE": 10, "ORANGE": 2, "VERT": 0}}},
+    {"type": "PLANTING", "date": "2026-04-15", "title": "Remediation planting",
+     "summary": "Saltbush + pennycress on the whole field, biochar 5 t/ha.",
+     "data": {"Z1": ["Atriplex halimus", "Noccaea caerulescens"], "inputs": ["biochar", "Bacillus subtilis MR1"]}},
+    {"type": "IRRIGATION", "date": "2026-10-31", "title": "Season irrigation log",
+     "summary": "Solar drip with leaching cycles, 171 m³ used, 196 m³ saved vs flood.",
+     "data": {"used_m3": 171, "saved_m3": 196, "solar_share_pct": 100, "method": "drip"}},
+    {"type": "ANALYSIS", "date": "2026-11-18", "title": "New soil analysis",
+     "summary": "Max Cd down to 9.8 mg/kg. 5 cells moved from red to orange.",
+     "data": {"cd_max": 9.8, "ce_max": 13.2, "cells": {"ROUGE": 7, "ORANGE": 5, "VERT": 0}}}
+  ],
+  "GAB-003": [
+    {"type": "DIAGNOSTIC", "date": "2026-03-10", "title": "Baseline soil diagnostic",
+     "summary": "6 cells measured. Max Cd 1.6 mg/kg, max salinity 7.1 dS/m.",
+     "data": {"cd_max": 1.6, "ce_max": 7.1, "cells": {"ROUGE": 0, "ORANGE": 3, "VERT": 3}}},
+    {"type": "PLANTING", "date": "2026-03-18", "title": "Olive grove + saltbush hedge",
+     "summary": "Olive trees kept on green cells, saltbush hedge on the salty corner.",
+     "data": {"Z1": ["Atriplex halimus"], "Z2": ["Olivier"]}},
+    {"type": "IRRIGATION", "date": "2026-10-31", "title": "Season irrigation log",
+     "summary": "Solar drip irrigation, 64 m³ used, 88 m³ saved vs flood.",
+     "data": {"used_m3": 64, "saved_m3": 88, "solar_share_pct": 100, "method": "drip"}},
+    {"type": "ANALYSIS", "date": "2026-11-15", "title": "New soil analysis",
+     "summary": "5 of 6 cells green. Field eligible for food crops except the salty corner.",
+     "data": {"cd_max": 1.2, "ce_max": 6.4, "cells": {"ROUGE": 0, "ORANGE": 1, "VERT": 5}}}
+  ]
+}

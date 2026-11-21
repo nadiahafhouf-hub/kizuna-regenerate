@@ -1,0 +1,19 @@
+{% load l10n %}{% comment %}
+KPI animé. Paramètres : icon, label, value (nombre), unit, hint, tone (olive|water|sun|green), decimals, delay
+{% endcomment %}
+<div class="reveal group relative overflow-hidden rounded-2xl bg-white p-4 shadow-soft ring-1 ring-sand-200 sm:p-5" style="animation-delay: {{ delay|default:0 }}ms">
+  <div class="flex items-start justify-between gap-3">
+    <p class="text-sm font-medium text-muted">{{ label }}</p>
+    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl sm:h-10 sm:w-10
+      {% if tone == 'water' %}bg-water-50 text-water-600{% elif tone == 'sun' %}bg-sun-50 text-sun-700{% elif tone == 'green' %}bg-zgreen-bg text-zgreen{% else %}bg-olive-100 text-olive-700{% endif %}">
+      <i data-lucide="{{ icon }}" class="h-5 w-5"></i>
+    </span>
+  </div>
+  <p class="mt-2 flex items-baseline gap-1.5">
+    <span class="text-3xl font-bold tabular-nums tracking-tight sm:text-4xl" x-data="countUp({{ value|unlocalize }}, {{ decimals|default:0 }})" x-text="display">{{ value }}</span>
+    {% if unit %}<span class="text-lg font-semibold text-muted">{{ unit }}</span>{% endif %}
+  </p>
+  {% if hint %}<p class="mt-1 text-xs text-muted">{{ hint }}</p>{% endif %}
+  <span class="absolute inset-x-0 bottom-0 h-1
+    {% if tone == 'water' %}bg-water-400{% elif tone == 'sun' %}bg-sun-500{% elif tone == 'green' %}bg-zgreen{% else %}bg-olive-600{% endif %} opacity-80"></span>
+</div>

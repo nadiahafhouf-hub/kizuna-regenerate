@@ -1,0 +1,24 @@
+{
+  "_note": "Simulated assistant. Replaced later by the RAG (services/rag/knowledge_base.py + Gemini).",
+  "suggestions": [
+    "Can I grow vegetables in zone Z1?",
+    "Why irrigate at 6 am?",
+    "How long until my soil is safe?",
+    "What does the QR code prove?"
+  ],
+  "answers": [
+    {"keywords": ["vegetable", "grow", "food", "eat", "tomato", "z1"],
+     "reply": "Not in red zones. Zone Z1 is above the cadmium limit (3 mg/kg), so food crops are blocked there. Grow saltbush (Atriplex halimus): it locks metals in its roots and its leaves are safe sheep fodder. Green zones are ready for food crops like pomegranate or olive."},
+    {"keywords": ["6", "morning", "early", "why irrigate", "night", "evaporation"],
+     "reply": "At 6 am the air is cool and calm, so less water evaporates and more reaches the roots. The water comes from the reservoir by gravity, so it needs no energy. The pump refills the reservoir at midday, when the solar panel produces the most power."},
+    {"keywords": ["long", "safe", "months", "clean", "when"],
+     "reply": "It depends on the zone. Plants remove cadmium at about 0.35 to 0.5 mg/kg per month. Each zone card on the Diagnostic page shows a 'months to safe' countdown. A zone is certified safe after three quarterly tests below 1 mg/kg."},
+    {"keywords": ["qr", "passport", "prove", "buyer", "verify", "hash"],
+     "reply": "The QR code opens a public page that checks the parcel's history. Each event (diagnostic, planting, irrigation, new analysis) is sealed with a fingerprint that depends on the previous one. If anyone edits a past event, the chain breaks and the page shows 'Tampered'."},
+    {"keywords": ["salt", "salinity", "ec", "leach"],
+     "reply": "Salinity is measured as electrical conductivity (EC, in dS/m). Above 6 dS/m most crops suffer. The irrigation plan adds a small extra volume (leaching) to push salts below the root zone, and biochar helps the soil hold water."},
+    {"keywords": ["solar", "energy", "pump", "panel", "kwh"],
+     "reply": "A 3 kWp solar panel powers a 0.75 kW pump. It only runs between 11:00 and 14:00 when there is surplus sun, filling the reservoir. Irrigation itself flows by gravity early in the morning, so the system runs without grid power."}
+  ],
+  "fallback": "I am a demo assistant for now. Soon I will answer from the Gabes soil knowledge base. Try one of the suggested questions."
+}

@@ -1,0 +1,13 @@
+<div x-data class="pointer-events-none fixed inset-x-0 top-16 z-[1500] flex flex-col items-center gap-2 px-4" aria-live="polite">
+  <template x-for="t in $store.toasts.items" :key="t.id">
+    <div x-show="t.visible" x-transition.opacity.duration.300ms
+         class="pointer-events-auto flex max-w-md items-center gap-3 rounded-xl bg-ink px-4 py-3 text-sm text-white shadow-lift">
+      <span class="grid h-6 w-6 shrink-0 place-items-center rounded-full"
+            :class="t.kind === 'error' ? 'bg-zred' : 'bg-zgreen'">
+        <svg x-show="t.kind !== 'error'" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>
+        <svg x-show="t.kind === 'error'" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </span>
+      <span x-text="t.message"></span>
+    </div>
+  </template>
+</div>

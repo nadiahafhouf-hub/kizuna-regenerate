@@ -1,0 +1,25 @@
+{
+  "_note": "Demo forecast for the next 7 days (day 0 = today). Will be replaced by Open-Meteo (ET0 FAO-56).",
+  "system": {
+    "solar_kwp": 3.0,
+    "pump_kw": 0.75,
+    "pump_flow_m3h": 2.0,
+    "drip_flow_m3h": 3.0,
+    "reservoir_m3": 8.0,
+    "reservoir_start_pct": 55,
+    "drip_efficiency": 0.9,
+    "flood_efficiency": 0.45,
+    "irrigation_start_h": 6,
+    "pump_start_h": 11,
+    "pump_end_h": 14
+  },
+  "week": [
+    {"icon": "sun",         "condition": "Sunny",         "tmax": 23, "tmin": 12, "et0": 3.4, "rain": 0.0, "cloud": 1.00},
+    {"icon": "sun",         "condition": "Sunny",         "tmax": 24, "tmin": 13, "et0": 3.6, "rain": 0.0, "cloud": 1.00},
+    {"icon": "cloud-sun",   "condition": "Partly cloudy", "tmax": 22, "tmin": 12, "et0": 2.9, "rain": 0.0, "cloud": 0.75},
+    {"icon": "cloud-rain",  "condition": "Light rain",    "tmax": 19, "tmin": 11, "et0": 1.6, "rain": 6.5, "cloud": 0.35},
+    {"icon": "cloud-sun",   "condition": "Clearing",      "tmax": 20, "tmin": 10, "et0": 2.4, "rain": 0.4, "cloud": 0.70},
+    {"icon": "wind",        "condition": "Windy",         "tmax": 21, "tmin": 11, "et0": 3.8, "rain": 0.0, "cloud": 0.90},
+    {"icon": "sun",         "condition": "Sunny",         "tmax": 23, "tmin": 12, "et0": 3.3, "rain": 0.0, "cloud": 1.00}
+  ]
+}

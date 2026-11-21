@@ -27,3 +27,6 @@ services/models/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Config locale Claude Code
+.claude/

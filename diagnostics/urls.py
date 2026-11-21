@@ -5,5 +5,4 @@ from . import views
 app_name = "diagnostics"
 urlpatterns = [
     path("", views.index, name="index"),
-    path("geojson/", views.geojson, name="geojson"),
 ]

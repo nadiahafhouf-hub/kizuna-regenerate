@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="grid place-items-center rounded-3xl bg-white py-24 text-center shadow-soft ring-1 ring-sand-200">
+  <div>
+    <span class="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-olive-100 text-olive-700"><i data-lucide="hammer" class="h-6 w-6"></i></span>
+    <p class="mt-4 text-lg font-semibold">{{ parcel.name|default:"Page" }}</p>
+    <p class="text-sm text-muted">Under construction.</p>
+  </div>
+</div>
+{% endblock %}
