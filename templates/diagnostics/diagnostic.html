@@ -34,6 +34,10 @@
   </div>
 </section>
 
+{% if profile.releves_simules %}
+<p class="mt-4 flex items-center gap-2 rounded-xl bg-sun-50 px-4 py-3 text-sm text-sun-700 ring-1 ring-sun-300/60"><i data-lucide="flask-conical" class="h-4 w-4 shrink-0"></i>{{ T.diagnostic.simulated_banner }}</p>
+{% endif %}
+
 <!-- Répartition des surfaces -->
 <section class="reveal mt-6 rounded-2xl bg-white p-4 shadow-soft ring-1 ring-sand-200 sm:p-5" style="animation-delay: 80ms">
   <div class="flex flex-wrap items-center justify-between gap-2">
