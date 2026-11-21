@@ -24,6 +24,17 @@ ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "localhost,127.0.
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
+# Bloc 3 : image satellite automatique pour le reseau goutte-a-goutte (services/irrigation_engine)
+#   esri (sans cle, par defaut) | mapbox (MAPBOX_TOKEN) | google (GOOGLE_MAPS_API_KEY)
+# Tuiles en cache dans MEDIA_ROOT/tiles_cache/<fournisseur>/z/x/y.jpg
+SATELLITE_FOURNISSEUR = os.getenv("SATELLITE_FOURNISSEUR", "esri")
+SATELLITE_TILE_URL = os.getenv("SATELLITE_TILE_URL") or None
+SATELLITE_ZOOM = int(os.getenv("SATELLITE_ZOOM", "19"))  # essaie zoom+1, zoom, puis 18
+SATELLITE_ATTRIBUTION = os.getenv("SATELLITE_ATTRIBUTION") or None
+
+# photos de drone : jusqu'a 50 Mo
+DATA_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",

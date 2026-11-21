@@ -46,6 +46,26 @@ plus la page publique `/verify/<passport_id>/` (cible du QR). Bouton « Load dem
 - Le QR pointe vers l'adresse du serveur : pour le scanner avec un téléphone pendant la démo, lancer
   `python manage.py runserver 0.0.0.0:8000`, ajouter l'IP du PC dans `ALLOWED_HOSTS` (`.env`) et ouvrir la page par cette IP.
 
+## Bloc 3 · réseau goutte-à-goutte optimal (image satellite)
+
+Page `/p/<id>/irrigation/network/` (bouton « Design the drip network » sur la page Irrigation) :
+le moteur `services/irrigation_engine/` (Python pur, sans Django) lit **directement le LandProfile**
+(origine au coin nord-ouest, cases, zones, traitement), télécharge l'**image satellite** de l'emprise
+(aucune photo à envoyer), détecte les plantes déjà en place, croise avec le sol de chaque zone
+(CE, métaux, culture alimentaire autorisée) et **trace le réseau** (conduite principale, porte-rampes,
+rampes, goutteurs) sur l'image, avec l'attribution du fournisseur et la résolution.
+
+- Option « J'envoie ma photo » : photo vue du dessus + clic des 4 coins. Sur l'aperçu satellite, on peut
+  cliquer la source d'eau et, si besoin, ses plantes.
+- Terre déjà plantée d'arbres épars (oliveraie traditionnelle) : le réseau est conçu arbre par arbre,
+  sans inventer d'arbres « à replanter ».
+- Satellite : `SATELLITE_FOURNISSEUR` = `esri` (sans clé, par défaut), `mapbox` (`MAPBOX_TOKEN`) ou
+  `google` (`GOOGLE_MAPS_API_KEY`), `SATELLITE_ZOOM` (19 : essaie 20, puis 19, puis 18 si les tuiles sont vides).
+  Cache : `media/tiles_cache/`. Esri à Gabès : souvent zoom 18 (0,5 m/px) → arbres adultes seulement.
+- Résultat : modèle `irrigation.DripNetworkPlan` (image tracée, GeoJSON, bilan m³/an, conseils par zone).
+  JSON pour les autres blocs : `GET /p/<id>/irrigation/network/api/` et `.../network/geojson/`.
+- Tests sans réseau (faux serveur de tuiles) : `python manage.py test irrigation`.
+
 ## Le contrat entre les blocs : LandProfile
 
 Le bloc 1 produit un **LandProfile** ; les blocs 2-4 le consomment. Un exemple complet

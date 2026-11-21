@@ -12,6 +12,11 @@
       <p class="mt-1 max-w-2xl text-muted">{{ T.irrigation.subtitle }}</p>
     </div>
     <div class="flex flex-wrap items-center gap-3">
+      <!-- Réseau goutte-à-goutte (image satellite) -->
+      <a href="{% url 'irrigation:network' parcel.id %}" title="{{ T.network.open_hint }}"
+         class="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-water-700 shadow-soft ring-1 ring-water-400/40 transition hover:-translate-y-0.5 hover:bg-water-50 hover:shadow-lift">
+        <i data-lucide="waypoints" class="h-4 w-4"></i>{{ T.network.open }}
+      </a>
       <!-- Badge de mode -->
       <span x-show="mode === 'PENDING'" class="inline-flex items-center gap-2 rounded-full bg-sun-50 px-3.5 py-2 text-sm font-semibold text-sun-700 ring-1 ring-sun-300/60">
         <i data-lucide="clock" class="h-4 w-4"></i>{{ T.irrigation.mode_pending }}

@@ -10,3 +10,8 @@ Pillow>=10.0            # ImageField (photos bloc 2)
 qrcode[pil]>=7.4        # QR passeport (bloc 4)
 reportlab>=4.0          # PDF passeport (bloc 4)
 google-genai>=1.0       # Gemini Vision (bloc 2) + chatbot (bloc 4)
+# Bloc 3 : reseau goutte-a-goutte calcule sur image satellite / photo (services/irrigation_engine)
+opencv-python-headless>=4.8
+scipy>=1.11
+scikit-image>=0.22
+matplotlib>=3.8
