@@ -136,20 +136,27 @@ def _appeler_gemini(cle, modele, prompt, budget_s=BUDGET_GEMINI_S):
     maintenant = time.monotonic()
     disponibles = [m for m in modeles if _en_pause.get(m, 0) <= maintenant] or modeles[-1:]
     fin = maintenant + budget_s
+    from concurrent.futures import ThreadPoolExecutor
+    from concurrent.futures import TimeoutError as Delai
+
+    # L'API refuse un délai < 10 s (400 INVALID_ARGUMENT) : délai HTTP fixe, le budget est tenu ici par l'attente
     client = genai.Client(api_key=cle, http_options=types.HttpOptions(
-        retry_options=types.HttpRetryOptions(attempts=1)))
+        timeout=15000, retry_options=types.HttpRetryOptions(attempts=1)))
+    pool = ThreadPoolExecutor(max_workers=len(disponibles) or 1)
     try:
         derniere = TimeoutError("budget Gemini épuisé")
         for m in disponibles:
             reste = fin - time.monotonic()
-            if reste < 2:
+            if reste < 1.5:
                 break
+            appel = pool.submit(client.models.generate_content, model=m, contents=prompt,
+                                config=types.GenerateContentConfig(temperature=0.4,
+                                                                   response_mime_type="application/json"))
             try:
-                rep = client.models.generate_content(
-                    model=m, contents=prompt,
-                    config=types.GenerateContentConfig(temperature=0.4, response_mime_type="application/json",
-                                                       http_options=types.HttpOptions(timeout=int(reste * 1000))))
-                return rep.text or ""
+                return appel.result(timeout=reste).text or ""
+            except Delai:
+                derniere = TimeoutError(f"{m} : plus de {reste:.0f} s")
+                break   # budget épuisé : réponse locale
             except Exception as e:
                 # modèle saturé, quota, retiré ou trop lent : on passe AUSSITÔT au suivant
                 if not any(c in str(e) for c in SURCHARGE + ("timeout", "Timeout", "timed out", "DEADLINE")):
@@ -159,6 +166,7 @@ def _appeler_gemini(cle, modele, prompt, budget_s=BUDGET_GEMINI_S):
                 derniere = e
         raise derniere
     finally:
+        pool.shutdown(wait=False)   # un appel trop lent finit en arrière-plan, sans bloquer la réponse
         try:
             client.close()
         except Exception:
