@@ -9,7 +9,6 @@ repondre(question, pid, historique) -> {"reponse", "actions", "sources", "mode"}
 """
 import json
 import re
-import time
 
 from .knowledge_base import KNOWLEDGE_DOCS, split_chunks
 from . import vecteurs as V
@@ -116,18 +115,13 @@ def _lire_json(texte):
 def _appeler_gemini(cle, modele, prompt):
     from google import genai
     from google.genai import types
-    client = genai.Client(api_key=cle)
+    client = genai.Client(api_key=cle, http_options=types.HttpOptions(
+        timeout=12000, retry_options=types.HttpRetryOptions(attempts=1)))
     try:
-        for essai in range(3):   # surcharge (503) ou quota (429) : on réessaie
-            try:
-                rep = client.models.generate_content(
-                    model=modele, contents=prompt,
-                    config=types.GenerateContentConfig(temperature=0.4, response_mime_type="application/json"))
-                return rep.text or ""
-            except Exception as e:
-                if essai == 2 or not any(c in str(e) for c in ("503", "429", "UNAVAILABLE", "RESOURCE_EXHAUSTED")):
-                    raise
-                time.sleep(3 * (essai + 1))
+        rep = client.models.generate_content(
+            model=modele, contents=prompt,
+            config=types.GenerateContentConfig(temperature=0.4, response_mime_type="application/json"))
+        return rep.text or ""
     finally:
         try:
             client.close()
@@ -135,14 +129,15 @@ def _appeler_gemini(cle, modele, prompt):
             pass
 
 
-def _secours(question, passages, actions):
+def _secours(passages, gemini_indisponible=False):
     """Sans Gemini : on montre les passages les plus proches (texte en français/derja simple)."""
     if not passages:
         return "Ma l9itech ma3louma 3la so2alek. Jarreb ektbou b tari9a o5ra, walla chouf les pages mta3 el parcelle."
     lignes = ["Hedha elli l9itou f el ma3loumet mta3ek :"]
     for p in passages[:3]:
         lignes.append(f"• {p['titre']} : {p['texte'][:260]}{'…' if len(p['texte']) > 260 else ''}")
-    lignes.append("(Réponse automatique : zid clé Gemini bech njaweb bel derja b tafsil.)")
+    if gemini_indisponible:
+        lignes.append("(Gemini indisponible. Affichage des données locales.)")
     return "\n".join(lignes)
 
 
@@ -155,7 +150,7 @@ def repondre(question, pid=None, historique=None, cfg=None, appel=None):
     sources = [{"titre": p["titre"], "source": p.get("source"), "url": p.get("url"), "score": p["score"]}
                for p in passages[:5]]
     if not cfg.get("cle") and appel is None:
-        return {"reponse": _secours(question, passages, actions), "actions": actions[:2], "sources": sources,
+        return {"reponse": _secours(passages), "actions": actions[:2], "sources": sources,
                 "mode": "secours"}
     contexte = "\n".join(f"[{i + 1}] ({p.get('source')}) {p['titre']} : {p['texte']}" for i, p in enumerate(passages))
     hist = "\n".join(f"{m.get('role')}: {str(m.get('text', ''))[:300]}" for m in (historique or [])[-6:])
@@ -170,5 +165,5 @@ def repondre(question, pid=None, historique=None, cfg=None, appel=None):
         choisies = [par_id[i] for i in data.get("actions") or [] if i in par_id][:3]
         return {"reponse": texte, "actions": choisies, "sources": sources, "mode": "gemini"}
     except Exception as e:   # noqa: BLE001
-        return {"reponse": _secours(question, passages, actions), "actions": actions[:2], "sources": sources,
+        return {"reponse": _secours(passages, gemini_indisponible=True), "actions": actions[:2], "sources": sources,
                 "mode": "secours", "erreur": f"{type(e).__name__}: {str(e)[:150]}"}

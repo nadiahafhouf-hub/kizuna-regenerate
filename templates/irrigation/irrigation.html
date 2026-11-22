@@ -88,7 +88,7 @@
   {% if agent %}{% include "irrigation/_agent.html" %}{% endif %}
 
   <!-- Planning 7 jours -->
-  <section class="reveal mt-8 rounded-2xl bg-white p-4 shadow-soft ring-1 ring-sand-200 sm:p-6" style="animation-delay: 200ms">
+  <section data-chat-pump-schedule class="reveal mt-8 rounded-2xl bg-white p-4 shadow-soft ring-1 ring-sand-200 sm:p-6" style="animation-delay: 200ms">
     <div class="flex flex-wrap items-start justify-between gap-3">
       {% include "components/section_header.html" with title=T.irrigation.week_title hint=T.irrigation.chart_hint icon="calendar-days" tone="water" %}
       <div class="flex flex-wrap items-center gap-3 text-xs font-medium text-muted">
@@ -100,7 +100,7 @@
     <div class="-mx-4 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6">
       <div class="grid min-w-[980px] grid-cols-7 gap-3">
         {% for d in plan.days %}
-        <button type="button" @click="select({{ d.index }})"
+        <button type="button" data-chat-pump-date="{{ d.date }}" @click="select({{ d.index }})"
                 class="group flex flex-col rounded-2xl border p-3 text-left transition hover:-translate-y-0.5 hover:shadow-soft focus:outline-none focus-visible:ring-4 focus-visible:ring-water-100"
                 :class="selected === {{ d.index }} ? 'border-water-400 bg-water-50/60 ring-2 ring-water-400/40' : 'border-sand-200 bg-sand-50/50'">
           <div class="flex items-baseline justify-between">
@@ -138,10 +138,13 @@
 
           <!-- Créneau pompage solaire (midi) -->
           {% if d.pump.hours > 0 %}
-          <div class="mt-2 rounded-xl bg-sun-300 px-2.5 py-2 text-ink">
+          <div {% if d.pump.pending_slots %}data-chat-pump-slot{% endif %} class="mt-2 rounded-xl bg-sun-300 px-2.5 py-2 text-ink">
             <p class="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-sun-700"><i data-lucide="sun" class="h-3.5 w-3.5"></i>{{ d.pump.start }}–{{ d.pump.end }}</p>
             <p class="mt-0.5 text-sm font-bold tabular-nums">{{ d.pump.volume_m3|floatformat:1 }} m³ · {{ d.pump.kwh|floatformat:1 }} kWh</p>
             <p class="text-[11px] text-ink/70">{{ T.irrigation.pumping_slot }}</p>
+            {% if d.pump.pending_slots %}<div class="chat-pump-times mt-1 flex-wrap gap-1" aria-label="Créneaux prévus">
+              {% for h in d.pump.pending_slots %}<span class="rounded bg-white px-1.5 py-0.5 text-xs font-bold tabular-nums text-sun-700">{{ h }}</span>{% endfor %}
+            </div>{% endif %}
           </div>
           {% endif %}
           <p class="mt-auto pt-2 text-[11px] text-muted"><i data-lucide="zap" class="mr-0.5 inline h-3 w-3 text-sun-700"></i>{{ d.solar_kwh }} kWh</p>

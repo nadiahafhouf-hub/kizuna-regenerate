@@ -3,11 +3,11 @@
 Zones colorees, symbole de chaque plante, lignes de goutte-a-goutte, UNE vanne par zone,
 reservoir, pompe, panneaux solaires.
 """
-import matplotlib
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
-from matplotlib.patches import Circle, FancyBboxPatch, Rectangle  # noqa: E402
+from matplotlib.backends.backend_agg import FigureCanvasAgg
+from matplotlib.collections import LineCollection
+from matplotlib.figure import Figure
+from matplotlib.lines import Line2D
+from matplotlib.patches import Circle, FancyBboxPatch, Rectangle
 
 FOND = {"ROUGE": "#f4c7c3", "ORANGE": "#fde0b5", "VERT": "#d4edc9"}
 VIF = {"ROUGE": "#c0392b", "ORANGE": "#e67e22", "VERT": "#27ae60"}
@@ -24,6 +24,7 @@ def _source(c):
     return (c.get("detail_source") or c["source"]).replace("table de secours", "fallback table").replace("region la plus proche", "nearest region")
 TUYAU = "#1f4e9c"
 GOUTTE = "#3a7bd5"
+MAX_LIGNES_PAR_CASE = 5
 
 
 def dessiner_plan(reco, sortie, **_):
@@ -35,7 +36,8 @@ def dessiner_plan(reco, sortie, **_):
     H = reco.get("longueur_m") or nlig * t
     zones = {z["id"]: z for z in reco["zones"]}
 
-    fig = plt.figure(figsize=(16, 9.5))
+    fig = Figure(figsize=(16, 9.5))
+    FigureCanvasAgg(fig)
     ax = fig.add_axes([0.03, 0.12, 0.55, 0.80])
     ax.set_xlim(-10, L + 1.5)
     ax.set_ylim(-4, H + 1.5)
@@ -43,6 +45,8 @@ def dessiner_plan(reco, sortie, **_):
     ax.axis("off")
 
     # --- cases : fond, plantes, goutte-a-goutte ---
+    lignes_goutte = []
+    points = {zid: ([], []) for zid in zones}
     for c in cases:
         z = zones.get(c["zone_id"])
         x0, y0 = c["col"] * t, H - (c["ligne"] + 1) * t
@@ -50,15 +54,15 @@ def dessiner_plan(reco, sortie, **_):
         ax.text(x0 + t - 0.3, y0 + t - 0.4, c["id"], ha="right", va="top", fontsize=9, color="#333")
         if not z:
             continue
-        n = max(1, int(t // z["espacement_m"]))
-        petit = n >= 6
+        # Le plan reste lisible, le nombre réel figure dans la légende.
+        n = min(MAX_LIGNES_PAR_CASE, max(1, int(t // z["espacement_m"])))
+        xs, ys = points[z["id"]]
         for i in range(n):
             y = y0 + t / n * (i + 0.5)
-            ax.plot([x0 + 0.8, x0 + t - 0.3], [y, y], color=GOUTTE, lw=0.8, zorder=2)
+            lignes_goutte.append([(x0 + 0.8, y), (x0 + t - 0.3, y)])
             for j in range(n):
-                taille = 22 if petit else (260 if z["marqueur"] == "*" else 80)
-                ax.scatter(x0 + 0.5 + (t - 0.5) / n * (j + 0.5), y, marker=z["marqueur"], s=taille,
-                           color=z["couleur_plante"], edgecolor="white", linewidth=0.4, zorder=3)
+                xs.append(x0 + 0.5 + (t - 0.5) / n * (j + 0.5))
+                ys.append(y)
         # rampe d'alimentation de la case (bord ouest), couleur de la vanne de sa zone
         ax.add_patch(Rectangle((x0 + 0.1, y0 + 0.2), 0.5, t - 0.4, fc=VIF[z["couleur"]], ec="none", zorder=2))
         ax.text(x0 + 0.9, y0 + t / 2, f"V-{z['id']}", rotation=90, va="center", fontsize=7,
@@ -66,6 +70,13 @@ def dessiner_plan(reco, sortie, **_):
                 bbox=dict(fc="white", ec="none", alpha=0.8, pad=0.4))
         if z["collecte_drainage"]:
             ax.plot([x0 + 0.8, x0 + t - 0.2], [y0 + 0.7, y0 + 0.7], color="#6b3e1f", lw=3, ls="--", zorder=4)
+
+    ax.add_collection(LineCollection(lignes_goutte, colors=GOUTTE, linewidths=0.8, zorder=2))
+    for zid, (xs, ys) in points.items():
+        z = zones[zid]
+        taille = min(80, 7200 / max(1, len(cases)))
+        ax.scatter(xs, ys, marker=z["marqueur"], s=taille, color=z["couleur_plante"],
+                   edgecolor="white", linewidth=0.4, zorder=3)
 
     # --- conduite principale + une vanne par zone (nourrice sur la conduite) ---
     xm = -1.5
@@ -104,10 +115,10 @@ def dessiner_plan(reco, sortie, **_):
     for z in reco["zones"]:
         lab = z["culture"] + ("" if z["alimentaire"] else "  (NON-FOOD)")
         if lab not in [h.get_label() for h in hdl]:
-            hdl.append(plt.Line2D([], [], marker=z["marqueur"], color=z["couleur_plante"], ls="", ms=9, label=lab))
-    hdl += [plt.Line2D([], [], color=GOUTTE, lw=1.5, label="Drip line"),
-            plt.Line2D([], [], marker="s", color="#222", ls="", ms=7, label="Valve (1 per zone)"),
-            plt.Line2D([], [], color="#6b3e1f", lw=2.5, ls="--", label="Drainage collection (red zone)")]
+            hdl.append(Line2D([], [], marker=z["marqueur"], color=z["couleur_plante"], ls="", ms=9, label=lab))
+    hdl += [Line2D([], [], color=GOUTTE, lw=1.5, label="Drip line"),
+            Line2D([], [], marker="s", color="#222", ls="", ms=7, label="Valve (1 per zone)"),
+            Line2D([], [], color="#6b3e1f", lw=2.5, ls="--", label="Drainage collection (red zone)")]
     ax.legend(handles=hdl, loc="upper left", bbox_to_anchor=(0.0, -0.02), ncol=2, fontsize=8, frameon=False)
 
     # --- panneau de droite ---
@@ -154,5 +165,4 @@ def dessiner_plan(reco, sortie, **_):
     ax2.text(0, -0.05, "Simulated data - hackathon prototype - estimates, not measurements",
              fontsize=8, style="italic", color="#888")
     fig.savefig(sortie, dpi=110)
-    plt.close(fig)
     return dict(png=str(sortie), pdf=None, fond="aucun")

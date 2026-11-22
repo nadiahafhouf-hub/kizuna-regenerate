@@ -7,6 +7,8 @@ from django.views.decorators.http import require_POST
 
 from services import demo_data
 
+from .chat_conditions import conditions_du_jour
+from .chat_controls import STEP_URLS, command
 from .strings import get_strings
 
 
@@ -19,15 +21,6 @@ def sans_diagnostic(request, pid):
     from django.contrib import messages
     messages.info(request, get_strings()["app"]["need_diagnostic"].format(pid=pid), extra_tags="diagnostic")
     return redirect("diagnostics:plan", pid)
-
-STEP_URLS = {
-    "diagnostic": "diagnostics:index",
-    "crops": "advisor:index",
-    "irrigation": "irrigation:index",
-    "solar": "energy:index",
-    "passport": "passport:index",
-}
-
 
 def journey_context(pid, step) -> dict:
     """Contexte commun aux 4 pages du parcours : parcelle, stepper, sélecteur de parcelle."""
@@ -90,13 +83,21 @@ def chat(request):
         data = json.loads(request.body or b"{}")
     except ValueError:
         data = {}
+    if not isinstance(data, dict):
+        data = {}
     q = str(data.get("q", ""))[:500]
-    pid = data.get("pid") or None
+    pid = data.get("pid") if isinstance(data.get("pid"), str) else None
+    control = command(q, pid, get_strings(request.session.get("lang", "en")), voice=data.get("voice") is True)
+    if control:
+        return JsonResponse(control)
     if pid:
         try:
             demo_data.land_profile(pid)
         except Exception:   # parcelle inconnue ou sans diagnostic : connaissances générales seulement
             pid = None
+    conditions = conditions_du_jour(q, pid)
+    if conditions:
+        return JsonResponse(conditions)
     try:
         from services.rag.assistant import repondre
         r = repondre(q, pid, data.get("historique") if isinstance(data.get("historique"), list) else None)

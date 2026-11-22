@@ -1,51 +1,81 @@
+{% load ui %}
 {{ chat_config|json_script:"chat-config" }}
-<div x-data="chatbot('{% url 'core:chat' %}')" @keydown.escape.window="open = false">
+<script type="importmap">{"imports":{"three":"{% vstatic 'js/vendor/three/three.module.min.js' %}"}}</script>
+<div x-data="chatbot('{% url 'core:chat' %}')" @keydown.escape.window="if (open) close()"
+     @resize.window="placeFennec()" @pagehide.window="stopListening(); stopSpeech()">
   <!-- Bouton flottant -->
-  <button type="button" @click="toggle()" x-show="!open" x-transition
-          class="fixed bottom-5 right-5 z-[1300] flex items-center gap-2 rounded-full bg-olive-700 py-3 pl-3.5 pr-4 font-semibold text-white shadow-lift ring-4 ring-white/70 transition hover:bg-olive-800 focus:outline-none focus-visible:ring-sun-300"
-          aria-label="{{ T.chat.open }}">
-    <span class="relative grid h-7 w-7 place-items-center rounded-full bg-white/15">
-      <i data-lucide="message-circle-more" class="h-[18px] w-[18px]"></i>
-      <span class="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-sun-300 ring-2 ring-olive-700"></span>
-    </span>
-    <span class="hidden text-sm sm:inline">{{ T.chat.open }}</span>
+  <button type="button" x-ref="launcher" @click="toggle()" x-show="!open"
+          class="chat-fennec-launcher rounded-2xl font-semibold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-sun-300"
+          aria-label="{{ T.chat.open }}" aria-controls="chat-panel" :aria-expanded="open">
+    <span class="chat-fennec-hitbox" aria-hidden="true"
+          @pointerenter="setFennecHover($event.pointerType === 'mouse')" @pointerleave="setFennecHover(false)"></span>
+    <span class="rounded-full bg-olive-700 px-3 py-1.5 text-sm shadow-lift ring-2 ring-white/70 hover:bg-olive-800">{{ T.chat.open }}</span>
   </button>
 
+  <div class="chat-fennec-floating" x-ref="fennec" aria-hidden="true" :data-thinking="typing"
+       :data-listening="micActive" :data-emotion="emotion"
+       data-module="{% vstatic 'js/fennec.js' %}" data-model="{% vstatic 'fennec.glb' %}">
+    <img class="chat-fennec-poster" src="{% vstatic 'fennec-poster.webp' %}" width="430" height="430" alt="">
+  </div>
+
   <!-- Fond -->
-  <div x-show="open" x-transition.opacity @click="open = false" x-cloak
+  <div x-show="open && !guided" x-transition.opacity @click="close()" x-cloak
        class="fixed inset-0 z-[1300] bg-ink/20 backdrop-blur-[1px] sm:bg-ink/10"></div>
 
   <!-- Panneau -->
-  <aside x-show="open" x-cloak
-         x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
-         x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
-         class="fixed inset-y-0 right-0 z-[1400] flex w-full flex-col bg-sand-50 shadow-lift sm:w-[420px]"
+  <aside id="chat-panel" x-show="open" x-cloak x-transition.opacity.duration.220ms tabindex="-1" x-ref="panel"
+         :class="{ 'chat-panel-guided': guided }"
+         class="chat-panel fixed inset-y-0 right-0 z-[1400] flex w-full flex-col overflow-hidden shadow-lift sm:w-[440px]"
          role="dialog" aria-label="{{ T.chat.title }}">
-    <div class="flex items-center gap-3 border-b border-sand-200 bg-white px-5 py-4">
-      <span class="grid h-10 w-10 place-items-center rounded-xl bg-olive-100 text-olive-700"><i data-lucide="leaf" class="h-5 w-5"></i></span>
-      <div class="min-w-0 flex-1">
-        <p class="font-semibold">{{ T.chat.title }}</p>
-        <p class="truncate text-xs text-muted">{{ T.chat.subtitle }}</p>
+    <header class="chat-avatar-header border-b border-sand-200">
+      <div class="min-w-0">
+        <h2 class="text-lg font-bold leading-tight tracking-tight text-olive-900">{{ T.chat.title }}</h2>
+        <p class="mt-1 text-xs leading-snug text-muted" role="status"
+           x-text="micActive ? 'Je vous écoute…' : typing ? UI.chat.thinking : UI.chat.subtitle">{{ T.chat.subtitle }}</p>
+        <button type="button" x-show="speechAvailable" @click="toggleVoice()" :aria-pressed="voiceEnabled"
+                class="chat-voice-button mt-3 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-olive-800 ring-1 ring-olive-200 hover:bg-olive-50">
+          <i data-lucide="volume-2" class="h-4 w-4" aria-hidden="true"></i>
+          <span x-text="voiceEnabled ? UI.chat.voice_stop : UI.chat.voice_start">{{ T.chat.voice_start }}</span>
+        </button>
+        <p x-show="voiceError" x-text="UI.chat.voice_unavailable" class="mt-1 text-xs text-muted" role="status"></p>
       </div>
-      <button type="button" @click="open = false" class="rounded-lg p-2 text-muted hover:bg-sand-100 hover:text-ink" aria-label="{{ T.app.close }}">
+      <div class="chat-fennec-dock" x-ref="dock" aria-hidden="true"></div>
+      <button type="button" @click="close()" class="chat-close rounded-full p-2 text-muted hover:bg-olive-50 hover:text-ink" aria-label="{{ T.app.close }}">
         <i data-lucide="x" class="h-5 w-5"></i>
       </button>
-    </div>
+    </header>
 
-    <div x-ref="scroll" class="flex-1 space-y-3 overflow-y-auto px-5 py-5">
+    <div x-ref="scroll" class="chat-log min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5" role="log" aria-label="{{ T.chat.title }}">
       <template x-for="(m, i) in messages" :key="i">
         <div class="flex flex-col" :class="m.role === 'user' ? 'items-end' : 'items-start'">
-          <div dir="auto" class="max-w-[85%] whitespace-pre-line rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm"
-               :class="m.role === 'user' ? 'rounded-br-md bg-olive-700 text-white' : 'rounded-bl-md bg-white text-ink ring-1 ring-sand-200'"
+          <div dir="auto" class="chat-message max-w-[91%] whitespace-pre-line rounded-2xl px-4 py-3 text-sm leading-relaxed"
+               :class="m.role === 'user' ? 'rounded-br-md bg-olive-700 text-white' : 'rounded-bl-md border border-sand-200 bg-white text-ink shadow-sm'"
                x-text="m.text"></div>
           <!-- actions recommandées (liens vers les pages de l'application) -->
           <div x-show="m.actions && m.actions.length" class="mt-2 flex max-w-[85%] flex-wrap gap-1.5">
             <template x-for="a in (m.actions || [])" :key="a.id">
-              <a :href="a.url" class="inline-flex items-center gap-1 rounded-full bg-olive-700 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-olive-800">
-                <span x-text="a.label"></span><span aria-hidden="true">→</span>
-              </a>
+              <span>
+                <template x-if="a.kind === 'simulate'">
+                  <button type="button" @click="simulate(m, a)" :disabled="typing || a.used" x-text="a.label"
+                          class="rounded-full bg-olive-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-olive-800 disabled:opacity-40"></button>
+                </template>
+                <template x-if="a.kind === 'parcel'">
+                  <button type="button" @click="chooseParcel(a)" :disabled="typing" x-text="a.label"
+                          class="rounded-full border border-olive-200 bg-white px-3 py-1.5 text-left text-xs font-semibold text-olive-800 hover:bg-olive-50 disabled:opacity-40"></button>
+                </template>
+                <template x-if="a.url && a.kind !== 'simulate'">
+                  <a :href="a.url" @click="followGuide($event, a, m)" class="inline-flex items-center gap-1 rounded-full bg-olive-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-olive-800">
+                    <span x-text="a.label"></span><span aria-hidden="true">→</span>
+                  </a>
+                </template>
+              </span>
             </template>
           </div>
+          <template x-if="m.guide && speechAvailable">
+            <button type="button" @click="readGuide(m)" class="mt-2 rounded-full px-2 py-1 text-xs font-semibold text-olive-800 hover:bg-olive-100">
+              Lire la réponse
+            </button>
+          </template>
           <details x-show="m.sources && m.sources.length" class="mt-1 max-w-[85%] text-[11px] text-muted">
             <summary class="cursor-pointer">{{ T.chat.sources }} (<span x-text="(m.sources || []).length"></span>)<span x-show="m.mode === 'gemini'"> · Gemini</span></summary>
             <ul class="mt-1 space-y-0.5">
@@ -56,29 +86,40 @@
           </details>
         </div>
       </template>
-      <div x-show="typing" class="flex justify-start">
+      <div x-show="typing" class="flex justify-start" aria-hidden="true">
         <div class="flex gap-1 rounded-2xl rounded-bl-md bg-white px-4 py-3 ring-1 ring-sand-200">
           <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
         </div>
       </div>
       <div x-show="messages.length <= 1" class="pt-2">
-        <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">{{ T.chat.suggestions }}</p>
+        <p class="mb-2 text-xs font-semibold text-muted">{{ T.chat.suggestions }}</p>
         <div class="flex flex-wrap gap-2">
           <template x-for="s in suggestions" :key="s">
             <button type="button" @click="send(s)" x-text="s"
-                    class="rounded-full bg-white px-3 py-1.5 text-left text-sm text-olive-800 ring-1 ring-olive-200 transition hover:bg-olive-50"></button>
+                    class="rounded-full border border-olive-200 bg-white px-3 py-1.5 text-left text-sm text-olive-800 hover:bg-olive-50"></button>
           </template>
         </div>
       </div>
     </div>
 
-    <form @submit.prevent="send()" class="flex items-center gap-2 border-t border-sand-200 bg-white p-3">
-      <input x-model="input" x-ref="input" type="text" dir="auto" placeholder="{{ T.chat.placeholder }}" autocomplete="off"
-             class="min-w-0 flex-1 rounded-xl border-0 bg-sand-100 px-4 py-2.5 text-sm ring-1 ring-sand-200 placeholder:text-muted focus:bg-white focus:ring-2 focus:ring-olive-600">
-      <button type="submit" :disabled="!input.trim() || typing"
-              class="grid h-10 w-10 place-items-center rounded-xl bg-olive-700 text-white transition hover:bg-olive-800 disabled:opacity-40" aria-label="{{ T.chat.send }}">
-        <i data-lucide="send-horizontal" class="h-[18px] w-[18px]"></i>
-      </button>
+    <form @submit.prevent="send()" class="chat-composer shrink-0 border-t border-sand-200 bg-white px-4 pt-3">
+      <p x-show="micStatus" x-text="micStatus" role="status" class="mb-2 text-xs text-muted"></p>
+      <div class="chat-compose-field flex items-center gap-1 rounded-2xl border border-sand-200 bg-sand-50 p-1.5 focus-within:border-olive-600">
+        <input x-model="input" x-ref="input" type="text" dir="auto" placeholder="{{ T.chat.placeholder }}"
+               aria-label="{{ T.chat.placeholder }}" autocomplete="off"
+               class="min-w-0 flex-1 bg-transparent py-2 pl-2.5 pr-1 text-base outline-none placeholder:text-muted sm:text-sm">
+        <button type="button" x-show="micAvailable" @click="toggleMicrophone()" :disabled="typing"
+                :aria-pressed="micActive" aria-label="Microphone"
+                :title="micActive ? 'Arrêter l’écoute' : 'Parler au fennec'"
+                class="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-olive-800 hover:bg-olive-100 disabled:opacity-40"
+                :class="micActive && 'bg-olive-100 ring-2 ring-olive-600'">
+          <i data-lucide="mic" class="h-[18px] w-[18px]" aria-hidden="true"></i>
+        </button>
+        <button type="submit" :disabled="!input.trim() || typing"
+                class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-olive-700 text-white transition hover:bg-olive-800 disabled:opacity-40" aria-label="{{ T.chat.send }}">
+          <i data-lucide="send-horizontal" class="h-[18px] w-[18px]"></i>
+        </button>
+      </div>
     </form>
   </aside>
 </div>

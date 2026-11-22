@@ -159,13 +159,13 @@ def ce_eau_irrigation(lp):
     return CE_EAU_DS_M, "valeur par defaut"
 
 
-def recommander_cultures(land_profile, climat=None, plantes=None, cache_dir=None):
+def recommander_cultures(land_profile, climat=None, plantes=None, cache_dir=None, cache_only=False):
     """Fonction principale (bloc 2, terre nue). Renvoie le JSON 'recommandation'."""
     lp = land_profile
     plantes = plantes or charger_plantes()
     if climat is None:
         o = lp.get("origine") or {}
-        climat = obtenir_climat(o.get("lat"), o.get("lon"), lp.get("region"), cache_dir=cache_dir)
+        climat = obtenir_climat(o.get("lat"), o.get("lon"), lp.get("region"), cache_dir=cache_dir, cache_only=cache_only)
     tex = texture_info(lp.get("texture_sol"))
     t = lp.get("taille_case_m", 10)
     pluie_jour_moy = climat["pluie_mm"] / 365

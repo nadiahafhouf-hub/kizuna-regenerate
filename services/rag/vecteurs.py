@@ -36,7 +36,8 @@ def _local(textes):
 def _gemini(textes, cle, modele, tache):
     from google import genai
     from google.genai import types
-    client = genai.Client(api_key=cle)
+    client = genai.Client(api_key=cle, http_options=types.HttpOptions(
+        timeout=12000, retry_options=types.HttpRetryOptions(attempts=1)))
     try:
         out = []
         for i in range(0, len(textes), 50):

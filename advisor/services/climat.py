@@ -119,7 +119,7 @@ def climat_de_secours(lat, lon, region):
     return c
 
 
-def obtenir_climat(lat, lon, region, cache_dir=None, timeout=8):
+def obtenir_climat(lat, lon, region, cache_dir=None, timeout=8, cache_only=False):
     """Renvoie pluie_mm (an), tmin_hiver, tmax_ete, et0_mm_jour + source."""
     cle = f"climat_{float(lat):.2f}_{float(lon):.2f}_{datetime.date.today().year - 1}.json"
     chemin = Path(cache_dir) / cle if cache_dir else None
@@ -134,7 +134,7 @@ def obtenir_climat(lat, lon, region, cache_dir=None, timeout=8):
         except (ValueError, OSError):
             pass
     c = None
-    if not hors_ligne():
+    if not cache_only and not hors_ligne():
         try:
             c = climat_open_meteo(lat, lon, timeout=timeout)
             c.update(source=SOURCE_API, detail_source=f"{SOURCE_API} (archive {c['annee']})")
@@ -146,7 +146,7 @@ def obtenir_climat(lat, lon, region, cache_dir=None, timeout=8):
                 c = None
     if c is None:
         c = climat_de_secours(lat, lon, region)
-    if chemin and not hors_ligne():   # hors ligne (tests) : on ne pollue pas le cache
+    if chemin and not cache_only and not hors_ligne():
         try:
             chemin.parent.mkdir(parents=True, exist_ok=True)
             chemin.write_text(json.dumps(dict(c, _t=time.time()), ensure_ascii=False), encoding="utf-8")

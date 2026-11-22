@@ -41,7 +41,7 @@ def _docs_diagnostic(pid, docs, faits):
 
 def _docs_cultures(pid, docs, faits):
     from advisor.logic import recommandation
-    r = recommandation(pid)
+    r = recommandation(pid, cache_only=True)
     faits["cultures"] = [{"zone": z["id"], "culture": z["culture"], "nb_plants": z.get("nb_plants"),
                           "eau_l_jour": z.get("besoin_litres_jour")} for z in r["zones"]]
     for z in r["zones"]:

@@ -89,6 +89,22 @@
   });
   map.fitBounds(data.bounds, { padding: [30, 30] });
 
+  let chatZones;
+  document.addEventListener("chat-focus", ({ detail }) => {
+    chatZones?.remove();
+    chatZones = null;
+    map.invalidateSize({ pan: false });
+    if (detail !== "red-zone") return;
+    document.querySelector('.layer-btn[data-layer="zones"]')?.click();
+    chatZones = L.geoJSON(data.geojson, {
+      filter: (feature) => feature.properties.couleur === "ROUGE",
+      interactive: false,
+      style: { color: "#7d251d", weight: 4, fillColor: "#df5745", fillOpacity: .32 },
+    }).addTo(map);
+    const bounds = chatZones.getBounds();
+    if (bounds.isValid()) map.fitBounds(bounds, { padding: [40, 40], maxZoom: 20, animate: false });
+  });
+
   // Sélecteur de calque satellite
   const legend = document.getElementById("sat-legend");
   document.querySelectorAll(".layer-btn").forEach((btn) => btn.addEventListener("click", () => {

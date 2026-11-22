@@ -35,10 +35,10 @@ def _meta():
         return json.load(f)
 
 
-def recommandation(pid):
+def recommandation(pid, cache_only=False):
     """JSON complet de la recommandation (terre nue) pour une parcelle."""
     from services import demo_data   # import tardif : demo_data importe advisor.logic
-    return recommander_cultures(demo_data.land_profile(pid), cache_dir=CACHE_DIR)
+    return recommander_cultures(demo_data.land_profile(pid), cache_dir=CACHE_DIR, cache_only=cache_only)
 
 
 def _besoin_eau(kc):

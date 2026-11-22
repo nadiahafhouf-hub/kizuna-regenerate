@@ -1,6 +1,7 @@
 """Tests du chatbot (bloc 4) : Qdrant en mémoire, embeddings locaux, Gemini simulé. Hors ligne."""
 import json
 import os
+from unittest.mock import patch
 
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -85,3 +86,99 @@ class ChatbotTests(TestCase):
         r = self.client.get(reverse("irrigation:index", args=[PID]))
         self.assertContains(r, f'"pid": "{PID}"')
         self.assertContains(r, "Kifech ns9i lyoum?")
+        self.assertContains(r, 'class="chat-fennec-dock"')
+        self.assertContains(r, "fennec.glb")
+        self.assertContains(r, "fennec-poster.webp")
+        self.assertContains(r, "Enable voice")
+        self.assertNotContains(r, "Quick access")
+
+    @patch("services.rag.assistant.repondre")
+    def test_commande_de_navigation_locale(self, repondre):
+        r = self.client.post(reverse("core:chat"), {"q": "Affiche l’irrigation !", "pid": PID},
+                             content_type="application/json").json()
+        self.assertEqual(r["mode"], "control")
+        self.assertEqual(r["actions"][0]["url"], reverse("irrigation:index", args=[PID]))
+        repondre.assert_not_called()
+
+    def test_commande_sans_parcelle_propose_de_choisir_une_parcelle(self):
+        for pid in (None, "INCONNUE"):
+            r = self.client.post(reverse("core:chat"), {"q": "Ouvre les cultures", "pid": pid},
+                                 content_type="application/json").json()
+            self.assertIn("Pour quelle parcelle", r["reply"])
+            self.assertTrue(any(a["kind"] == "parcel" and a["id"] == PID and a["question"] == "Ouvre les cultures"
+                                for a in r["actions"]))
+            self.assertIsNone(r["navigate"])
+
+    def test_navigation_vocale_vers_une_parcelle_nommee_depuis_l_accueil(self):
+        url = reverse("core:chat")
+        for question, route in (
+            ("Ouvre la parcelle G A B zéro zéro un", "diagnostics:index"),
+            ("Peux-tu ouvrir l’irrigation de la parcelle GAB 001 s’il te plaît ?", "irrigation:index"),
+        ):
+            with self.subTest(question=question):
+                reply = self.client.post(url, {"q": question, "voice": True}, content_type="application/json").json()
+                self.assertEqual(reply["navigate"], reverse(route, args=[PID]))
+                self.assertTrue(reply["reply"].startswith("J’ouvre"))
+        reply = self.client.post(url, {"q": "Ouvre la parcelle XYZ 001", "voice": True},
+                                 content_type="application/json").json()
+        self.assertIsNone(reply["navigate"])
+
+    def test_simulation_exige_un_post_distinct_et_un_plan_actif(self):
+        from irrigation.logic import plan_actif
+
+        plan = plan_actif(PID)
+        horloge = plan.horloge
+        r = self.client.post(reverse("core:chat"), {"q": "Simule la journée suivante", "pid": PID, "voice": True},
+                             content_type="application/json").json()
+        action = r["actions"][0]
+        self.assertEqual(action["kind"], "simulate")
+        self.assertIsNone(r["navigate"])
+        self.assertIn("confirme", r["reply"])
+        plan.refresh_from_db()
+        self.assertEqual(plan.horloge, horloge)
+        self.assertEqual(self.client.get(action["url"]).status_code, 405)
+        self.assertEqual(self.client.post(action["url"]).status_code, 400)
+        for nom in ("valider", "automatique"):
+            self.client.post(reverse("irrigation:action", args=[PID, nom]))
+        response = self.client.post(action["url"]).json()
+        self.assertTrue(response["ok"])
+        self.assertEqual(response["etat"]["jours_ecoules"], 1)
+
+    @patch("services.rag.assistant.repondre")
+    @patch("irrigation.services.meteo.prevision_7_jours")
+    def test_temperature_et_pompage_repondent_sans_gemini(self, meteo, repondre):
+        import datetime
+
+        from django.utils import timezone
+        from irrigation.logic import parcelle_db
+        from irrigation.models import IrrigationEvent, IrrigationPlan
+
+        today = timezone.localdate()
+        plan = IrrigationPlan.objects.create(parcel=parcelle_db(PID), date_debut=today,
+                                             statut=IrrigationPlan.Statut.AUTO,
+                                             planning={"jours": [{"date": today.isoformat()}]})
+        IrrigationEvent.objects.create(plan=plan, date=today, heure=datetime.time(11), type="POMPAGE",
+                                       statut="PREVU", volume_l=500)
+        meteo.return_value = {"jours": [{"date": today.isoformat(), "tmin_c": 19, "tmax_c": 23}]}
+        reply = self.client.post(reverse("core:chat"), {"q": "chnia l temperature lioum oul pmpe wakteh mch tekhdem",
+                                                       "pid": PID}, content_type="application/json").json()
+        self.assertEqual(reply["mode"], "local")
+        self.assertIn("19 à 23 °C", reply["reply"])
+        self.assertIn("11:00", reply["reply"])
+        repondre.assert_not_called()
+
+        guide = self.client.post(reverse("core:chat"), {"q": "Montre-moi quand la pompe tourne", "pid": PID, "voice": True},
+                                 content_type="application/json").json()
+        self.assertEqual(guide["navigate"], f"{reverse('irrigation:index', args=[PID])}?chat_focus=pump&date={today}")
+        self.assertIn("11:00", guide["reply"])
+        plan.programme.update(statut="ANNULE")
+        guide = self.client.post(reverse("core:chat"), {"q": "Montre-moi quand la pompe tourne", "pid": PID},
+                                 content_type="application/json").json()
+        self.assertEqual(guide["reaction"], "concern")
+        self.assertNotIn("11:00", guide["reply"])
+
+    def test_le_guide_ouvre_la_carte_des_zones_rouges(self):
+        reply = self.client.post(reverse("core:chat"), {"q": "Où est la zone rouge ?", "pid": PID},
+                                 content_type="application/json").json()
+        self.assertEqual(reply["navigate"], reverse("diagnostics:index", args=[PID]) + "?chat_focus=red-zone")
+        self.assertIn("Z1", reply["reply"])
