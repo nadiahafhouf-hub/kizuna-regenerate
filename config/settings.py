@@ -55,8 +55,9 @@ VOIX_LAHGTNA_DELAI_S = int(os.getenv("VOIX_LAHGTNA_DELAI_S", "45"))
 HF_TOKEN = os.getenv("HF_TOKEN", "")
 VOIX_REFERENCE = os.getenv("VOIX_REFERENCE", "")
 VOIX_REFERENCE_TEXTE = os.getenv("VOIX_REFERENCE_TEXTE", "")
-# Texte du chatbot : « arabizi » (tounsi en lettres latines) ou « meme » (même écriture que l'agriculteur)
-CHAT_ECRITURE = os.getenv("CHAT_ECRITURE", "arabizi")
+# Texte du chatbot : « arabe » (derja en lettres arabes), « arabizi » (tounsi en lettres latines)
+# ou « meme » (même écriture que l'agriculteur)
+CHAT_ECRITURE = os.getenv("CHAT_ECRITURE", "arabe")
 # Écoute gratuite hors ligne : Whisper entraîné sur le tounsi (faster-whisper). Identifiant Hugging Face
 # (téléchargé une fois, ~250 Mo) ou dossier local ; vide = désactivé.
 WHISPER_DERJA_MODEL = os.getenv("WHISPER_DERJA_MODEL", "TheBiggyBang/whisper-small-tunisian-derja-ct2")

@@ -76,7 +76,7 @@ def config():
             # modèles de secours (offre gratuite saturée) et modèle rapide pour la voix
             "modeles_secours": getattr(settings, "GEMINI_MODELES_SECOURS", ["gemini-3.5-flash", "gemini-3.1-flash-lite"]),
             "modele_voix": getattr(settings, "GEMINI_MODEL_VOIX", "gemini-3.5-flash"),
-            "ecriture": getattr(settings, "CHAT_ECRITURE", "arabizi"),
+            "ecriture": getattr(settings, "CHAT_ECRITURE", "arabe"),
             "modele_embedding": getattr(settings, "GEMINI_EMBED_MODEL", "gemini-embedding-001"),
             "url": getattr(settings, "QDRANT_URL", "") or None,
             "qdrant_cle": getattr(settings, "QDRANT_API_KEY", ""),
@@ -206,11 +206,13 @@ def vers_lettres_arabes(texte, cfg=None, appel=None):
         return texte
 
 
-def _secours(passages, gemini_indisponible=False):
+def _secours(passages, gemini_indisponible=False, ecriture="arabe"):
     """Sans Gemini : on montre les passages les plus proches (texte en français/derja simple)."""
+    arabe = ecriture == "arabe"
     if not passages:
-        return "Ma l9itech ma3louma 3la so2alek. Jarreb ektbou b tari9a o5ra, walla chouf les pages mta3 el parcelle."
-    lignes = ["Hedha elli l9itou f el ma3loumet mta3ek :"]
+        return ("ما لقيتش معلومة على سؤالك. جرب اكتبو بطريقة أخرى، ولا شوف الصفحات متاع البارسيل." if arabe else
+                "Ma l9itech ma3louma 3la so2alek. Jarreb ektbou b tari9a o5ra, walla chouf les pages mta3 el parcelle.")
+    lignes = ["هذا اللي لقيتو في المعلومات متاعك :" if arabe else "Hedha elli l9itou f el ma3loumet mta3ek :"]
     for p in passages[:3]:
         lignes.append(f"• {p['titre']} : {p['texte'][:260]}{'…' if len(p['texte']) > 260 else ''}")
     if gemini_indisponible:
@@ -225,6 +227,9 @@ CONSIGNE_VOIX = """MODE VOCAL : el fella7 y7ki bel sot w el jaweb bech yetsma3 b
 
 # Écriture du texte affiché : 3arbizi tounsi (lettres latines + 3, 7, 9...) ou même écriture que l'agriculteur
 ECRITURES = {
+    "arabe": "- Ekteb « reponse » DIMA bel derja tounsiya bel 7rouf el 3arbiya, kima « اليوم تسقي الزونة Z3 "
+             "مع الستة الصباح »، 7atta ken el fella7 kteb bel 3arbizi. Asma el zones (Z1, Z2) w el ar9am "
+             "(218 لتر، 06:00) yo93dou kima houma.",
     "arabizi": "- Ekteb « reponse » DIMA bel 3arbizi tounsi (7rouf latiniya w ar9am 3, 7, 9, 5, 8, 2), kima "
                "« Lyoum ns9i el zone Z3 m3a 6 sbe7 », 7atta ken el fella7 kteb bel 3arbi.",
     "meme": "- Ken el fella7 ykteb bel 7rouf el 3arbiya -> jaweb bel 7rouf el 3arbiya (derja).\n"
@@ -232,6 +237,8 @@ ECRITURES = {
 }
 FORMAT_JSON = '{"reponse": "...", "actions": ["id1", "id2"]}'
 FORMAT_JSON_VOIX = '{"reponse": "... (3arbizi)", "a_dire": "... (حروف عربية)", "question": "so2al el fella7 bel 3arbizi", "actions": ["id1"]}'
+FORMAT_JSON_VOIX_ARABE = ('{"reponse": "... (derja, حروف عربية)", "a_dire": "... (nafs el jaweb, el ar9am bel 7rouf)", '
+                          '"question": "سؤال الفلاح بالحروف العربية", "actions": ["id1"]}')
 
 
 def repondre(question, pid=None, historique=None, cfg=None, appel=None, voix=False):
@@ -243,14 +250,15 @@ def repondre(question, pid=None, historique=None, cfg=None, appel=None, voix=Fal
     sources = [{"titre": p["titre"], "source": p.get("source"), "url": p.get("url"), "score": p["score"]}
                for p in passages[:5]]
     if not cfg.get("cle") and appel is None:
-        return {"reponse": _secours(passages), "actions": actions[:2], "sources": sources,
+        return {"reponse": _secours(passages, ecriture=cfg.get("ecriture") or "arabe"), "actions": actions[:2], "sources": sources,
                 "mode": "secours"}
     contexte = "\n".join(f"[{i + 1}] ({p.get('source')}) {p['titre']} : {p['texte']}" for i, p in enumerate(passages))
     hist = "\n".join(f"{m.get('role')}: {str(m.get('text', ''))[:300]}" for m in (historique or [])[-6:])
-    ecriture = cfg.get("ecriture") or "arabizi"
+    ecriture = cfg.get("ecriture") if cfg.get("ecriture") in ECRITURES else "arabe"
     prompt = PROMPT.format(consigne_voix=CONSIGNE_VOIX if voix else "",
-                           consigne_ecriture=ECRITURES.get(ecriture, ECRITURES["arabizi"]),
-                           format_json=FORMAT_JSON_VOIX if voix else FORMAT_JSON,
+                           consigne_ecriture=ECRITURES[ecriture],
+                           format_json=(FORMAT_JSON_VOIX_ARABE if ecriture == "arabe" else FORMAT_JSON_VOIX)
+                           if voix else FORMAT_JSON,
                            glossaire=GLOSSAIRE_TOUNSI, parcelle=json.dumps(faits, ensure_ascii=False, default=str),
                            contexte=contexte or "(rien)", question=question, historique=hist or "(rien)",
                            actions="\n".join(f"- {a['id']} : {a['label']}" for a in actions) or "(aucune)")
@@ -263,10 +271,10 @@ def repondre(question, pid=None, historique=None, cfg=None, appel=None, voix=Fal
             raise ValueError("réponse vide")
         choisies = [par_id[i] for i in data.get("actions") or [] if i in par_id][:3]
         out = {"reponse": texte, "actions": choisies, "sources": sources, "mode": "gemini"}
-        if voix:   # texte à lire (lettres arabes) + question réécrite en 3arbizi pour l'affichage
+        if voix:   # texte à lire (lettres arabes) + question réécrite (même écriture) pour l'affichage
             out["a_dire"] = str(data.get("a_dire") or "").strip() or texte
             out["question"] = str(data.get("question") or "").strip()
         return out
     except Exception as e:   # noqa: BLE001
-        return {"reponse": _secours(passages, gemini_indisponible=True), "actions": actions[:2], "sources": sources,
+        return {"reponse": _secours(passages, gemini_indisponible=True, ecriture=cfg.get("ecriture") or "arabe"), "actions": actions[:2], "sources": sources,
                 "mode": "secours", "erreur": f"{type(e).__name__}: {str(e)[:150]}"}
