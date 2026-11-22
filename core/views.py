@@ -9,6 +9,17 @@ from services import demo_data
 
 from .strings import get_strings
 
+
+def sans_diagnostic(request, pid):
+    """Parcelle créée mais sol pas encore diagnostiqué : Crops, Irrigation et Passport ont besoin
+    du LandProfile du bloc 1. On renvoie vers le plan des capteurs (comme la page Diagnostic)."""
+    demo_data._record(pid)   # parcelle inconnue -> 404
+    if demo_data.has_profile(pid):
+        return None
+    from django.contrib import messages
+    messages.info(request, get_strings()["app"]["need_diagnostic"].format(pid=pid), extra_tags="diagnostic")
+    return redirect("diagnostics:plan", pid)
+
 STEP_URLS = {
     "diagnostic": "diagnostics:index",
     "crops": "advisor:index",

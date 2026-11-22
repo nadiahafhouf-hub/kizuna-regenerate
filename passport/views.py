@@ -4,7 +4,7 @@ from django.http import HttpResponse
 from django.shortcuts import render
 from django.urls import reverse
 
-from core.views import journey_context
+from core.views import journey_context, sans_diagnostic
 from services import demo_data
 from services.passport_generator import generate_passport_pdf, generate_qr_for_url
 
@@ -16,6 +16,8 @@ def _verify_url(request, passport_id):
 
 
 def index(request, pid):
+    if (r := sans_diagnostic(request, pid)):
+        return r
     ctx = journey_context(pid, "passport")
     pp = demo_data.passport(pid)
     verify_url = _verify_url(request, pp["id"])

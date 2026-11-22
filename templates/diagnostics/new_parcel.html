@@ -20,14 +20,28 @@
       <div>
         <p class="text-sm font-semibold">{{ T.newparcel.location }}</p>
         <p class="text-xs text-muted">{{ T.newparcel.location_hint }}</p>
+        <!-- 1) un lieu de Gabès (liste) -->
+        <label class="mt-3 block"><span class="text-xs font-medium">{{ T.newparcel.place }}</span>
+          <select x-model="lieu" @change="choisirLieu()" class="mt-1 w-full rounded-xl border-0 bg-sand-50 px-3 py-2.5 text-sm ring-1 ring-sand-200 focus:ring-2 focus:ring-olive-600">
+            <option value="">{{ T.newparcel.place_pick }}</option>
+            <template x-for="(p, i) in LIEUX" :key="i"><option :value="i" x-text="p.nom + ' · ' + UI.newparcel.place_kind[p.type]"></option></template>
+          </select></label>
+        <!-- 2) des coordonnées -->
+        <div class="mt-2 flex gap-2">
+          <input x-model="coords" @keydown.enter.prevent="allerCoords()" placeholder="33.8827, 10.0685" inputmode="decimal"
+                 class="min-w-0 flex-1 rounded-xl border-0 bg-sand-50 px-3 py-2 font-mono text-sm ring-1 ring-sand-200 focus:ring-2 focus:ring-olive-600">
+          <button type="button" @click="allerCoords()" class="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-olive-800 ring-1 ring-sand-200 hover:bg-sand-50">{{ T.newparcel.go }}</button>
+        </div>
+        <!-- 3) la carte (clic ou marqueur) / 4) le GPS -->
         <div class="mt-2 flex flex-wrap items-center gap-2">
-          <button type="button" @click="gps()" class="inline-flex items-center gap-1.5 rounded-lg bg-olive-700 px-3 py-2 text-xs font-semibold text-white hover:bg-olive-800">
+          <button type="button" @click="gps()" class="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-olive-800 ring-1 ring-sand-200 hover:bg-sand-50">
             <span :class="locating && 'animate-spin'"><i data-lucide="locate-fixed" class="h-3.5 w-3.5"></i></span>
             <span x-text="locating ? UI.newparcel.locating : UI.newparcel.use_gps"></span>
           </button>
-          <span class="font-mono text-xs text-muted" x-text="lat ? (lat.toFixed(5) + ', ' + lon.toFixed(5)) : '—'"></span>
+          <span class="font-mono text-xs text-muted" x-text="lat ? (lat.toFixed(5) + ', ' + lon.toFixed(5)) : UI.newparcel.no_place"></span>
         </div>
         <p x-show="gpsError" x-cloak class="mt-2 rounded-lg bg-sun-50 px-3 py-2 text-xs text-sun-700 ring-1 ring-sun-300/60" x-text="UI.newparcel.gps_denied"></p>
+        <p x-show="msg" x-cloak class="mt-2 rounded-lg bg-sun-50 px-3 py-2 text-xs text-sun-700 ring-1 ring-sun-300/60" x-text="msg"></p>
         <input type="hidden" name="lat" :value="lat"><input type="hidden" name="lon" :value="lon">
       </div>
 
@@ -101,7 +115,32 @@
       return {
         ha: ha0, forme: forme0, w: w0, l: l0, maxHa,
         lat: lat0 ? parseFloat(lat0) : null, lon: lon0 ? parseFloat(lon0) : null,
-        locating: false, gpsError: false,
+        locating: false, gpsError: false, lieu: "", coords: lat0 && lon0 ? lat0 + ", " + lon0 : "", msg: "",
+        // lieux agricoles de Gabès (état vérifié sur l'image Sentinel-2 du 2 novembre 2026)
+        LIEUX: [
+          { nom: "Chenini oasis (palm grove)", lat: 33.87089, lon: 10.07109, type: "planted" },
+          { nom: "Teboulbou oasis (palm grove)", lat: 33.84256, lon: 10.12586, type: "planted" },
+          { nom: "Ouedhref (irrigated plots)", lat: 33.99, lon: 9.97, type: "planted" },
+          { nom: "Gabès oasis, Chenini fields", lat: 33.88267, lon: 10.06846, type: "mixed" },
+          { nom: "Métouia plain", lat: 33.9605, lon: 10.001, type: "bare" },
+          { nom: "El Hamma east plain", lat: 33.885, lon: 9.83, type: "bare" },
+          { nom: "Kettana plain", lat: 33.735, lon: 10.19, type: "bare" },
+          { nom: "Mareth plain", lat: 33.63, lon: 10.26, type: "bare" },
+          { nom: "Chenini west slope", lat: 33.865, lon: 10.03, type: "bare" },
+        ],
+        // gouvernorat de Gabès (emprise approximative)
+        dansGabes(lat, lon) { return lat > 33.0 && lat < 34.45 && lon > 9.0 && lon < 10.75; },
+        choisirLieu() {
+          const p = this.LIEUX[this.lieu];
+          if (p) { this.msg = ""; this.place(p.lat, p.lon, true); }
+        },
+        allerCoords() {
+          const m = (this.coords || "").replace(/[;\s]+/g, " ").match(/(-?\d+(?:[.,]\d+)?)[ ,]+(-?\d+(?:[.,]\d+)?)/);
+          if (!m) { this.msg = UI.newparcel.coords_bad; return; }
+          const lat = parseFloat(m[1].replace(",", ".")), lon = parseFloat(m[2].replace(",", "."));
+          if (!this.dansGabes(lat, lon)) { this.msg = UI.newparcel.outside; return; }
+          this.msg = ""; this.lieu = ""; this.place(lat, lon, true);
+        },
         // même règle que diagnostics.sampling (côté serveur)
         dims() {
           if (this.forme === "dims") return [this.w || 10, this.l || 10];
@@ -115,16 +154,16 @@
         init() {
           this.$nextTick(() => {
             map = satelliteMap("new-map", { dragging: true });
-            map.setView(this.lat ? [this.lat, this.lon] : [33.8835, 10.068], this.lat ? 17 : 15);
+            map.setView(this.lat ? [this.lat, this.lon] : [33.885, 10.05], this.lat ? 17 : 12);   // Gabès
             setTimeout(() => map.invalidateSize(), 250);
             layer = L.layerGroup().addTo(map);
             JSON.parse(document.getElementById("sources-data").textContent).forEach((s) =>
               L.circle([s.lat, s.lon], { radius: s.radius_km * 1000, color: "#fff", weight: 1.5, dashArray: "6 6", fillColor: "#1E2316", fillOpacity: 0.12, interactive: false }).addTo(map));
-            map.on("click", (e) => this.place(e.latlng.lat, e.latlng.lng, true));
-            if (this.lat) this.draw(true); else this.gps();
+            map.on("click", (e) => { this.msg = ""; this.lieu = ""; this.place(e.latlng.lat, e.latlng.lng, true); });
+            if (this.lat) this.draw(true);   // plus de GPS automatique : on choisit dans Gabès
           });
         },
-        place(lat, lon, zoom) { this.lat = lat; this.lon = lon; this.draw(zoom); },
+        place(lat, lon, zoom) { this.lat = lat; this.lon = lon; this.coords = lat.toFixed(5) + ", " + lon.toFixed(5); this.draw(zoom); },
         draw(zoom) {
           if (!map || !this.lat) return;
           layer.clearLayers();
@@ -147,7 +186,11 @@
           if (!navigator.geolocation) { this.gpsError = true; return; }
           this.locating = true; this.gpsError = false;
           navigator.geolocation.getCurrentPosition(
-            (p) => { this.locating = false; this.place(p.coords.latitude, p.coords.longitude, true); },
+            (p) => {
+              this.locating = false;
+              if (!this.dansGabes(p.coords.latitude, p.coords.longitude)) { this.msg = UI.newparcel.gps_outside; return; }
+              this.msg = ""; this.lieu = ""; this.place(p.coords.latitude, p.coords.longitude, true);
+            },
             () => { this.locating = false; this.gpsError = true; },
             { enableHighAccuracy: true, timeout: 10000 });
         },
