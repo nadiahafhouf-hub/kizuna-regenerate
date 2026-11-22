@@ -24,6 +24,13 @@ ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "localhost,127.0.
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 
+# Chatbot (bloc 4) : base vectorielle Qdrant. Par défaut en mode embarqué (dossier local, sans serveur) ;
+# QDRANT_URL (+ QDRANT_API_KEY) pour utiliser un serveur Qdrant (Docker ou Qdrant Cloud).
+QDRANT_URL = os.getenv("QDRANT_URL", "")
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")
+QDRANT_PATH = os.getenv("QDRANT_PATH") or str(BASE_DIR / "qdrant_data")
+GEMINI_EMBED_MODEL = os.getenv("GEMINI_EMBED_MODEL", "gemini-embedding-001")
+
 # Bloc 3 : reseau goutte-a-goutte (services/irrigation_engine)
 # Google Maps : cle serveur (Map Tiles API, image analysee) et cle navigateur (Maps JavaScript API,
 # carte dynamique ; a restreindre par referent HTTP). Une seule cle suffit en developpement.
