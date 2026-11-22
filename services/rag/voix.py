@@ -244,9 +244,18 @@ def lahgtna_tts(texte, cfg, appel=None):
     import time
     # Même phrase + même voix de référence -> WAV déjà généré (le bouton 🔊 ne consomme pas de quota GPU)
     empreinte = hashlib.sha1(f"{t}|{ref_texte}|{pathlib.Path(ref).stat().st_size}".encode()).hexdigest()[:20]
-    cache = pathlib.Path(ref).parent / "cache" / f"{empreinte}.wav"
+    cache = pathlib.Path(cfg.get("reference_media") or ref).parent / "cache" / f"{empreinte}.wav"
     if cache.exists():
         return cache.read_bytes()
+
+    def garder(audio):
+        try:
+            cache.parent.mkdir(parents=True, exist_ok=True)
+            cache.write_bytes(audio)
+        except OSError:
+            pass
+        return audio
+    # Space Hugging Face (GPU gratuit, quota quotidien par compte)
     if _pause_quota["jusqu_a"] > time.monotonic():
         raise VoixErreur("Lahgtna : quota GPU Hugging Face du jour épuisé (nouvel essai plus tard)")
     try:
@@ -262,12 +271,11 @@ def lahgtna_tts(texte, cfg, appel=None):
                 _lahgtna[space] = Client(space, token=jeton, verbose=False)        # gradio_client >= 2
             except TypeError:
                 _lahgtna[space] = Client(space, hf_token=jeton, verbose=False)     # gradio_client 1.x
-        # erreur GPU passagère du Space (« AcceleratorError ») : un nouvel essai, puis le moteur Silma F5
-        # (lui aussi entraîné sur la derja) avant la voix Hedi
+        # erreur GPU passagère du Space (« AcceleratorError ») : un seul nouvel essai, puis la voix Hedi
         derniere = None
-        for moteur in ("Lahgtna (recommended)", "Lahgtna (recommended)", "Silma F5 (classic)"):
+        for _essai in range(2):
             try:
-                audio, _ = _lahgtna[space].predict(moteur, t, handle_file(ref), ref_texte, 1.0, 42,
+                audio, _ = _lahgtna[space].predict("Lahgtna (recommended)", t, handle_file(ref), ref_texte, 1.0, 42,
                                                    2.0, 32, 0.4, 0.7, 0.5, True, api_name="/generate")
                 return pathlib.Path(audio).read_bytes()
             except Exception as e:   # noqa: BLE001
@@ -287,12 +295,7 @@ def lahgtna_tts(texte, cfg, appel=None):
         raise VoixErreur(f"Lahgtna : {type(e).__name__}: {str(e)[:150]}") from e
     finally:
         ex.shutdown(wait=False)
-    try:
-        cache.parent.mkdir(parents=True, exist_ok=True)
-        cache.write_bytes(audio)
-    except OSError:
-        pass
-    return audio
+    return garder(audio)
 
 
 def synthese(texte, cfg=None, http=None):

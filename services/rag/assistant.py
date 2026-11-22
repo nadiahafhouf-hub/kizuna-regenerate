@@ -121,6 +121,7 @@ SURCHARGE = ("503", "429", "UNAVAILABLE", "RESOURCE_EXHAUSTED", "404", "NOT_FOUN
 
 BUDGET_GEMINI_S = 10      # le navigateur abandonne à 18 s : il reste le temps de la recherche + réponse locale
 PAUSE_QUOTA_S = 300       # modèle à quota épuisé (429) : on ne le réessaie pas pendant 5 min
+RELAIS_S = 5              # modèle qui n'a pas répondu en 5 s : le suivant est lancé en parallèle
 _en_pause = {}            # modèle -> instant (time.monotonic) jusqu'auquel on le saute
 
 
@@ -142,28 +143,38 @@ def _appeler_gemini(cle, modele, prompt, budget_s=BUDGET_GEMINI_S):
     # L'API refuse un délai < 10 s (400 INVALID_ARGUMENT) : délai HTTP fixe, le budget est tenu ici par l'attente
     client = genai.Client(api_key=cle, http_options=types.HttpOptions(
         timeout=15000, retry_options=types.HttpRetryOptions(attempts=1)))
+    from concurrent.futures import FIRST_COMPLETED, wait
+
     pool = ThreadPoolExecutor(max_workers=len(disponibles) or 1)
+    config = types.GenerateContentConfig(temperature=0.4, response_mime_type="application/json")
     try:
         derniere = TimeoutError("budget Gemini épuisé")
-        for m in disponibles:
+        file = list(disponibles)
+        en_cours = {}   # appel -> modèle
+        while file or en_cours:
             reste = fin - time.monotonic()
-            if reste < 1.5:
+            if reste < 0.5:
                 break
-            appel = pool.submit(client.models.generate_content, model=m, contents=prompt,
-                                config=types.GenerateContentConfig(temperature=0.4,
-                                                                   response_mime_type="application/json"))
-            try:
-                return appel.result(timeout=reste).text or ""
-            except Delai:
-                derniere = TimeoutError(f"{m} : plus de {reste:.0f} s")
-                break   # budget épuisé : réponse locale
-            except Exception as e:
-                # modèle saturé, quota, retiré ou trop lent : on passe AUSSITÔT au suivant
-                if not any(c in str(e) for c in SURCHARGE + ("timeout", "Timeout", "timed out", "DEADLINE")):
-                    raise
-                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-                    _en_pause[m] = time.monotonic() + PAUSE_QUOTA_S
-                derniere = e
+            if file and (not en_cours or reste >= 1.5):
+                m = file.pop(0)
+                en_cours[pool.submit(client.models.generate_content, model=m, contents=prompt, config=config)] = m
+            # Le modèle lent n'est pas abandonné : s'il n'a pas répondu après RELAIS_S, le suivant part EN PARALLÈLE
+            # et le premier qui répond gagne (le plus récent est souvent saturé sur l'offre gratuite).
+            attente = min(reste, RELAIS_S) if file else reste
+            finis, _ = wait(en_cours, timeout=attente, return_when=FIRST_COMPLETED)
+            for appel in finis:
+                m = en_cours.pop(appel)
+                try:
+                    return appel.result().text or ""
+                except Exception as e:
+                    # modèle saturé, quota, retiré ou trop lent : on passe AUSSITÔT au suivant
+                    if not any(c in str(e) for c in SURCHARGE + ("timeout", "Timeout", "timed out", "DEADLINE")):
+                        raise
+                    if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                        _en_pause[m] = time.monotonic() + PAUSE_QUOTA_S
+                    derniere = e
+        if en_cours:
+            derniere = Delai(f"{', '.join(en_cours.values())} : plus de {budget_s} s")
         raise derniere
     finally:
         pool.shutdown(wait=False)   # un appel trop lent finit en arrière-plan, sans bloquer la réponse

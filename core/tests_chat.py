@@ -386,3 +386,51 @@ class LahgtnaCacheTests(TestCase):
         self.assertTrue(chemin.endswith("voix_tounsi.wav"))
         self.assertTrue(self.voix.VOIX_TOUNSI.exists())
         self.assertIn("أنا مساعدك", texte)
+
+
+class GeminiRelaisTests(TestCase):
+    """Modèle lent : le suivant part en parallèle et le premier qui répond gagne."""
+
+    def _client(self, delais):
+        import time as _t
+
+        class Rep:
+            def __init__(self, texte):
+                self.text = texte
+
+        class Modeles:
+            def generate_content(self, model, contents, config):
+                d = delais[model]
+                if isinstance(d, Exception):
+                    raise d
+                _t.sleep(d)
+                return Rep(model)
+
+        class Client:
+            def __init__(self, *a, **k):
+                self.models = Modeles()
+
+            def close(self):
+                pass
+        return patch("google.genai.Client", Client)
+
+    def test_modele_lent_relaye_par_le_suivant(self):
+        import time as _t
+        assistant._en_pause.clear()
+        with self._client({"lent": 3.0, "rapide": 0.1}), patch.object(assistant, "RELAIS_S", 0.3):
+            t = _t.monotonic()
+            self.assertEqual(assistant._appeler_gemini("k", ["lent", "rapide"], "p", budget_s=5), "rapide")
+        self.assertLess(_t.monotonic() - t, 1.5)
+
+    def test_quota_passe_au_suivant_et_met_en_pause(self):
+        assistant._en_pause.clear()
+        with self._client({"plein": RuntimeError("429 RESOURCE_EXHAUSTED"), "ok": 0.05}):
+            self.assertEqual(assistant._appeler_gemini("k", ["plein", "ok"], "p", budget_s=5), "ok")
+        self.assertIn("plein", assistant._en_pause)
+        assistant._en_pause.clear()
+
+    def test_budget_depasse_leve_une_erreur(self):
+        assistant._en_pause.clear()
+        with self._client({"a": 3.0, "b": 3.0}), patch.object(assistant, "RELAIS_S", 0.2):
+            with self.assertRaises(Exception):
+                assistant._appeler_gemini("k", ["a", "b"], "p", budget_s=0.8)
