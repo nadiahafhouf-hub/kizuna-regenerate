@@ -127,18 +127,28 @@ p { line-height: 1.55; }
 @media (prefers-color-scheme: dark) { .dark-skel .skeleton { background: #21261A; } }
 @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
 
-/* Fennec (chatbot) : sur grand écran il habite l'espace vide réservé en bas de la barre latérale
-   (.fennec-slot), dans les deux vues ; sur mobile il reste au-dessus de la barre de navigation Farmer. */
-:root { --side-w: 16rem; --side-foot: 8.625rem; --fennec-side: 6.75rem; }
-.farmer-view { --side-w: 18rem; --side-foot: 8.5rem; }
+/* Fennec (chatbot) sur grand écran :
+   - vue Expert : petit, flottant à droite de la ligne « Farm Assistant », sans étiquette ni fond ;
+   - vue Farmer : dans l'espace vide réservé en bas de la barre latérale (.fennec-slot).
+   Sur mobile, au-dessus de la barre de navigation flottante de la vue Farmer. */
+:root { --side-w: 18rem; --fennec-side: 6.75rem; }
+.farmer-view { --side-foot: 8.5rem; }
 .fennec-slot { height: calc(var(--fennec-side) + 2.75rem); }
 @media (min-width: 1024px) {
-  .chat-fennec-launcher, .chat-fennec-floating {
+  body:not(.farmer-view) .chat-fennec-launcher, body:not(.farmer-view) .chat-fennec-floating {
+    --fennec-size: 4.75rem;
+    left: calc(var(--side-w) - 4.75rem - 1rem); right: auto;
+    bottom: 5.4rem;
+  }
+  body:not(.farmer-view) .chat-fennec-launcher { height: var(--fennec-size); background: transparent; }
+  body:not(.farmer-view) .chat-fennec-launcher > span:last-child { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  body:not(.farmer-view) .chat-fennec-hitbox { inset: 0; }
+  .farmer-view .chat-fennec-launcher, .farmer-view .chat-fennec-floating {
     --fennec-size: var(--fennec-side);
     left: calc((var(--side-w) - var(--fennec-side)) / 2); right: auto;
   }
-  .chat-fennec-launcher { bottom: calc(var(--side-foot) + .25rem); }
-  .chat-fennec-floating { bottom: calc(var(--side-foot) + 2.25rem); }
+  .farmer-view .chat-fennec-launcher { bottom: calc(var(--side-foot) + .25rem); }
+  .farmer-view .chat-fennec-floating { bottom: calc(var(--side-foot) + 2.25rem); }
 }
 @media (max-width: 1023px) {
   .farmer-view .chat-fennec-launcher { bottom: 5.75rem; }
