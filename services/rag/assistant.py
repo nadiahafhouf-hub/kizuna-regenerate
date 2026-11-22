@@ -121,7 +121,7 @@ SURCHARGE = ("503", "429", "UNAVAILABLE", "RESOURCE_EXHAUSTED", "404", "NOT_FOUN
 
 BUDGET_GEMINI_S = 10      # le navigateur abandonne à 18 s : il reste le temps de la recherche + réponse locale
 PAUSE_QUOTA_S = 300       # modèle à quota épuisé (429) : on ne le réessaie pas pendant 5 min
-RELAIS_S = 5              # modèle qui n'a pas répondu en 5 s : le suivant est lancé en parallèle
+RELAIS_S = 3              # modèle sans réponse en 3 s : le suivant part en parallèle (3 modèles tiennent en 10 s)
 _en_pause = {}            # modèle -> instant (time.monotonic) jusqu'auquel on le saute
 
 
