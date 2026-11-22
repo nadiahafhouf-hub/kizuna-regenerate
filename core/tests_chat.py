@@ -380,3 +380,9 @@ class LahgtnaCacheTests(TestCase):
                 self.voix.lahgtna_tts("جملة ثانية", self.cfg)
         self.assertEqual(len(appels), 1)
         self.voix._lahgtna.clear()
+
+    def test_voix_choisie_livree_avec_le_projet(self):
+        chemin, texte = self.voix._reference({})
+        self.assertTrue(chemin.endswith("voix_tounsi.wav"))
+        self.assertTrue(self.voix.VOIX_TOUNSI.exists())
+        self.assertIn("أنا مساعدك", texte)

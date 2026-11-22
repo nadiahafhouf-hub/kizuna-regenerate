@@ -35,8 +35,8 @@ def config_voix():
             "lahgtna_space": getattr(settings, "VOIX_LAHGTNA_SPACE", "AVOiD/derja-tts"),
             "lahgtna_delai": getattr(settings, "VOIX_LAHGTNA_DELAI_S", 45),
             "hf_token": getattr(settings, "HF_TOKEN", ""),
-            "reference": getattr(settings, "VOIX_REFERENCE", "") or
-                         str(__import__("pathlib").Path(settings.MEDIA_ROOT) / "voix" / "reference.mp3"),
+            "reference": getattr(settings, "VOIX_REFERENCE", ""),
+            "reference_media": str(__import__("pathlib").Path(settings.MEDIA_ROOT) / "voix" / "reference.mp3"),
             "reference_texte": getattr(settings, "VOIX_REFERENCE_TEXTE", ""),
             "whisper": getattr(settings, "WHISPER_DERJA_MODEL", ""),
         }
@@ -205,10 +205,20 @@ PAUSE_QUOTA_S = 1800          # quota GPU gratuit épuisé : on ne réessaie Lah
 _pause_quota = {"jusqu_a": 0.0}
 
 
+# Voix choisie pour le chatbot (Lahgtna, accent tunisien) : Lahgtna imite CET enregistrement à chaque réponse.
+# Le texte doit être exactement ce qui y est dit.
+VOIX_TOUNSI = __import__("pathlib").Path(__file__).with_name("voix_tounsi.wav")
+VOIX_TOUNSI_TEXTE = ("عسلامة، أنا مساعدك. اليوم تسقي الزونة زد ثلاثة مع الستة الصباح، و البومبة الشمسية تخدم "
+                     "من الحداش للثلاثة. كان تحب، توا نوريك برشا حاجات.")
+
+
 def _reference(cfg):
-    """(chemin, texte) de l'enregistrement dont Lahgtna imite la voix ; créé une fois avec edge-tts si absent."""
+    """(chemin, texte) de l'enregistrement dont Lahgtna imite la voix : VOIX_REFERENCE si réglé, sinon la voix
+    tunisienne livrée avec le projet (voix_tounsi.wav), sinon une référence créée une fois avec edge-tts."""
     import pathlib
-    chemin = pathlib.Path(cfg.get("reference") or "reference.mp3")
+    if not cfg.get("reference") and VOIX_TOUNSI.exists():
+        return str(VOIX_TOUNSI), VOIX_TOUNSI_TEXTE
+    chemin = pathlib.Path(cfg.get("reference") or cfg.get("reference_media") or "reference.mp3")
     texte = cfg.get("reference_texte") or REFERENCE_TEXTE_DEFAUT
     if not chemin.exists():
         if cfg.get("reference_texte"):

@@ -45,8 +45,8 @@ AZURE_STT_LANGUAGE = os.getenv("AZURE_STT_LANGUAGE", "ar-TN")
 # Sans clé Azure : mêmes voix tunisiennes GRATUITES via edge-tts (aucun compte, aucune carte)
 VOIX_EDGE_TTS = env_bool("VOIX_EDGE_TTS", True)
 # Vrai accent tunisien : modèle « Lahgtna » entraîné sur la derja (Space Hugging Face AVOiD/derja-tts, GPU gratuit).
-# Il imite la voix d'un enregistrement de référence (VOIX_REFERENCE + son texte exact) ; vide = généré une fois
-# avec la voix edge-tts ci-dessus. Lent ou indisponible -> voix edge-tts en secours.
+# Il imite la voix d'un enregistrement de référence : services/rag/voix_tounsi.wav (voix choisie), ou
+# VOIX_REFERENCE + son texte exact pour une autre voix. Lent ou indisponible -> voix edge-tts en secours.
 VOIX_LAHGTNA = env_bool("VOIX_LAHGTNA", True)
 VOIX_LAHGTNA_SPACE = os.getenv("VOIX_LAHGTNA_SPACE", "AVOiD/derja-tts")
 VOIX_LAHGTNA_DELAI_S = int(os.getenv("VOIX_LAHGTNA_DELAI_S", "45"))
