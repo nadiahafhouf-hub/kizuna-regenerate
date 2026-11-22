@@ -1,6 +1,6 @@
-# Kizuna Regenerate
+# Verdix
 
-Réécriture en Django du prototype Streamlit « Gabès Regenerate » — hackathon eau · énergie · agriculture.
+**Verdix** — réécriture en Django du prototype Streamlit « Gabès Regenerate » — hackathon eau · énergie · agriculture.
 Une parcelle polluée de Gabès est diagnostiquée (sol), reçoit des cultures adaptées, un arrosage
 goutte-à-goutte piloté par pompe solaire, puis un passeport de sol vérifiable par QR code.
 
@@ -95,7 +95,7 @@ Bouton « Load demo parcel » = `/demo/`.
 Généré avec la skill **ui-ux-pro-max**, puis ajusté par l'équipe (décisions en tête de `MASTER.md`) :
 - **Farmer** = « Accessible & Ethical » + « Bento Box Grid » (`pages/farmer.md`) ;
   **Expert** = « Data-Dense Dashboard » (`pages/expert.md`).
-- On garde l'identité Kizuna : sand, olive, water, sun, zones ROUGE/ORANGE/VERT (toujours icône + libellé),
+- On garde l'identité Verdix : sand, olive, water, sun, zones ROUGE/ORANGE/VERT (toujours icône + libellé),
   DM Sans + DM Mono. Tokens dans la config Tailwind de `templates/base.html` uniquement (jamais de hex dans les pages).
 - Règles communes : focus clavier visible, contraste AA, chiffres `tabular-nums`, squelettes de chargement,
   `prefers-reduced-motion` respecté, aucun débordement à 375 px. Réglages Chart.js communs dans `static/js/app.js`.

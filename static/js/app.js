@@ -1,4 +1,4 @@
-/* Kizuna Regenerate — comportements communs (chargé sur toutes les pages, avant Alpine). */
+/* Verdix — comportements communs (chargé sur toutes les pages, avant Alpine). */
 
 const UI = JSON.parse(document.getElementById("ui-strings").textContent);
 

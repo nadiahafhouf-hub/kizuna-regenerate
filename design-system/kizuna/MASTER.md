@@ -1,9 +1,9 @@
-# Kizuna — décisions de l'équipe (PRIORITAIRES sur la sortie générée plus bas)
+# Verdix — décisions de l'équipe (PRIORITAIRES sur la sortie générée plus bas)
 
 La sortie de la skill ui-ux-pro-max est conservée plus bas pour référence. On en garde les RÈGLES
 (échelle, espacements, états, accessibilité), pas les couleurs ni les polices.
 
-- Couleurs : tokens Kizuna dans templates/base.html (sand, olive, water, sun, zred/zorange/zgreen, ink, muted).
+- Couleurs : tokens Verdix dans templates/base.html (sand, olive, water, sun, zred/zorange/zgreen, ink, muted).
   Jamais de hex dans les pages. Zones = TOUJOURS icône + libellé.
 - Polices : DM Sans (texte), DM Mono (chiffres, tabular-nums). Pas de Fira / Plus Jakarta.
 - Rejeté : Glassmorphism (verre sur carte = anti-pattern), palette bleu/ambre générique.
@@ -24,7 +24,7 @@ La sortie de la skill ui-ux-pro-max est conservée plus bas pour référence. On
 
 ---
 
-**Project:** Kizuna
+**Project:** Verdix
 **Generated:** 2026-11-22 05:27:52
 **Category:** Creator Economy Platform
 **Design Dials:** Variance 7/10 (Balanced / Modern) | Motion 3/10 (Subtle) | Density 3/10 (Spacious)

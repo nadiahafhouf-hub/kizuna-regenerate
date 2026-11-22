@@ -9,7 +9,7 @@ STRINGS = {
     "en": {
         "app": {
             "need_diagnostic": "{pid} has no soil diagnostic yet. Place the sensors and enter the readings (or press Simulate), then save the campaign: Crops, Irrigation and Passport open after that.",
-            "name": "Kizuna Regenerate",
+            "name": "Verdix",
             "tagline": "Clean soil, smart water, solar energy",
             "dashboard": "Dashboard",
             "parcel": "Parcel",
@@ -762,7 +762,7 @@ STRINGS = {
             "event_ko": "Modified",
             "technical": "Technical details",
             "technical_hint": "Each fingerprint is SHA-256(previous fingerprint + event data).",
-            "powered": "Verified by Kizuna Regenerate",
+            "powered": "Verified by Verdix",
         },
         "chat": {
             "open": "Is2el el fella7",
