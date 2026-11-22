@@ -14,8 +14,8 @@ from django.views.decorators.http import require_http_methods, require_POST
 from core.strings import get_strings
 from core.views import journey_context, sans_diagnostic
 from services import demo_data
-from .logic import (creer_plan, etat, evenements_pour_passeport, plan_actif, plan_complet, plan_db_vers_dict,
-                    regenerer, simuler_jour_suivant)
+from .logic import (consignes_agent, creer_plan, etat, evenements_pour_passeport, plan_actif, plan_complet,
+                    plan_db_vers_dict, rediger_agent, regenerer, simuler_jour_suivant, texte_agent)
 from services.irrigation_engine import satellite as sat_engine
 
 from . import network
@@ -36,7 +36,17 @@ def index(request, pid):
         plan_db = None
     plan = demo_data.irrigation_plan(pid)
     sysc = plan["system"]
+    agent = texte_ia = None
+    if plan_db is not None:
+        try:
+            agent = consignes_agent(plan_db)
+            texte_ia = texte_agent(plan_db, agent)
+        except Exception:        # l'agent est un plus : la page s'affiche toujours
+            agent = None
     ctx.update({
+        "agent": agent,
+        "agent_texte_ia": texte_ia,
+        "agent_ia_dispo": bool(getattr(settings, "GEMINI_API_KEY", "")),
         "plan": plan,
         "plan_db": plan_db,
         "etat": etat(plan_db) if plan_db else None,
@@ -103,6 +113,29 @@ def simuler(request, pid):
 
 def etat_json(request, pid):
     return JsonResponse(etat(plan_actif(pid)))
+
+
+def agent_json(request, pid):
+    """Consignes de l'agent (jour + semaine + zones + alertes), pour les autres blocs (chatbot, passeport)."""
+    plan_db = plan_actif(pid)
+    c = consignes_agent(plan_db)
+    c["texte_ia"] = texte_agent(plan_db, c)
+    c["statut_plan"] = plan_db.statut
+    return JsonResponse(c, json_dumps_params={"ensure_ascii": False})
+
+
+@require_POST
+def agent_rediger(request, pid):
+    """HTMX : Gemini reformule les consignes en langage simple (texte automatique si erreur)."""
+    from .services.agent_ia import AgentIAErreur
+    plan_db = plan_actif(pid)
+    erreur = None
+    try:
+        c, texte = rediger_agent(plan_db)
+    except AgentIAErreur as e:
+        c, texte, erreur = consignes_agent(plan_db), None, str(e)
+    return render(request, "irrigation/_agent_texte.html", {"agent": c, "texte_ia": texte, "erreur": erreur,
+                                                            "parcel": {"id": pid}, "agent_ia_dispo": True})
 
 
 @require_POST

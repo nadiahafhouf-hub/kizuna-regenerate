@@ -13,6 +13,9 @@ urlpatterns = [
     path("simuler/", views.simuler, name="simuler"),
     path("modifier/", views.modifier, name="modifier"),
     path("action/<str:nom>/", views.action, name="action"),
+    # Agent d'irrigation : consignes du jour / de la semaine (JSON) et rédaction par Gemini (HTMX)
+    path("agent.json", views.agent_json, name="agent_json"),
+    path("agent/rediger/", views.agent_rediger, name="agent_rediger"),
     # Réseau goutte-à-goutte optimal (image satellite automatique ou photo)
     path("network/", views.network_page, name="network"),
     path("network/preview/", views.network_preview, name="network_preview"),
