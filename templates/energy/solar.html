@@ -1,0 +1,251 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}{{ T.solar.title }} · {{ parcel.id }}{% endblock %}
+{% block content %}
+{{ chart|json_script:"solar-chart" }}
+
+<section class="reveal">
+  <p class="flex items-center gap-1.5 text-sm font-medium text-sun-700"><i data-lucide="sun" class="h-4 w-4"></i>{{ parcel.name }} · {{ parcel.area_m2|num }} m²</p>
+  <h1 class="mt-1 text-3xl font-bold tracking-tight text-olive-900 sm:text-4xl">{{ T.solar.title }}</h1>
+  <p class="mt-1 max-w-3xl text-muted">{{ T.solar.subtitle }}</p>
+</section>
+
+<!-- Alertes -->
+
+{% if alertes %}
+<section class="reveal mt-5 rounded-2xl bg-white p-4 shadow-soft ring-1 ring-sand-200 sm:p-5">
+  <div class="flex items-center justify-between gap-3">
+    <p class="flex items-center gap-2 font-semibold"><i data-lucide="bell-ring" class="h-4 w-4 text-zorange"></i>{{ T.solar.alerts_title }}</p>
+    <form method="post" action="{% url 'energy:alerts_read' parcel.id %}">{% csrf_token %}
+      <button class="text-xs font-semibold text-muted hover:text-ink">✓</button></form>
+  </div>
+  <ul class="mt-2 space-y-1.5">
+    {% for al in alertes %}
+    <li class="flex flex-wrap items-center gap-2 rounded-xl px-3 py-2 text-sm {% if al.lue %}bg-sand-50 text-muted{% elif al.niveau == 'ALERTE' %}bg-zred-bg text-zred ring-1 ring-zred/20{% elif al.niveau == 'ATTENTION' %}bg-zorange-bg text-zorange ring-1 ring-zorange/20{% else %}bg-water-50 text-water-700{% endif %}">
+      {% if al.type == "TECHNICIEN" %}<i data-lucide="wrench" class="h-4 w-4"></i>{% else %}<i data-lucide="brush-cleaning" class="h-4 w-4"></i>{% endif %}
+      <span class="font-semibold">{{ T.solar.alert_msg|get:al.type }}</span>
+      <span class="ml-auto text-xs opacity-80">{{ al.cree_le|date:"Y-m-d H:i" }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+
+<!-- ═══ Dimensionnement ═══ -->
+<section class="mt-6 grid gap-6 lg:grid-cols-5">
+  <form method="post" class="reveal space-y-4 rounded-2xl bg-white p-5 shadow-soft ring-1 ring-sand-200 sm:p-6 lg:col-span-2">
+    {% csrf_token %}
+    {% include "components/section_header.html" with title=T.solar.sizing_title hint=T.solar.sizing_hint icon="calculator" tone="sun" %}
+    <div class="grid grid-cols-2 gap-3">
+      <label class="block"><span class="text-sm font-medium">{{ T.solar.depth }}</span>
+        <input type="number" name="profondeur_m" value="{{ cfg.profondeur_m|floatformat:0 }}" min="1" max="300" step="1" class="mt-1 w-full rounded-xl border-0 bg-sand-50 px-3 py-2.5 text-sm tabular-nums ring-1 ring-sand-200 focus:ring-2 focus:ring-olive-600">
+        <span class="mt-1 block text-[11px] text-muted">{{ T.solar.depth_hint }}</span></label>
+      <label class="block"><span class="text-sm font-medium">{{ T.solar.panel }}</span>
+        <input type="number" name="panneau_wc" value="{{ cfg.panneau_wc }}" min="100" max="800" step="5" class="mt-1 w-full rounded-xl border-0 bg-sand-50 px-3 py-2.5 text-sm tabular-nums ring-1 ring-sand-200 focus:ring-2 focus:ring-olive-600"></label>
+    </div>
+    <div>
+      <p class="text-sm font-semibold">{{ T.solar.plants }}</p>
+      <div class="mt-2 overflow-hidden rounded-xl ring-1 ring-sand-200">
+        <table class="w-full text-sm">
+          <tbody class="divide-y divide-sand-100">
+            {% for z in dim.zones %}
+            <tr>
+              <td class="px-3 py-2"><div class="flex items-center gap-2">{% zone_badge z.couleur size="sm" %}<span class="font-semibold">{{ z.id }}</span></div>
+                <p class="mt-0.5 text-xs text-muted">{{ z.culture|label }} · {{ z.espacement_m }} m · {{ z.litres_plante_jour_pointe }} {{ T.solar.water_per_plant }}</p></td>
+              <td class="w-32 px-3 py-2">
+                <input type="number" name="plants_{{ z.id }}" value="{{ z.nb_plants }}" min="0" step="1" class="w-full rounded-lg border-0 bg-sand-50 px-2.5 py-1.5 text-right text-sm tabular-nums ring-1 ring-sand-200 focus:ring-2 focus:ring-olive-600">
+                {% if z.nb_plants != z.nb_plants_bloc2 %}<p class="mt-0.5 text-right text-[10px] text-muted">{{ T.solar.plants_from_bloc2 }}: {{ z.nb_plants_bloc2|num }}</p>{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <button class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-olive-700 px-5 py-3 font-semibold text-white shadow-soft hover:bg-olive-800">
+      <i data-lucide="refresh-cw" class="h-4 w-4"></i>{{ T.solar.recompute }}
+    </button>
+  </form>
+
+  <div class="space-y-4 lg:col-span-3">
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      {% include "components/kpi_card.html" with icon="sun" label=T.solar.kpi_panels value=dim.nb_panneaux unit="" hint=dim.panneau_wc|stringformat:"d"|add:" W" tone="sun" %}
+      {% include "components/kpi_card.html" with icon="zap" label=T.solar.kpi_kwp value=dim.kwc unit="kWp" decimals=2 tone="sun" delay=60 %}
+      {% include "components/kpi_card.html" with icon="gauge" label=T.solar.kpi_pump value=dim.pompe_kw unit="kW" decimals=2 hint=dim.debit_m3_h|stringformat:"s"|add:" m³/h" tone="water" delay=120 %}
+      {% include "components/kpi_card.html" with icon="droplets" label=T.solar.kpi_water value=dim.eau_pointe_m3_jour unit="m³" decimals=1 hint=T.solar.per_day tone="water" delay=180 %}
+      {% include "components/kpi_card.html" with icon="cylinder" label=T.solar.kpi_tank value=dim.reservoir_m3 unit="m³" decimals=1 tone="water" delay=240 %}
+      {% include "components/kpi_card.html" with icon="land-plot" label=T.solar.kpi_area value=dim.surface_sol_m2 unit="m²" decimals=0 tone="olive" delay=300 %}
+    </div>
+    <div class="reveal rounded-2xl bg-white p-4 shadow-soft ring-1 ring-sand-200 sm:p-5">
+      <div class="flex flex-wrap items-center gap-2 text-xs">
+        <span class="rounded-full bg-sun-50 px-2.5 py-1 font-semibold text-sun-700">{{ T.solar.peak_month }} {{ dim.mois_dimensionnant }}</span>
+        <span class="rounded-full bg-sand-100 px-2.5 py-1 font-medium text-muted">{{ dim.nb_plants_total|num }} {{ T.solar.plants|lower }}</span>
+        <span class="rounded-full bg-sand-100 px-2.5 py-1 font-medium text-muted">{{ dim.hauteur_totale_m }} m {{ T.solar.head }}</span>
+        <span class="rounded-full bg-sand-100 px-2.5 py-1 font-medium text-muted">{{ dim.energie_an_kwh|num }} kWh/yr</span>
+      </div>
+      <p class="mt-3 text-sm font-semibold">{{ T.solar.chart_title }}</p>
+      <div class="relative mt-2 h-56"><canvas id="sizing-chart"></canvas></div>
+      <p class="mt-2 text-[11px] text-muted">{{ T.solar.data_source }}: {{ dim.climat_source }} · {{ dim.inclinaison_deg }}°</p>
+    </div>
+    {% if a.actuelle %}
+    <div class="reveal flex items-start gap-3 rounded-2xl p-4 ring-1 {% if a.actuelle.couverture_pointe_pct >= 100 %}bg-zgreen-bg ring-zgreen/25{% else %}bg-zorange-bg ring-zorange/25{% endif %}">
+      <i data-lucide="{% if a.actuelle.couverture_pointe_pct >= 100 %}circle-check{% else %}triangle-alert{% endif %}" class="mt-0.5 h-5 w-5 shrink-0 {% if a.actuelle.couverture_pointe_pct >= 100 %}text-zgreen{% else %}text-zorange{% endif %}"></i>
+      <p class="text-sm"><b>{{ T.solar.current_title }}</b>: {{ a.actuelle.kwc }} kWp, {{ a.actuelle.pompe_kw }} kW —
+        {% if a.actuelle.couverture_pointe_pct >= 100 %}{{ T.solar.current_ok }}{% else %}{{ current_ko }}{% endif %}</p>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+<!-- ═══ Santé des panneaux (IA) ═══ -->
+{% if etat %}
+<section class="reveal mt-8 rounded-2xl bg-white p-5 shadow-soft ring-1 ring-sand-200 sm:p-6">
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    {% include "components/section_header.html" with title=T.solar.health_title hint=T.solar.health_hint icon="brain-circuit" tone="sun" %}
+    <form method="post" action="{% url 'energy:clean' parcel.id %}">{% csrf_token %}
+      <button class="inline-flex items-center gap-2 rounded-xl bg-water-600 px-4 py-2.5 text-sm font-semibold text-white shadow-soft hover:bg-water-700">
+        <i data-lucide="brush-cleaning" class="h-4 w-4"></i>{{ T.solar.i_cleaned }}</button>
+    </form>
+  </div>
+  <p class="mb-4 flex items-start gap-2 rounded-xl px-3 py-2 text-xs {% if etat.source == 'esp32' %}bg-zgreen-bg text-zgreen{% else %}bg-sun-50 text-sun-700 ring-1 ring-sun-300/50{% endif %}">
+    <i data-lucide="info" class="mt-0.5 h-3.5 w-3.5 shrink-0"></i>{% if etat.source == 'esp32' %}{{ T.solar.esp32 }}{% else %}{{ T.solar.simulated }}{% endif %}</p>
+
+  <div class="grid gap-4 lg:grid-cols-3">
+    <!-- Chiffres -->
+    <div class="grid grid-cols-2 gap-3 lg:col-span-1">
+      <div class="rounded-2xl bg-sand-50 p-4 ring-1 ring-sand-200">
+        <p class="text-xs text-muted">{{ T.solar.loss }}</p>
+        <p class="mt-1 text-3xl font-bold tabular-nums {% if etat.recommandation.perte_pct >= etat.recommandation.seuil_pct %}text-zorange{% endif %}">{{ etat.recommandation.perte_pct }}<span class="text-base text-muted">%</span></p>
+      </div>
+      <div class="rounded-2xl bg-sand-50 p-4 ring-1 ring-sand-200">
+        <p class="text-xs text-muted">{{ T.solar.rate }}</p>
+        <p class="mt-1 text-3xl font-bold tabular-nums">{{ etat.recommandation.vitesse_pct_jour }}<span class="text-base text-muted"> {{ T.solar.per_day_pct }}</span></p>
+      </div>
+      <div class="rounded-2xl bg-water-50 p-4 ring-1 ring-water-100">
+        <p class="text-xs text-water-700">{{ T.solar.water_lost }}</p>
+        <p class="mt-1 text-2xl font-bold tabular-nums text-water-700">{{ etat.recommandation.eau_non_pompee_l_jour|num }} <span class="text-sm">L{{ T.solar.per_day }}</span></p>
+      </div>
+      <div class="rounded-2xl bg-sand-50 p-4 ring-1 ring-sand-200">
+        <p class="text-xs text-muted">{{ T.solar.last_cleaning }}</p>
+        <p class="mt-1 font-bold tabular-nums">{{ etat.dernier_nettoyage|default:"—" }}</p>
+        {% if etat.nettoyage_suppose %}<p class="text-[10px] text-muted">{{ T.solar.assumed_cleaning }}</p>{% endif %}
+      </div>
+    </div>
+
+    <!-- Cause (IA 2) + action (IA 3) -->
+    <div class="space-y-3 lg:col-span-2">
+      <div class="rounded-2xl p-4 ring-1 {% if etat.cause.cause == 'PANNE' %}bg-zred-bg ring-zred/25{% elif etat.cause.cause == 'POUSSIERE' %}bg-zorange-bg ring-zorange/25{% else %}bg-zgreen-bg ring-zgreen/25{% endif %}">
+        <p class="text-xs font-semibold uppercase tracking-wide text-muted">{{ T.solar.cause_title }} · AI 2</p>
+        {% if etat.cause %}
+        <p class="mt-1 font-semibold">{{ T.solar.cause|get:etat.cause.cause }}</p>
+        {% if etat.cause.probabilites %}
+        <div class="mt-2 grid grid-cols-3 gap-2 text-xs">
+          {% for k, v in etat.cause.probabilites.items %}
+          <div><div class="flex justify-between"><span>{{ T.solar.cause_short|get:k }}</span><span class="tabular-nums">{% widthratio v 1 100 %}%</span></div>
+            <div class="mt-1 h-1.5 rounded-full bg-white/70"><div class="h-full rounded-full bg-ink/70" style="width: {% widthratio v 1 100 %}%"></div></div></div>
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% else %}<p class="mt-1 text-sm text-muted">{{ T.solar.too_early }}</p>{% endif %}
+      </div>
+      <div class="flex items-start gap-3 rounded-2xl bg-olive-50 p-4 ring-1 ring-olive-200">
+        <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-olive-700 text-white"><i data-lucide="calendar-check" class="h-5 w-5"></i></span>
+        <div><p class="text-xs font-semibold uppercase tracking-wide text-muted">{{ T.solar.action_title }} · AI 3</p>
+          <p class="mt-0.5 font-semibold text-olive-900">{{ texte_action }}</p></div>
+      </div>
+      {% if etat.previsions %}
+      <div>
+        <p class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted">{{ T.solar.forecast_title }}</p>
+        <div class="grid grid-cols-5 gap-2 text-center text-xs">
+          {% for p in etat.previsions %}
+          <div class="rounded-xl px-1 py-2 ring-1 {% if p.poussiere_max >= 150 %}bg-sun-100 ring-sun-300{% elif p.pluie_mm >= 5 %}bg-water-50 ring-water-100{% else %}bg-sand-50 ring-sand-200{% endif %}">
+            <p class="font-semibold">{{ p.date|slice:"5:" }}</p>
+            {% if p.poussiere_max >= 150 %}<i data-lucide="tornado" class="mx-auto my-1 h-4 w-4 text-sun-700"></i>{% elif p.pluie_mm >= 5 %}<i data-lucide="cloud-rain" class="mx-auto my-1 h-4 w-4 text-water-600"></i>{% else %}<i data-lucide="sun" class="mx-auto my-1 h-4 w-4 text-sun-500"></i>{% endif %}
+            <p class="tabular-nums text-muted">{{ p.poussiere_max|floatformat:0 }} µg</p>
+            <p class="tabular-nums text-muted">{{ p.pluie_mm }} mm</p>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <p class="mt-6 text-sm font-semibold">{{ T.solar.chart2_title }}</p>
+  <div class="relative mt-2 h-64"><canvas id="health-chart"></canvas></div>
+</section>
+{% endif %}
+
+<!-- ═══ Qualité des modèles ═══ -->
+{% if ia1 and ia2 %}
+<section class="reveal mt-6 grid gap-4 rounded-2xl bg-white p-5 shadow-soft ring-1 ring-sand-200 sm:grid-cols-2 sm:p-6">
+  <div class="sm:col-span-2">{% include "components/section_header.html" with title=T.solar.models_title icon="flask-conical" %}</div>
+  <div class="rounded-2xl bg-sand-50 p-4 ring-1 ring-sand-200">
+    <p class="font-semibold">{{ T.solar.models_ia1 }}</p>
+    <p class="text-xs text-muted">{{ T.solar.models_ia1_hint }}</p>
+    <dl class="mt-3 grid grid-cols-3 gap-2 text-center text-sm">
+      <div class="rounded-xl bg-white px-2 py-2"><dt class="text-[11px] text-muted">R²</dt><dd class="font-bold">{{ ia1.modele_ia.r2 }}</dd></div>
+      <div class="rounded-xl bg-white px-2 py-2"><dt class="text-[11px] text-muted">{{ T.solar.models_error_day }}</dt><dd class="font-bold">{{ ia1.modele_ia.erreur_energie_jour_pct }}%</dd></div>
+      <div class="rounded-xl bg-white px-2 py-2"><dt class="text-[11px] text-muted">MAE</dt><dd class="font-bold">{{ ia1.modele_ia.mae_w_par_kwc }} W</dd></div>
+    </dl>
+    <p class="mt-2 text-xs text-muted">{{ T.solar.models_vs }}: {{ ia1.formule_physique_pvwatts.erreur_energie_jour_pct }}% · MAE {{ ia1.formule_physique_pvwatts.mae_w_par_kwc }} W</p>
+  </div>
+  <div class="rounded-2xl bg-sand-50 p-4 ring-1 ring-sand-200">
+    <p class="font-semibold">{{ T.solar.models_ia2 }}</p>
+    <p class="text-xs text-muted">{{ T.solar.models_ia2_hint }}</p>
+    <dl class="mt-3 grid grid-cols-3 gap-2 text-center text-sm">
+      <div class="rounded-xl bg-white px-2 py-2"><dt class="text-[11px] text-muted">{{ T.solar.models_accuracy }}</dt><dd class="font-bold">{{ ia2.exactitude_pct }}%</dd></div>
+      <div class="rounded-xl bg-white px-2 py-2"><dt class="text-[11px] text-muted">{{ T.solar.cause_short.POUSSIERE }}</dt><dd class="font-bold">{{ ia2.par_classe.POUSSIERE.rappel_pct }}%</dd></div>
+      <div class="rounded-xl bg-white px-2 py-2"><dt class="text-[11px] text-muted">{{ T.solar.models_false }}</dt><dd class="font-bold">{{ ia2.fausses_alertes_pct }}%</dd></div>
+    </dl>
+  </div>
+</section>
+{% endif %}
+
+{% if next_step %}
+<div class="mt-8 flex justify-end">
+  <a href="{{ next_step.url }}" class="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 font-semibold text-olive-800 shadow-soft ring-1 ring-sand-200 transition hover:-translate-y-0.5 hover:shadow-lift">
+    {{ T.app.next_step }}: {{ next_step.label }}<i data-lucide="arrow-right" class="h-4 w-4"></i>
+  </a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  const d = JSON.parse(document.getElementById("solar-chart").textContent);
+  Chart.defaults.font.family = "'DM Sans', system-ui, sans-serif";
+  Chart.defaults.color = "#6B6F5E";
+  const tip = { backgroundColor: "#1E2316", padding: 10, cornerRadius: 10 };
+  new Chart(document.getElementById("sizing-chart"), {
+    data: { labels: d.mensuel.map((m) => m.mois), datasets: [
+      { type: "bar", label: UI.solar.chart_need, data: d.mensuel.map((m) => m.energie_kwh_jour), backgroundColor: "rgba(31,111,168,.75)", borderRadius: 6 },
+      { type: "line", label: UI.solar.chart_prod, data: d.mensuel.map((m) => m.production_kwh_jour), borderColor: "#E8A916", backgroundColor: "#E8A916", tension: .35, pointRadius: 3, borderWidth: 2.5 },
+    ] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" }, tooltip: tip },
+               scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "#F3EDE1" } } } },
+  });
+  const el = document.getElementById("health-chart");
+  if (el && d.jours.length) {
+    const labels = d.jours.map((j) => j.date.slice(5));
+    const iClean = d.jours.findIndex((j) => j.date === d.nettoyage);
+    new Chart(el, {
+      data: { labels, datasets: [
+        { type: "line", label: UI.solar.chart2_expected, data: d.jours.map((j) => j.attendu_kwh), borderColor: "#4A5A2A", borderDash: [5, 4], pointRadius: 0, borderWidth: 2, tension: .2 },
+        { type: "line", label: UI.solar.chart2_measured, data: d.jours.map((j) => j.mesure_kwh), borderColor: "#E8A916", backgroundColor: "rgba(232,169,22,.15)", fill: true, pointRadius: 0, borderWidth: 2.5, tension: .2 },
+        { type: "bar", label: UI.solar.rain + " (mm)", data: d.jours.map((j) => j.pluie_mm || null), backgroundColor: "rgba(31,111,168,.5)", yAxisID: "y2", barPercentage: .6 },
+      ] },
+      options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
+                 plugins: { legend: { position: "bottom" }, tooltip: tip },
+                 scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 12 } }, y: { beginAtZero: true, grid: { color: "#F3EDE1" }, title: { display: true, text: "kWh" } },
+                           y2: { position: "right", beginAtZero: true, grid: { display: false }, title: { display: true, text: "mm" } } } },
+      plugins: [{ id: "clean", afterDraw(c) { if (iClean < 0) return; const x = c.scales.x.getPixelForValue(iClean), { top, bottom } = c.chartArea, g = c.ctx;
+        g.save(); g.strokeStyle = "#1F6FA8"; g.setLineDash([4, 4]); g.beginPath(); g.moveTo(x, top); g.lineTo(x, bottom); g.stroke(); g.fillStyle = "#1F6FA8"; g.font = "11px DM Sans"; g.fillText("🧽", x + 3, top + 12); g.restore(); } }],
+    });
+  }
+  {% if cleaned %}document.addEventListener("alpine:initialized", () => toast(UI.solar.cleaned_toast));{% endif %}
+})();
+</script>
+{% endblock %}

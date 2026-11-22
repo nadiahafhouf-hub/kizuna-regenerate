@@ -169,3 +169,19 @@ Fusion dans `main` par pull request. Les clés API restent dans `.env`, jamais d
   `fixtures/bloc1/satellite/` → **démo instantanée et hors ligne**. Les nouvelles parcelles sont analysées
   automatiquement à l'ouverture du diagnostic (~20-40 s).
 - Attribution affichée : « Contains modified Copernicus Sentinel data ».
+
+## Volet solaire (app `energy`) — page « Solar » du parcours
+
+- **Dimensionnement** (physique) : plantes (bloc 2, nombre modifiable) → eau mois par mois (FAO-56, ET0 Open-Meteo)
+  → énergie de pompage (profondeur du puits) → nombre de panneaux, pompe, réservoir. Production réelle du lieu :
+  **PVGIS** (Commission européenne). Comparaison avec le réglage actuel du bloc 3.
+- **IA 1** production attendue de panneaux propres — entraînée/testée sur de **vraies données NREL PVDAQ**
+  (2010-2012 / test 2013) : erreur journalière 1,1 % (formule physique 1,6 %).
+- **IA 2** cause d'une baisse (poussière / panne / rien) : 97 % sur 2013, 2,5 % de fausses alertes.
+- **IA 3** date de nettoyage avec poussière et pluie prévues (Open-Meteo) : erreur médiane 3 jours.
+- **Alertes** : page Solar + tableau de bord ; bouton « I cleaned the panels today ».
+- **ESP32** : `POST /api/energy/<id>/readings/` `{"mesures": [{"t": "...", "w": 410, "poa": 850, "t_air": 22}]}`.
+  Sans capteur, la production est simulée sur la vraie météo des 45 derniers jours (signalé à l'écran).
+- Commandes : `energy_fetch_pvdaq` (télécharger NREL), **`energy_train`** (entraîner les IA, à lancer sur chaque
+  poste : les `.joblib` ne sont pas versionnés ; sans eux, replis physiques/règles). Notebook :
+  [`notebooks/solaire_ia.ipynb`](notebooks/solaire_ia.ipynb).

@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     "advisor",       # bloc 2
     "irrigation",    # bloc 3
     "passport",      # bloc 4
+    "energy",        # volet photovoltaïque (dimensionnement + nettoyage des panneaux)
 ]
 
 MIDDLEWARE = [

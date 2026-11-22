@@ -33,3 +33,6 @@ Thumbs.db
 
 # Cache du climat (bloc 2)
 cache/
+
+# Cache météo des parcelles créées localement (volet solaire)
+fixtures/energy/meteo/KZ-*.json

@@ -24,6 +24,7 @@ STEP_URLS = {
     "diagnostic": "diagnostics:index",
     "crops": "advisor:index",
     "irrigation": "irrigation:index",
+    "solar": "energy:index",
     "passport": "passport:index",
 }
 
@@ -64,7 +65,17 @@ def home(request):
         "kpis": demo_data.global_kpis(),
         "map_data": map_data,
         "demo_pid": demo_data.DEMO_PARCEL,
+        "solar_alerts": _alertes_solaires(),
     })
+
+
+def _alertes_solaires():
+    """Alertes non lues du volet photovoltaïque (app energy), pour le tableau de bord."""
+    try:
+        from energy.models import Alerte
+        return list(Alerte.objects.filter(lue=False)[:5])
+    except Exception:
+        return []
 
 
 def load_demo(request):

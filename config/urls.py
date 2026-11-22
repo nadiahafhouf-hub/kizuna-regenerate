@@ -4,6 +4,7 @@ from django.contrib import admin
 from django.urls import include, path
 
 from diagnostics import views as diagnostics_views
+from energy import views as energy_views
 from passport import views as passport_views
 
 urlpatterns = [
@@ -15,7 +16,10 @@ urlpatterns = [
     path("p/<str:pid>/diagnostic/", include("diagnostics.urls")),
     path("p/<str:pid>/crops/", include("advisor.urls")),
     path("p/<str:pid>/irrigation/", include("irrigation.urls")),
+    path("p/<str:pid>/solar/", include("energy.urls")),
     path("p/<str:pid>/passport/", include("passport.urls")),
+    # ESP32 : mesures de production photovoltaïque
+    path("api/energy/<str:pid>/readings/", energy_views.api_mesures, name="energy_api"),
     # Page publique de vérification (cible du QR code)
     path("verify/<str:passport_id>/", passport_views.verify, name="verify"),
 ]

@@ -20,6 +20,20 @@
   </div>
 </section>
 
+{% if solar_alerts %}
+<!-- Alertes solaires (volet photovoltaïque) -->
+<section class="reveal mt-5 rounded-2xl bg-zorange-bg p-4 ring-1 ring-zorange/25">
+  <p class="flex items-center gap-2 text-sm font-semibold text-zorange"><i data-lucide="bell-ring" class="h-4 w-4"></i>{{ T.solar.dashboard_alerts }} · {{ solar_alerts|length }}</p>
+  <ul class="mt-2 space-y-1">
+    {% for al in solar_alerts %}
+    <li><a href="{% url 'energy:index' al.parcelle_id %}" class="flex flex-wrap items-center gap-2 rounded-lg bg-white/70 px-3 py-2 text-sm hover:bg-white">
+      {% if al.type == "TECHNICIEN" %}<i data-lucide="wrench" class="h-4 w-4 text-zred"></i>{% else %}<i data-lucide="brush-cleaning" class="h-4 w-4 text-zorange"></i>{% endif %}
+      <b>{{ al.parcelle_id }}</b> · {{ T.solar.alert_msg|get:al.type }}<span class="ml-auto text-xs text-muted">{{ al.cree_le|date:"Y-m-d H:i" }}</span></a></li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
 <!-- KPIs -->
 <section class="mt-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
   {% include "components/kpi_card.html" with icon="droplets" label=T.dashboard.kpi_water value=kpis.water_saved_m3 unit="m³" hint=T.dashboard.kpi_water_hint tone="water" delay=50 %}
