@@ -201,6 +201,8 @@ def edge_tts_mp3(texte, voix="ar-TN-ReemNeural"):
 REFERENCE_TEXTE_DEFAUT = ("عسلامة! اليوم تسقي الزونة زد ثلاثة مع الستة الصباح، مية و خمسين لتر، "
                           "و البومبة الشمسية تخدم من الحداش للثلاثة.")
 _lahgtna = {}
+PAUSE_QUOTA_S = 1800          # quota GPU gratuit épuisé : on ne réessaie Lahgtna qu'après 30 min
+_pause_quota = {"jusqu_a": 0.0}
 
 
 def _reference(cfg):
@@ -227,7 +229,16 @@ def lahgtna_tts(texte, cfg, appel=None):
     if appel:
         return appel(t, ref, ref_texte)
     import concurrent.futures as cf
+    import hashlib
     import pathlib
+    import time
+    # Même phrase + même voix de référence -> WAV déjà généré (le bouton 🔊 ne consomme pas de quota GPU)
+    empreinte = hashlib.sha1(f"{t}|{ref_texte}|{pathlib.Path(ref).stat().st_size}".encode()).hexdigest()[:20]
+    cache = pathlib.Path(ref).parent / "cache" / f"{empreinte}.wav"
+    if cache.exists():
+        return cache.read_bytes()
+    if _pause_quota["jusqu_a"] > time.monotonic():
+        raise VoixErreur("Lahgtna : quota GPU Hugging Face du jour épuisé (nouvel essai plus tard)")
     try:
         from gradio_client import Client, handle_file
     except ImportError as e:
@@ -256,14 +267,22 @@ def lahgtna_tts(texte, cfg, appel=None):
         raise derniere
     ex = cf.ThreadPoolExecutor(1)
     try:
-        return ex.submit(generer).result(timeout=cfg.get("lahgtna_delai") or 45)
+        audio = ex.submit(generer).result(timeout=cfg.get("lahgtna_delai") or 45)
     except cf.TimeoutError as e:
         raise VoixErreur("Lahgtna trop lent (Space occupé)") from e
     except Exception as e:
         _lahgtna.clear()   # client à recréer au prochain essai
+        if "limit" in str(e).lower():   # quota ZeroGPU épuisé : edge-tts directement pendant 30 min
+            _pause_quota["jusqu_a"] = time.monotonic() + PAUSE_QUOTA_S
         raise VoixErreur(f"Lahgtna : {type(e).__name__}: {str(e)[:150]}") from e
     finally:
         ex.shutdown(wait=False)
+    try:
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        cache.write_bytes(audio)
+    except OSError:
+        pass
+    return audio
 
 
 def synthese(texte, cfg=None, http=None):

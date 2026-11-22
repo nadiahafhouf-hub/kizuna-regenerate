@@ -326,3 +326,57 @@ class ChatbotTests(TestCase):
                                  content_type="application/json").json()
         self.assertEqual(reply["navigate"], reverse("diagnostics:index", args=[PID]) + "?chat_focus=red-zone")
         self.assertIn("Z1", reply["reply"])
+
+
+class LahgtnaCacheTests(TestCase):
+    """Voix Lahgtna : WAV en cache (relecture sans quota GPU) et pause après quota épuisé."""
+
+    def setUp(self):
+        import tempfile
+        from pathlib import Path
+
+        from services.rag import voix
+        self.voix = voix
+        self.dossier = Path(tempfile.mkdtemp())
+        self.ref = self.dossier / "reference.mp3"
+        self.ref.write_bytes(b"ref")
+        self.cfg = {"reference": str(self.ref), "reference_texte": "عسلامة", "lahgtna_delai": 5}
+        voix._pause_quota["jusqu_a"] = 0.0
+        self.addCleanup(voix._pause_quota.update, {"jusqu_a": 0.0})
+
+    def _client(self, fonction):
+        class Client:
+            def __init__(self, *a, **k):
+                pass
+            predict = staticmethod(fonction)
+        return patch.dict("sys.modules", {"gradio_client": type("M", (), {"Client": Client, "handle_file": str})})
+
+    def test_meme_phrase_relue_depuis_le_cache(self):
+        appels = []
+        sortie = self.dossier / "out.wav"
+        sortie.write_bytes(b"RIFFwav")
+
+        def predict(*a, **k):
+            appels.append(a)
+            return str(sortie), "ok"
+        self.voix._lahgtna.clear()
+        with self._client(predict):
+            self.assertEqual(self.voix.lahgtna_tts("اليوم نسقيو", self.cfg), b"RIFFwav")
+            self.assertEqual(self.voix.lahgtna_tts("اليوم نسقيو", self.cfg), b"RIFFwav")
+        self.assertEqual(len(appels), 1)
+        self.voix._lahgtna.clear()
+
+    def test_quota_epuise_met_lahgtna_en_pause(self):
+        appels = []
+
+        def predict(*a, **k):
+            appels.append(a)
+            raise RuntimeError("You have exceeded your ZeroGPU runs limit.")
+        self.voix._lahgtna.clear()
+        with self._client(predict):
+            with self.assertRaises(self.voix.VoixErreur):
+                self.voix.lahgtna_tts("جملة أولى", self.cfg)
+            with self.assertRaises(self.voix.VoixErreur):
+                self.voix.lahgtna_tts("جملة ثانية", self.cfg)
+        self.assertEqual(len(appels), 1)
+        self.voix._lahgtna.clear()
