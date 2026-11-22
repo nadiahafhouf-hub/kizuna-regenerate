@@ -85,7 +85,7 @@
     <header class="sticky top-0 z-[1200] flex h-16 items-center gap-2 border-b border-sand-200 bg-sand-50/95 px-3 backdrop-blur dark:border-night-700 dark:bg-night-950/95 lg:hidden">
       <button type="button" @click="$store.nav.open = true" aria-controls="farm-nav" :aria-expanded="$store.nav.open"
               class="grid h-12 w-12 place-items-center rounded-xl hover:bg-sand-100 dark:hover:bg-night-800" aria-label="{{ T.nav.menu }}"><i data-lucide="menu" class="h-6 w-6"></i></button>
-      <span class="flex items-center gap-2 font-semibold"><i data-lucide="sprout" class="h-5 w-5 text-olive-700 dark:text-sun-300"></i>{{ T.app.name }}</span>
+      <span class="flex items-center gap-2 whitespace-nowrap font-semibold"><i data-lucide="sprout" class="h-5 w-5 text-olive-700 dark:text-sun-300"></i>{{ T.app.name }}</span>
       {% if parcel %}<span class="ml-auto truncate text-sm text-muted dark:text-sand-300">{{ parcel.name }}</span>{% endif %}
     </header>
 

@@ -255,7 +255,8 @@ def sun(request, pid):
     mois = [{"mois": m["mois"], "pct": max(4, round(100 * m["production_kwh_jour"] / maxi)),
              "dim": m["mois"] == a["dim"].get("mois_dimensionnant")} for m in mens]
     return render(request, "farmer/sun.html", _ctx(
-        "sun", pid, dim=a["dim"], mois=mois, hero=hero, sous=sous, urgent=urgent, alertes=alertes,
+        "sun", pid, dim=a["dim"], mois=mois, hero=hero,
+        panels_text=F["panels"].format(n=a["dim"]["nb_panneaux"]).replace("panels", "panel" if a["dim"]["nb_panneaux"] == 1 else "panels"), sous=sous, urgent=urgent, alertes=alertes,
         cleaned=request.GET.get("cleaned") == "1", here=request.path,
         clean_url=reverse("energy:clean", args=[pid])))
 
