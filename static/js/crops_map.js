@@ -14,7 +14,7 @@ function cropsPlanMap(el, G, T) {
   }).addTo(map);
   const kind = (k) => G.features.filter((f) => f.properties.kind === k);
   const geo = (feats, opts) => L.geoJSON({ type: "FeatureCollection", features: feats }, opts);
-  const hex = (c) => ZONE_HEX[c] || "#6B6F5E";
+  const hex = (c) => ZONE_HEX[c] || "#55684A";
   const court = (s, n = 24) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
 
   // Zones : couleur franche + contour épais (lisible sur la photo)
@@ -31,7 +31,7 @@ function cropsPlanMap(el, G, T) {
   // Plantes : points blancs (gros pour les arbres) avec contour foncé -> visibles sur toutes les couleurs
   const plants = geo(kind("plante"), {
     pointToLayer: (f, ll) => L.circleMarker(ll, {
-      radius: f.properties.arbre ? 6 : 3, color: "#1E2316", weight: 1, fillColor: "#FFFFFF", fillOpacity: 0.95,
+      radius: f.properties.arbre ? 6 : 3, color: "#172812", weight: 1, fillColor: "#FFFFFF", fillOpacity: 0.95,
     }).bindTooltip(f.properties.culture + (f.properties.alimentaire ? "" : ` (${T.non_food})`)),
   });
   // Équipements : petites icônes rondes, le nom au survol (ne cachent plus les vannes)
@@ -40,7 +40,7 @@ function cropsPlanMap(el, G, T) {
   const equip = L.layerGroup([
     geo(kind("conduite"), { style: { color: "#1F6FA8", weight: 4 } }),
     geo(kind("vanne"), { pointToLayer: (f, ll) => L.marker(ll, { icon: L.divIcon({ className: "", iconSize: [16, 16], iconAnchor: [8, 8],
-        html: `<div style="width:16px;height:16px;background:#1E2316;border:3px solid ${hex(f.properties.couleur)};border-radius:4px;box-shadow:0 0 0 1.5px #fff"></div>` }) })
+        html: `<div style="width:16px;height:16px;background:#172812;border:3px solid ${hex(f.properties.couleur)};border-radius:4px;box-shadow:0 0 0 1.5px #fff"></div>` }) })
       .bindTooltip(`${T.valve} V-${f.properties.zone_id} · ${f.properties.besoin_litres_jour} L/${T.day}`) }),
     geo(kind("reservoir"), { pointToLayer: (f, ll) => L.marker(ll, { icon: icone("💧", T.equipment.reservoir) }).bindTooltip(T.equipment.reservoir) }),
     geo(kind("pompe"), { pointToLayer: (f, ll) => L.marker(ll, { icon: icone("⚙️", T.equipment.pompe) }).bindTooltip(T.equipment.pompe) }),
@@ -50,7 +50,7 @@ function cropsPlanMap(el, G, T) {
   const labels = geo(kind("etiquette"), { pointToLayer: (f, ll) => {
     const p = f.properties;
     return L.marker(ll, { interactive: false, icon: L.divIcon({ className: "", iconSize: null,
-      html: `<div style="transform:translate(-50%,-50%);background:#fff;border-left:5px solid ${hex(p.couleur)};border-radius:8px;padding:3px 8px;font:600 12px/1.25 'DM Sans',sans-serif;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.35);color:#1E2316">` +
+      html: `<div style="transform:translate(-50%,-50%);background:#fff;border-left:5px solid ${hex(p.couleur)};border-radius:8px;padding:3px 8px;font:600 12px/1.25 'DM Sans',sans-serif;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.35);color:#172812">` +
             `${p.zone_id} · ${p.besoin_litres_jour} L/${T.day}<br><span style="font-weight:400;font-size:11px">${court(p.culture)}</span></div>` }) });
   } });
 
@@ -80,7 +80,7 @@ function plantedFieldMap(el, G, T, onMove) {
     maxZoom: 21, maxNativeZoom: 18,
     attribution: "Imagery © Esri, Maxar, Earthstar Geographics",
   }).addTo(map);
-  const hex = (c) => ZONE_HEX[c] || "#6B6F5E";
+  const hex = (c) => ZONE_HEX[c] || "#55684A";
   const zones = L.geoJSON({ type: "FeatureCollection", features: G.features.filter((f) => f.properties.kind === "case") }, {
     style: (f) => ({ color: hex(f.properties.couleur), weight: 1.5, fillColor: hex(f.properties.couleur), fillOpacity: 0.18 }),
     onEachFeature: (f, l) => l.bindTooltip(`<b>${T.zone} ${f.properties.zone_id || "—"}</b> · ${f.properties.id}`, { sticky: true }),
@@ -98,7 +98,7 @@ function plantedFieldMap(el, G, T, onMove) {
       fillColor: "#3FBF5F", fillOpacity: 0.6 })
       .bindTooltip(`${T.layers.existing} · Ø ${p.diam_couronne_m} m<br>${p.goutteurs} ${T.drippers} · ${p.l_jour} L/${T.day}`),
     vanne: (ll, p) => L.marker(ll, { icon: L.divIcon({ className: "", iconSize: [18, 18], iconAnchor: [9, 9],
-      html: `<div style="width:18px;height:18px;display:grid;place-items:center;background:#1E2316;color:#fff;font:700 10px system-ui;border:2px solid #7FD3FF;border-radius:4px;box-shadow:0 0 0 1.5px #fff">${p.secteur}</div>` }) })
+      html: `<div style="width:18px;height:18px;display:grid;place-items:center;background:#172812;color:#fff;font:700 10px system-ui;border:2px solid #7FD3FF;border-radius:4px;box-shadow:0 0 0 1.5px #fff">${p.secteur}</div>` }) })
       .bindTooltip(`${T.layers.valve} ${p.secteur} · ${p.arbres} ${T.trees} · ${p.debit_m3_h} m³/h · ${p.heures} h/${T.day}`),
     source: (ll) => L.marker(ll, { icon: L.divIcon({ className: "", iconSize: [28, 28], iconAnchor: [14, 14],
       html: '<div style="width:28px;height:28px;display:grid;place-items:center;background:#fff;border:2px solid #0B3D91;border-radius:999px;font-size:15px;box-shadow:0 1px 3px rgba(0,0,0,.35)">💧</div>' }) })

@@ -2,17 +2,17 @@
 <header class="sticky top-0 z-[1200] bg-olive-900 text-white shadow-sm lg:hidden">
   <div class="flex h-14 items-center gap-2 px-3 sm:px-6">
     <button type="button" @click="$store.nav.open = true" aria-controls="sidebar" :aria-expanded="$store.nav.open"
-            class="grid h-11 w-11 place-items-center rounded-lg hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-sun-300"
+            class="grid h-11 w-11 place-items-center rounded-lg hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-lime-300"
             aria-label="{{ T.nav.menu }}">
       <i data-lucide="menu" class="h-5 w-5"></i>
     </button>
     <a href="{% url 'core:home' %}" class="flex items-center gap-2 font-semibold tracking-tight">
-      <i data-lucide="sprout" class="h-5 w-5 text-sun-300"></i>{{ T.app.name }}
+      <i data-lucide="sprout" class="h-5 w-5 text-lime-300"></i>{{ T.app.name }}
     </a>
     {% if parcel %}
-    <span class="ml-auto truncate rounded-lg bg-white/10 px-2.5 py-1 text-sm font-medium"><i data-lucide="map-pin" class="mr-1 inline h-3.5 w-3.5 text-sun-300"></i>{{ parcel.id }}</span>
+    <span class="ml-auto truncate rounded-lg bg-white/10 px-2.5 py-1 text-sm font-medium"><i data-lucide="map-pin" class="mr-1 inline h-3.5 w-3.5 text-lime-300"></i>{{ parcel.id }}</span>
     {% endif %}
-    <a href="{{ FARMER_URL }}" class="{% if not parcel %}ml-auto{% endif %} grid h-11 w-11 place-items-center rounded-lg text-sun-300 hover:bg-white/10" aria-label="{{ T.nav.farmer_view }}">
+    <a href="{{ FARMER_URL }}" class="{% if not parcel %}ml-auto{% endif %} grid h-11 w-11 place-items-center rounded-lg text-lime-300 hover:bg-white/10" aria-label="{{ T.nav.farmer_view }}">
       <i data-lucide="tractor" class="h-5 w-5"></i>
     </a>
   </div>

@@ -55,7 +55,7 @@ document.addEventListener("alpine:init", () => {
       grad.addColorStop(0, "rgba(232,169,22,0.45)");
       grad.addColorStop(1, "rgba(232,169,22,0.02)");
       Chart.defaults.font.family = "'DM Sans', system-ui, sans-serif";
-      Chart.defaults.color = "#6B6F5E";
+      Chart.defaults.color = "#55684A";
       chart = new Chart(ctx, {
         type: "line",
         data: {
@@ -73,11 +73,11 @@ document.addEventListener("alpine:init", () => {
           animation: { duration: 900, easing: "easeOutQuart" },
           scales: {
             x: { grid: { display: false }, ticks: { maxTicksLimit: 12 } },
-            y: { beginAtZero: true, grid: { color: "#F3EDE1" }, title: { display: true, text: "kW" } },
+            y: { beginAtZero: true, grid: { color: "#E7EFDD" }, title: { display: true, text: "kW" } },
           },
           plugins: {
             legend: { display: false },
-            tooltip: { backgroundColor: "#1E2316", padding: 10, cornerRadius: 10,
+            tooltip: { backgroundColor: "#172812", padding: 10, cornerRadius: 10,
                        callbacks: { label: (c) => ` ${c.dataset.label}: ${c.parsed.y.toFixed(2)}` } },
           },
         },

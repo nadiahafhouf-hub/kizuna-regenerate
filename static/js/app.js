@@ -21,7 +21,7 @@ function chartDefaults(C) {
   d.plugins.legend.labels.usePointStyle = true;
   d.plugins.legend.labels.boxHeight = 8;
   d.plugins.legend.labels.padding = 14;
-  d.plugins.tooltip.backgroundColor = "#1E2316";
+  d.plugins.tooltip.backgroundColor = "#172812";
   d.plugins.tooltip.padding = 10;
   d.plugins.tooltip.cornerRadius = 10;
   d.plugins.tooltip.titleFont = { weight: "600" };

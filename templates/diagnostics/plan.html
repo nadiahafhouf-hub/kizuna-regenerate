@@ -152,13 +152,13 @@
         { label: UI.plan.why_missed, data: ex.courbe.map((r) => r.rouges_manques_pct), borderColor: "#B83227", tension: .3, pointRadius: 2, yAxisID: "y2" },
       ] },
       options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
-        plugins: { legend: { display: false }, tooltip: { backgroundColor: "#1E2316", callbacks: { title: (i) => `${i[0].label} points`, label: (c) => ` ${c.dataset.label}: ${c.parsed.y}%` } } },
+        plugins: { legend: { display: false }, tooltip: { backgroundColor: "#172812", callbacks: { title: (i) => `${i[0].label} points`, label: (c) => ` ${c.dataset.label}: ${c.parsed.y}%` } } },
         scales: { x: { title: { display: true, text: "points" }, grid: { display: false } },
-                  y: { min: 70, max: 100, title: { display: true, text: "%" }, grid: { color: "#F3EDE1" } },
+                  y: { min: 70, max: 100, title: { display: true, text: "%" }, grid: { color: "#E7EFDD" } },
                   y2: { position: "right", min: 0, max: 20, grid: { display: false } } } },
       plugins: [{ id: "rule", afterDraw(c) { const i = ns.indexOf(ex.recommande); if (i < 0) return;
         const x = c.scales.x.getPixelForValue(i), { top, bottom } = c.chartArea, g = c.ctx;
-        g.save(); g.strokeStyle = "#1E2316"; g.setLineDash([4, 4]); g.beginPath(); g.moveTo(x, top); g.lineTo(x, bottom); g.stroke(); g.restore(); } }],
+        g.save(); g.strokeStyle = "#172812"; g.setLineDash([4, 4]); g.beginPath(); g.moveTo(x, top); g.lineTo(x, bottom); g.stroke(); g.restore(); } }],
     });
   }
 })();
