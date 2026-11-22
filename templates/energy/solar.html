@@ -184,9 +184,9 @@
     <p class="font-semibold">{{ T.solar.models_ia1 }}</p>
     <p class="text-xs text-muted">{{ T.solar.models_ia1_hint }}</p>
     <dl class="mt-3 grid grid-cols-3 gap-2 text-center text-sm">
-      <div class="rounded-xl bg-white px-2 py-2"><dt class="text-[11px] text-muted">R²</dt><dd class="font-bold">{{ ia1.modele_ia.r2 }}</dd></div>
-      <div class="rounded-xl bg-white px-2 py-2"><dt class="text-[11px] text-muted">{{ T.solar.models_error_day }}</dt><dd class="font-bold">{{ ia1.modele_ia.erreur_energie_jour_pct }}%</dd></div>
-      <div class="rounded-xl bg-white px-2 py-2"><dt class="text-[11px] text-muted">MAE</dt><dd class="font-bold">{{ ia1.modele_ia.mae_w_par_kwc }} W</dd></div>
+      <div class="rounded-xl bg-white px-2 py-2"><dt class="text-[11px] text-muted">R²</dt><dd class="font-mono font-semibold tabular-nums">{{ ia1.modele_ia.r2 }}</dd></div>
+      <div class="rounded-xl bg-white px-2 py-2"><dt class="text-[11px] text-muted">{{ T.solar.models_error_day }}</dt><dd class="font-mono font-semibold tabular-nums">{{ ia1.modele_ia.erreur_energie_jour_pct }}%</dd></div>
+      <div class="rounded-xl bg-white px-2 py-2"><dt class="text-[11px] text-muted">MAE</dt><dd class="font-mono font-semibold tabular-nums">{{ ia1.modele_ia.mae_w_par_kwc }} W</dd></div>
     </dl>
     <p class="mt-2 text-xs text-muted">{{ T.solar.models_vs }}: {{ ia1.formule_physique_pvwatts.erreur_energie_jour_pct }}% · MAE {{ ia1.formule_physique_pvwatts.mae_w_par_kwc }} W</p>
   </div>
@@ -194,9 +194,9 @@
     <p class="font-semibold">{{ T.solar.models_ia2 }}</p>
     <p class="text-xs text-muted">{{ T.solar.models_ia2_hint }}</p>
     <dl class="mt-3 grid grid-cols-3 gap-2 text-center text-sm">
-      <div class="rounded-xl bg-white px-2 py-2"><dt class="text-[11px] text-muted">{{ T.solar.models_accuracy }}</dt><dd class="font-bold">{{ ia2.exactitude_pct }}%</dd></div>
-      <div class="rounded-xl bg-white px-2 py-2"><dt class="text-[11px] text-muted">{{ T.solar.cause_short.POUSSIERE }}</dt><dd class="font-bold">{{ ia2.par_classe.POUSSIERE.rappel_pct }}%</dd></div>
-      <div class="rounded-xl bg-white px-2 py-2"><dt class="text-[11px] text-muted">{{ T.solar.models_false }}</dt><dd class="font-bold">{{ ia2.fausses_alertes_pct }}%</dd></div>
+      <div class="rounded-xl bg-white px-2 py-2"><dt class="text-[11px] text-muted">{{ T.solar.models_accuracy }}</dt><dd class="font-mono font-semibold tabular-nums">{{ ia2.exactitude_pct }}%</dd></div>
+      <div class="rounded-xl bg-white px-2 py-2"><dt class="text-[11px] text-muted">{{ T.solar.cause_short.POUSSIERE }}</dt><dd class="font-mono font-semibold tabular-nums">{{ ia2.par_classe.POUSSIERE.rappel_pct }}%</dd></div>
+      <div class="rounded-xl bg-white px-2 py-2"><dt class="text-[11px] text-muted">{{ T.solar.models_false }}</dt><dd class="font-mono font-semibold tabular-nums">{{ ia2.fausses_alertes_pct }}%</dd></div>
     </dl>
   </div>
 </section>
@@ -209,6 +209,7 @@
   </a>
 </div>
 {% endif %}
+{% include "components/data_sources.html" with keys="nrel,pvgis,meteo" %}
 {% endblock %}
 
 {% block scripts %}

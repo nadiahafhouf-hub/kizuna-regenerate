@@ -2,7 +2,8 @@
 {{ chat_config|json_script:"chat-config" }}
 <script type="importmap">{"imports":{"three":"{% vstatic 'js/vendor/three/three.module.min.js' %}"}}</script>
 <div x-data="chatbot('{% url 'core:chat' %}')" @keydown.escape.window="if (open) close()"
-     @resize.window="placeFennec()" @pagehide.window="stopListening(); stopSpeech()">
+     @resize.window="placeFennec()" @pagehide.window="stopListening(); stopSpeech()"
+     @open-chat.window="if (!open) toggle()">
   <!-- Bouton flottant -->
   <button type="button" x-ref="launcher" @click="toggle()" x-show="!open"
           class="chat-fennec-launcher rounded-2xl font-semibold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-sun-300"

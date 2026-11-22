@@ -10,6 +10,7 @@ from passport import views as passport_views
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include("core.urls")),
+    path("farm/", include("farmer.urls")),
     # Bloc 1 : l'agriculteur crée sa parcelle (dimensions + coin nord-ouest)
     path("parcels/new/", diagnostics_views.new_parcel, name="new_parcel"),
     # Parcours par parcelle : 1 Diagnostic → 2 Crops → 3 Irrigation → 4 Passport

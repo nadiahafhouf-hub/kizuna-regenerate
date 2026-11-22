@@ -12,6 +12,7 @@
   <script src="https://cdn.tailwindcss.com/3.4.16"></script>
   <script>
     tailwind.config = {
+      darkMode: "media",   // seules les pages Farmer utilisent dark: (la vue Expert reste claire)
       theme: {
         extend: {
           colors: {
@@ -24,7 +25,9 @@
             zred:    {DEFAULT: "#B83227", bg: "#FBE9E7"},
             zorange: {DEFAULT: "#B85C0E", bg: "#FDF0E3"},
             zgreen:  {DEFAULT: "#23774A", bg: "#E6F4EC"},
+            night:   {950: "#12150D", 900: "#181C12", 800: "#21261A", 700: "#2C3223", 600: "#3A4130"},
           },
+          borderRadius: { tile: "1.5rem" },
           fontFamily: {
             sans: ['"DM Sans"', "system-ui", "sans-serif"],
             mono: ['"DM Mono"', "ui-monospace", "monospace"],
@@ -32,6 +35,7 @@
           boxShadow: {
             soft: "0 1px 2px rgba(30,35,22,.04), 0 6px 20px -6px rgba(30,35,22,.10)",
             lift: "0 2px 4px rgba(30,35,22,.05), 0 16px 32px -12px rgba(30,35,22,.18)",
+            tile: "0 1px 2px rgba(30,35,22,.04), 0 8px 24px -12px rgba(30,35,22,.12)",
           },
         },
       },
@@ -42,17 +46,25 @@
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
   {% block head %}{% endblock %}
 </head>
-<body class="min-h-screen bg-sand-50 font-sans text-ink antialiased"
+<body class="{% block body_class %}min-h-screen bg-sand-50 font-sans text-ink antialiased{% endblock %}"
       hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
-  {% include "partials/navbar.html" %}
-  {% block stepper %}{% if steps %}{% include "partials/stepper.html" %}{% endif %}{% endblock %}
+  <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[2000] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:shadow-lift">{{ T.nav.skip }}</a>
+  {% block layout %}
+  <div x-data>
+    {% include "partials/sidebar.html" %}
+    <div class="lg:pl-64">
+      {% include "partials/navbar.html" %}
+      {% block stepper %}{% if steps %}{% include "partials/stepper.html" %}{% endif %}{% endblock %}
 
-  <main class="mx-auto max-w-7xl px-4 pb-28 pt-6 sm:px-6 lg:px-8">
-    {% for m in messages %}{% if "diagnostic" in m.extra_tags %}
-    <p class="mb-4 flex items-center gap-2 rounded-xl bg-sun-50 px-4 py-3 text-sm font-medium text-sun-700 ring-1 ring-sun-300/60"><i data-lucide="info" class="h-4 w-4 shrink-0"></i>{{ m }}</p>
-    {% endif %}{% endfor %}
-    {% block content %}{% endblock %}
-  </main>
+      <main id="main" class="mx-auto max-w-7xl px-4 pb-28 pt-6 sm:px-6 lg:px-8">
+        {% for m in messages %}{% if "diagnostic" in m.extra_tags %}
+        <p class="mb-4 flex items-center gap-2 rounded-xl bg-sun-50 px-4 py-3 text-sm font-medium text-sun-700 ring-1 ring-sun-300/60"><i data-lucide="info" class="h-4 w-4 shrink-0"></i>{{ m }}</p>
+        {% endif %}{% endfor %}
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+  {% endblock %}
 
   {% block chatbot %}{% include "partials/chatbot_panel.html" %}{% endblock %}
   {% include "partials/toast.html" %}

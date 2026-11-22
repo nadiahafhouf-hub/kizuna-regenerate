@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% load ui %}
+{# Vue Farmer : site web (desktop d'abord), simple et moderne. Style « Accessible & Ethical » + « Bento Box Grid »
+   (design-system/kizuna/pages/farmer.md). Mode sombre automatique via dark: (prefers-color-scheme). #}
+{% block title %}{{ F.tabs|get:page }}{% endblock %}
+{% block body_class %}min-h-screen bg-sand-50 font-sans text-[17px] text-ink antialiased dark:bg-night-950 dark:text-sand-50{% endblock %}
+
+{% block head %}
+<style type="text/tailwindcss">
+  @layer components {
+    .f-tile { @apply rounded-tile bg-white p-6 shadow-tile ring-1 ring-sand-200/70 dark:bg-night-800 dark:ring-night-600 dark:shadow-none; }
+    .f-label { @apply text-sm font-medium text-muted dark:text-sand-300; }
+    .f-big { @apply font-mono text-5xl font-medium leading-none tracking-tight tabular-nums lg:text-[56px]; }
+    .f-unit { @apply ml-1 font-sans text-lg font-medium text-muted dark:text-sand-300; }
+    .f-btn { @apply inline-flex min-h-[48px] cursor-pointer items-center justify-center gap-2 rounded-2xl px-5 text-base font-semibold transition duration-200 focus:outline-none focus-visible:ring-4 focus-visible:ring-sun-300 disabled:cursor-wait disabled:opacity-60; }
+    .f-btn-primary { @apply f-btn bg-olive-700 text-white hover:bg-olive-800 dark:bg-sun-300 dark:text-olive-900 dark:hover:bg-sun-100; }
+    .f-btn-light { @apply f-btn bg-white text-ink ring-1 ring-sand-300 hover:bg-sand-100 dark:bg-night-700 dark:text-sand-50 dark:ring-night-600 dark:hover:bg-night-600; }
+    .f-pill { @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold; }
+    .f-link { @apply rounded font-semibold text-olive-700 underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-sun-300 dark:text-sun-300; }
+  }
+</style>
+{% endblock %}
+
+{% block layout %}
+<div x-data>
+  <div x-show="$store.nav.open" x-transition.opacity x-cloak @click="$store.nav.open = false" class="fixed inset-0 z-[1240] bg-ink/40 lg:hidden"></div>
+
+  {# Barre latérale #}
+  <aside id="farm-nav"
+         class="fixed inset-y-0 left-0 z-[1250] flex w-72 -translate-x-full flex-col border-r border-sand-200 bg-white transition-transform duration-200 dark:border-night-700 dark:bg-night-900 lg:translate-x-0"
+         :class="$store.nav.open && 'translate-x-0'" @keydown.escape.window="$store.nav.open = false" aria-label="{{ T.nav.menu }}">
+    <div class="flex h-20 items-center gap-3 px-6">
+      <span class="grid h-11 w-11 place-items-center rounded-2xl bg-olive-700 text-sun-300"><i data-lucide="sprout" class="h-6 w-6"></i></span>
+      <div class="leading-tight">
+        <p class="text-lg font-semibold">{{ T.app.name }}</p>
+        <p class="text-sm text-muted dark:text-sand-300">{{ F.brand_sub }}</p>
+      </div>
+      <button type="button" class="ml-auto grid h-11 w-11 place-items-center rounded-xl hover:bg-sand-100 dark:hover:bg-night-700 lg:hidden"
+              @click="$store.nav.open = false" aria-label="{{ T.nav.close_menu }}"><i data-lucide="x" class="h-5 w-5"></i></button>
+    </div>
+
+    {% if parcel %}
+    <div class="px-4" x-data="{ open: false }" @click.outside="open = false">
+      <div class="relative">
+        <button type="button" @click="open = !open" :aria-expanded="open"
+                class="flex w-full items-center gap-3 rounded-2xl bg-sand-100 px-4 py-3 text-left transition hover:bg-sand-200 focus:outline-none focus-visible:ring-4 focus-visible:ring-sun-300 dark:bg-night-800 dark:hover:bg-night-700">
+          <i data-lucide="map-pin" class="h-5 w-5 shrink-0 text-olive-700 dark:text-sun-300"></i>
+          <span class="min-w-0 flex-1"><span class="block truncate font-semibold">{{ parcel.name }}</span>
+            <span class="block text-sm text-muted dark:text-sand-300">{{ parcel.id }}</span></span>
+          <i data-lucide="chevrons-up-down" class="h-4 w-4 text-muted"></i>
+        </button>
+        <div x-show="open" x-transition.origin.top x-cloak class="absolute inset-x-0 z-10 mt-2 max-h-80 overflow-y-auto rounded-2xl bg-white py-2 shadow-lift ring-1 ring-sand-200 dark:bg-night-800 dark:ring-night-600">
+          {% for p in all_parcels %}
+          <a href="{% url page_url_name p.id %}" class="block px-4 py-3 hover:bg-sand-50 dark:hover:bg-night-700 {% if p.id == parcel.id %}font-semibold{% endif %}">
+            {{ p.name|default:p.id }} <span class="text-sm text-muted dark:text-sand-300">· {{ p.id }}</span>
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <nav class="mt-4 flex-1 overflow-y-auto px-4">
+      <ul class="space-y-1">
+        {% for t in tabs %}
+        <li><a href="{{ t.url }}" {% if t.key == page %}aria-current="page"{% endif %}
+               class="flex min-h-[48px] items-center gap-3 rounded-2xl px-4 font-medium transition focus:outline-none focus-visible:ring-4 focus-visible:ring-sun-300
+                      {% if t.key == page %}bg-olive-700 text-white dark:bg-sun-300 dark:text-olive-900{% else %}text-ink/80 hover:bg-sand-100 dark:text-sand-100 dark:hover:bg-night-800{% endif %}">
+          <i data-lucide="{{ t.icon }}" class="h-5 w-5"></i>{{ t.label }}</a></li>
+        {% endfor %}
+      </ul>
+    </nav>
+
+    <div class="space-y-2 p-4">
+      <button type="button" @click="$dispatch('open-chat'); $store.nav.open = false"
+              class="flex min-h-[48px] w-full items-center gap-3 rounded-2xl px-4 font-medium text-ink/80 transition hover:bg-sand-100 dark:text-sand-100 dark:hover:bg-night-800">
+        <i data-lucide="message-circle-more" class="h-5 w-5 text-olive-700 dark:text-sun-300"></i>{{ T.nav.assistant }}</button>
+      <a href="{{ expert_url }}" class="flex min-h-[48px] items-center gap-3 rounded-2xl px-4 font-medium ring-1 ring-sand-300 transition hover:bg-sand-100 dark:ring-night-600 dark:hover:bg-night-800">
+        <i data-lucide="chart-no-axes-combined" class="h-5 w-5"></i>{{ T.nav.expert_view }}<i data-lucide="arrow-up-right" class="ml-auto h-4 w-4"></i></a>
+    </div>
+  </aside>
+
+  <div class="lg:pl-72">
+    {# Barre du haut, petits écrans #}
+    <header class="sticky top-0 z-[1200] flex h-16 items-center gap-2 border-b border-sand-200 bg-sand-50/95 px-3 backdrop-blur dark:border-night-700 dark:bg-night-950/95 lg:hidden">
+      <button type="button" @click="$store.nav.open = true" aria-controls="farm-nav" :aria-expanded="$store.nav.open"
+              class="grid h-12 w-12 place-items-center rounded-xl hover:bg-sand-100 dark:hover:bg-night-800" aria-label="{{ T.nav.menu }}"><i data-lucide="menu" class="h-6 w-6"></i></button>
+      <span class="flex items-center gap-2 whitespace-nowrap font-semibold"><i data-lucide="sprout" class="h-5 w-5 text-olive-700 dark:text-sun-300"></i>{{ T.app.name }}</span>
+      {% if parcel %}<span class="ml-auto truncate text-sm text-muted dark:text-sand-300">{{ parcel.name }}</span>{% endif %}
+    </header>
+
+    <main id="main" class="mx-auto max-w-6xl px-4 pb-32 pt-6 sm:px-8 lg:pt-10">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% endblock %}
