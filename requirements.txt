@@ -16,6 +16,9 @@ qrcode[pil]>=7.4        # QR passeport (bloc 4)
 reportlab>=4.0          # PDF passeport (bloc 4)
 google-genai>=1.0       # Gemini Vision (bloc 2) + chatbot (bloc 4)
 qdrant-client>=1.12     # base vectorielle du chatbot (bloc 4), mode embarque ou serveur
+edge-tts>=7.0           # voix tunisiennes gratuites (ar-TN Reem / Hedi) sans cle ni carte
+faster-whisper>=1.0     # ecoute gratuite hors ligne : Whisper Derja (tounsi)
+gradio_client>=1.3      # voix a l'accent tunisien : Lahgtna (Space Hugging Face AVOiD/derja-tts)
 # Bloc 3 : reseau goutte-a-goutte calcule sur image satellite / photo (services/irrigation_engine)
 opencv-python-headless>=4.8
 scipy>=1.11

@@ -35,9 +35,16 @@
     <div x-ref="scroll" class="flex-1 space-y-3 overflow-y-auto px-5 py-5">
       <template x-for="(m, i) in messages" :key="i">
         <div class="flex flex-col" :class="m.role === 'user' ? 'items-end' : 'items-start'">
-          <div dir="auto" class="max-w-[85%] whitespace-pre-line rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm"
-               :class="m.role === 'user' ? 'rounded-br-md bg-olive-700 text-white' : 'rounded-bl-md bg-white text-ink ring-1 ring-sand-200'"
-               x-text="m.text"></div>
+          <div class="flex max-w-[85%] items-end gap-1.5" :class="m.role === 'user' ? 'flex-row-reverse' : ''">
+            <div dir="auto" class="whitespace-pre-line rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm"
+                 :class="m.role === 'user' ? 'rounded-br-md bg-olive-700 text-white' : 'rounded-bl-md bg-white text-ink ring-1 ring-sand-200'"
+                 x-text="m.text"></div>
+            <!-- 🔊 relire la réponse avec la voix tunisienne -->
+            <button type="button" x-show="m.role === 'bot' && i > 0" @click="speak(m)" title="{{ T.chat.listen }}" aria-label="{{ T.chat.listen }}"
+                    class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white text-olive-700 ring-1 ring-sand-200 hover:bg-olive-50">
+              <span aria-hidden="true">🔊</span>
+            </button>
+          </div>
           <!-- actions recommandées (liens vers les pages de l'application) -->
           <div x-show="m.actions && m.actions.length" class="mt-2 flex max-w-[85%] flex-wrap gap-1.5">
             <template x-for="a in (m.actions || [])" :key="a.id">
@@ -72,7 +79,18 @@
       </div>
     </div>
 
+    <p x-show="recording" x-cloak class="flex items-center gap-2 border-t border-sand-200 bg-zred-bg px-4 py-2 text-xs font-semibold text-zred">
+      <span class="h-2.5 w-2.5 animate-pulse rounded-full bg-zred"></span>{{ T.chat.listening }}
+    </p>
     <form @submit.prevent="send()" class="flex items-center gap-2 border-t border-sand-200 bg-white p-3">
+      <!-- 🎤 parler en tounsi -->
+      <button type="button" @click="micro()" :disabled="typing && !recording"
+              :title="recording ? '{{ T.chat.mic_stop|escapejs }}' : '{{ T.chat.mic|escapejs }}'"
+              :aria-label="recording ? '{{ T.chat.mic_stop|escapejs }}' : '{{ T.chat.mic|escapejs }}'"
+              class="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-lg transition disabled:opacity-40"
+              :class="recording ? 'bg-zred text-white animate-pulse' : 'bg-olive-100 text-olive-800 hover:bg-olive-200'">
+        <span x-text="recording ? '■' : '🎤'"></span>
+      </button>
       <input x-model="input" x-ref="input" type="text" dir="auto" placeholder="{{ T.chat.placeholder }}" autocomplete="off"
              class="min-w-0 flex-1 rounded-xl border-0 bg-sand-100 px-4 py-2.5 text-sm ring-1 ring-sand-200 placeholder:text-muted focus:bg-white focus:ring-2 focus:ring-olive-600">
       <button type="submit" :disabled="!input.trim() || typing"

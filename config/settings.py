@@ -30,6 +30,36 @@ QDRANT_URL = os.getenv("QDRANT_URL", "")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")
 QDRANT_PATH = os.getenv("QDRANT_PATH") or str(BASE_DIR / "qdrant_data")
 GEMINI_EMBED_MODEL = os.getenv("GEMINI_EMBED_MODEL", "gemini-embedding-001")
+# Offre gratuite souvent saturée (503) : le chatbot passe aussitôt au modèle suivant
+GEMINI_MODELES_SECOURS = [m.strip() for m in os.getenv("GEMINI_MODELES_SECOURS",
+                                                       "gemini-3.5-flash,gemini-3.1-flash-lite").split(",") if m.strip()]
+# Chatbot vocal : modèle le plus rapide en priorité (~4 s mesuré sur l'offre gratuite)
+GEMINI_MODEL_VOIX = os.getenv("GEMINI_MODEL_VOIX", "gemini-3.5-flash")
+
+# Chatbot vocal en tounsi : Azure Speech (ressource « Speech » du portail Azure, offre gratuite F0).
+# Reconnaissance ar-TN ; voix tunisiennes ar-TN-ReemNeural (femme) ou ar-TN-HediNeural (homme).
+AZURE_SPEECH_KEY = os.getenv("AZURE_SPEECH_KEY", "")
+AZURE_SPEECH_REGION = os.getenv("AZURE_SPEECH_REGION", "")   # ex. westeurope
+AZURE_TTS_VOICE = os.getenv("AZURE_TTS_VOICE", "ar-TN-HediNeural")   # voix du chatbot (Azure ou edge-tts)
+AZURE_STT_LANGUAGE = os.getenv("AZURE_STT_LANGUAGE", "ar-TN")
+# Sans clé Azure : mêmes voix tunisiennes GRATUITES via edge-tts (aucun compte, aucune carte)
+VOIX_EDGE_TTS = env_bool("VOIX_EDGE_TTS", True)
+# Vrai accent tunisien : modèle « Lahgtna » entraîné sur la derja (Space Hugging Face AVOiD/derja-tts, GPU gratuit).
+# Il imite la voix d'un enregistrement de référence (VOIX_REFERENCE + son texte exact) ; vide = généré une fois
+# avec la voix edge-tts ci-dessus. Lent ou indisponible -> voix edge-tts en secours.
+VOIX_LAHGTNA = env_bool("VOIX_LAHGTNA", True)
+VOIX_LAHGTNA_SPACE = os.getenv("VOIX_LAHGTNA_SPACE", "AVOiD/derja-tts")
+VOIX_LAHGTNA_DELAI_S = int(os.getenv("VOIX_LAHGTNA_DELAI_S", "45"))
+# Jeton Hugging Face GRATUIT (compte sans carte, huggingface.co/settings/tokens, type « Read ») : sans lui,
+# le quota GPU anonyme du Space est vite épuisé (« ZeroGPU runs limit ») et la voix Hedi prend le relais.
+HF_TOKEN = os.getenv("HF_TOKEN", "")
+VOIX_REFERENCE = os.getenv("VOIX_REFERENCE", "")
+VOIX_REFERENCE_TEXTE = os.getenv("VOIX_REFERENCE_TEXTE", "")
+# Texte du chatbot : « arabizi » (tounsi en lettres latines) ou « meme » (même écriture que l'agriculteur)
+CHAT_ECRITURE = os.getenv("CHAT_ECRITURE", "arabizi")
+# Écoute gratuite hors ligne : Whisper entraîné sur le tounsi (faster-whisper). Identifiant Hugging Face
+# (téléchargé une fois, ~250 Mo) ou dossier local ; vide = désactivé.
+WHISPER_DERJA_MODEL = os.getenv("WHISPER_DERJA_MODEL", "TheBiggyBang/whisper-small-tunisian-derja-ct2")
 
 # Bloc 3 : reseau goutte-a-goutte (services/irrigation_engine)
 # Google Maps : cle serveur (Map Tiles API, image analysee) et cle navigateur (Maps JavaScript API,

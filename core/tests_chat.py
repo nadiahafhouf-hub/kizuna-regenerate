@@ -13,7 +13,8 @@ PID = "GAB-001"
 CFG = {"cle": "", "modele": "m", "modele_embedding": "", "chemin": ":memory:"}
 
 
-@override_settings(QDRANT_PATH=":memory:", QDRANT_URL="", GEMINI_API_KEY="")
+@override_settings(QDRANT_PATH=":memory:", QDRANT_URL="", GEMINI_API_KEY="", AZURE_SPEECH_KEY="", VOIX_EDGE_TTS=False, VOIX_LAHGTNA=False,
+                   WHISPER_DERJA_MODEL="")
 class ChatbotTests(TestCase):
 
     def setUp(self):
@@ -80,6 +81,141 @@ class ChatbotTests(TestCase):
         self.assertTrue(d["sources"])
         r = self.client.post(url, json.dumps({"q": "aslema", "pid": "INCONNUE"}), content_type="application/json")
         self.assertEqual(r.status_code, 200)   # parcelle inconnue : connaissances générales seulement
+
+    # ───────────── voix (tounsi) : Azure et Gemini simulés ─────────────
+
+    def test_azure_ecoute_et_voix_tunisienne(self):
+        from services.rag import voix
+        cfg = {"azure_cle": "k", "azure_region": "westeurope", "voix": "ar-TN-HediNeural", "langue": "ar-TN"}
+        vu = {}
+
+        def http(url, data, entetes, timeout=30):
+            vu.setdefault("urls", []).append(url)
+            vu["data"], vu["entetes"] = data, entetes
+            if "stt" in url:
+                return json.dumps({"RecognitionStatus": "Success", "DisplayText": "كيفاش نسقي اليوم؟"}).encode()
+            return b"ID3-mp3"
+        texte, moteur = voix.transcrire(b"RIFF" + b"\0" * 4000, cfg, http=http)
+        self.assertEqual((texte, moteur), ("كيفاش نسقي اليوم؟", "azure"))
+        self.assertIn("language=ar-TN", vu["urls"][0])
+        self.assertEqual(voix.azure_tts("• Lyoum ns9i 🌱\n- zone Z3", cfg, http=http), b"ID3-mp3")
+        ssml = vu["data"].decode()
+        self.assertIn("ar-TN-HediNeural", ssml)
+        self.assertNotIn("🌱", ssml)
+        self.assertNotIn("•", ssml)
+
+    def test_secours_gemini_si_azure_echoue(self):
+        from services.rag import voix
+        cfg = {"azure_cle": "k", "azure_region": "westeurope", "gemini_cle": "g"}
+
+        def http(url, data, entetes, timeout=30):
+            raise voix.VoixErreur("Azure HTTP 401")
+        texte, moteur = voix.transcrire(b"RIFF" + b"\0" * 4000, cfg, http=http,
+                                        appel_gemini=lambda wav, consigne: "شنوة نزرع؟")
+        self.assertEqual((texte, moteur), ("شنوة نزرع؟", "gemini"))
+        with self.assertRaises(voix.VoixErreur):
+            voix.transcrire(b"RIFF" + b"\0" * 4000, {})          # rien de configuré
+
+    def test_vue_voix(self):
+        from unittest import mock
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        appels = {}
+
+        def faux_repondre(q, pid=None, historique=None, **kw):
+            appels.update(q=q, pid=pid, **kw)
+            return {"reponse": "اليوم تسقي الزونة Z3 مع الستة الصباح.", "actions": [], "sources": [], "mode": "gemini"}
+        with mock.patch("services.rag.voix.transcrire", return_value=("كيفاش نسقي؟", "azure")), \
+                mock.patch("services.rag.assistant.repondre", side_effect=faux_repondre), \
+                mock.patch("services.rag.voix.synthese", return_value=(b"mp3", "audio/mpeg")):
+            r = self.client.post(reverse("core:chat_voice"), {
+                "audio": SimpleUploadedFile("voix.wav", b"RIFF" + b"\0" * 4000, content_type="audio/wav"),
+                "pid": PID, "historique": "[]"})
+        self.assertEqual(r.status_code, 200)
+        d = r.json()
+        self.assertEqual(d["transcription"], "كيفاش نسقي؟")
+        self.assertEqual(d["audio"], "bXAz")                    # base64 de b"mp3"
+        self.assertTrue(appels["voix"])                         # réponse courte, en lettres arabes
+        self.assertEqual(appels["pid"], PID)
+
+    def test_ecoute_gratuite_whisper_derja_avant_gemini(self):
+        from services.rag import voix
+        cfg = {"whisper": "modele-test", "gemini_cle": "g"}
+        texte, moteur = voix.transcrire(b"RIFF" + b"\0" * 4000, cfg, whisper=lambda wav, c: "كيفاش نسقي",
+                                        appel_gemini=lambda wav, consigne: "jamais appelé")
+        self.assertEqual((texte, moteur), ("كيفاش نسقي", "whisper-derja"))
+
+        def whisper_en_panne(wav, c):
+            raise voix.VoixErreur("modèle absent")
+        texte, moteur = voix.transcrire(b"RIFF" + b"\0" * 4000, cfg, whisper=whisper_en_panne,
+                                        appel_gemini=lambda wav, consigne: "شنوة نزرع؟")
+        self.assertEqual(moteur, "gemini")                       # secours
+
+    def test_voix_gratuite_edge_si_pas_de_cle_azure(self):
+        from unittest import mock
+        from services.rag import voix
+        with mock.patch.object(voix, "edge_tts_mp3", return_value=b"mp3-edge") as edge:
+            self.assertEqual(voix.synthese("Aslema", {"edge": True, "voix": "ar-TN-HediNeural"}), (b"mp3-edge", "audio/mpeg"))
+            edge.assert_called_once_with("Aslema", "ar-TN-HediNeural")
+            # Azure en panne -> edge-tts prend le relais
+            def http(url, data, entetes, timeout=30):
+                raise voix.VoixErreur("Azure HTTP 401")
+            cfg = {"azure_cle": "k", "azure_region": "westeurope", "edge": True}
+            self.assertEqual(voix.synthese("Aslema", cfg, http=http), (b"mp3-edge", "audio/mpeg"))
+        with self.assertRaises(voix.VoixErreur):
+            voix.synthese("Aslema", {"edge": False})
+
+    def test_accent_tunisien_lahgtna_puis_secours_hedi(self):
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+        from services.rag import voix
+        dossier = Path(tempfile.mkdtemp())
+        cfg = {"lahgtna": True, "edge": True, "voix": "ar-TN-HediNeural", "reference": str(dossier / "ref.mp3")}
+        vu = {}
+
+        def faux_lahgtna(t, ref, ref_texte):
+            vu.update(t=t, ref=ref, ref_texte=ref_texte)
+            return b"RIFF-wav"
+        with mock.patch.object(voix, "edge_tts_mp3", return_value=b"mp3-ref"):
+            self.assertEqual(voix.lahgtna_tts("اليوم تسقي الزونة", cfg, appel=faux_lahgtna), b"RIFF-wav")
+            self.assertTrue((dossier / "ref.mp3").exists())        # référence créée une fois avec Hedi
+            self.assertEqual(vu["ref_texte"], voix.REFERENCE_TEXTE_DEFAUT)
+            with mock.patch.object(voix, "lahgtna_tts", side_effect=voix.VoixErreur("Space occupé")):
+                self.assertEqual(voix.synthese("Aslema", cfg), (b"mp3-ref", "audio/mpeg"))   # secours Hedi
+            with mock.patch.object(voix, "lahgtna_tts", return_value=b"RIFF-wav"):
+                self.assertEqual(voix.synthese("Aslema", cfg), (b"RIFF-wav", "audio/wav"))
+
+    def test_arabizi_a_l_ecran_et_lettres_arabes_pour_la_voix(self):
+        vu = {}
+
+        def faux(cle, modele, prompt):
+            vu["prompt"] = prompt
+            return json.dumps({"reponse": "Lyoum ns9i el zone Z3 m3a 6 sbe7.", "a_dire": "اليوم نسقي الزونة زد ثلاثة",
+                               "question": "Kifech ns9i?", "actions": []})
+        r = assistant.repondre("كيفاش نسقي؟", PID, cfg=dict(CFG, cle="t", ecriture="arabizi"), appel=faux, voix=True)
+        self.assertIn("3arbizi", vu["prompt"])
+        self.assertEqual(r["reponse"], "Lyoum ns9i el zone Z3 m3a 6 sbe7.")
+        self.assertEqual(r["a_dire"], "اليوم نسقي الزونة زد ثلاثة")
+        self.assertEqual(r["question"], "Kifech ns9i?")
+        # relecture 🔊 d'un message en 3arbizi : réécrit en lettres arabes avant la voix
+        self.assertEqual(assistant.vers_lettres_arabes("Lyoum ns9i", dict(CFG, cle="t"),
+                                                       appel=lambda c, m, p: '{"texte": "اليوم نسقي"}'), "اليوم نسقي")
+        self.assertEqual(assistant.vers_lettres_arabes("اليوم نسقي", CFG), "اليوم نسقي")   # déjà en arabe
+
+    def test_relire_sans_azure(self):
+        r = self.client.post(reverse("core:chat_tts"), json.dumps({"text": "Aslema"}), content_type="application/json")
+        self.assertIsNone(r.json()["audio"])                    # le navigateur lit avec sa voix arabe
+
+    def test_consigne_vocale_dans_le_prompt(self):
+        vu = {}
+
+        def faux(cle, modele, prompt):
+            vu["prompt"] = prompt
+            return json.dumps({"reponse": "باهي", "actions": []})
+        assistant.repondre("كيفاش نسقي؟", PID, cfg=dict(CFG, cle="t"), appel=faux, voix=True)
+        self.assertIn("MODE VOCAL", vu["prompt"])
+        assistant.repondre("kifech ns9i?", PID, cfg=dict(CFG, cle="t"), appel=faux)
+        self.assertNotIn("MODE VOCAL", vu["prompt"])
 
     def test_panneau_sur_les_pages_avec_parcelle(self):
         r = self.client.get(reverse("irrigation:index", args=[PID]))
