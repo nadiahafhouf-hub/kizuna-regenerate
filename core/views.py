@@ -84,8 +84,24 @@ def load_demo(request):
 
 @require_POST
 def chat(request):
+    """Chatbot (bloc 4) : RAG Qdrant + Gemini en derja tounsi, avec les données de la parcelle de la page.
+    Corps JSON : {"q", "pid"?, "historique"?: [{"role", "text"}]} -> {"reply", "actions", "sources", "mode"}."""
     try:
-        q = json.loads(request.body or b"{}").get("q", "")
+        data = json.loads(request.body or b"{}")
     except ValueError:
-        q = ""
-    return JsonResponse({"reply": demo_data.chatbot_reply(str(q)[:500])})
+        data = {}
+    q = str(data.get("q", ""))[:500]
+    pid = data.get("pid") or None
+    if pid:
+        try:
+            demo_data.land_profile(pid)
+        except Exception:   # parcelle inconnue ou sans diagnostic : connaissances générales seulement
+            pid = None
+    try:
+        from services.rag.assistant import repondre
+        r = repondre(q, pid, data.get("historique") if isinstance(data.get("historique"), list) else None)
+    except Exception as e:   # noqa: BLE001 - dernier recours : réponses de démonstration
+        return JsonResponse({"reply": demo_data.chatbot_reply(q), "actions": [], "sources": [], "mode": "demo",
+                             "error": type(e).__name__})
+    return JsonResponse({"reply": r["reponse"], "actions": r["actions"], "sources": r["sources"], "mode": r["mode"]},
+                        json_dumps_params={"ensure_ascii": False})

@@ -82,7 +82,7 @@ document.addEventListener("alpine:init", () => {
     },
   }));
 
-  /* Chatbot : réponses simulées côté serveur (services.demo_data.chatbot_reply) */
+  /* Chatbot (bloc 4) : RAG Qdrant + Gemini en derja (services/rag/assistant.py), avec la parcelle de la page */
   Alpine.data("chatbot", (url) => {
     const cfg = JSON.parse(document.getElementById("chat-config").textContent);
     return {
@@ -104,15 +104,18 @@ document.addEventListener("alpine:init", () => {
         this.typing = true;
         this.scroll();
         try {
+          const historique = this.messages.slice(1, -1).slice(-6).map((m) => ({ role: m.role, text: m.text }));
           const [res] = await Promise.all([
             fetch(url, {
               method: "POST",
               headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken() },
-              body: JSON.stringify({ q }),
+              body: JSON.stringify({ q, pid: cfg.pid, historique }),
             }).then((r) => r.json()),
-            new Promise((r) => setTimeout(r, 700)),
+            new Promise((r) => setTimeout(r, 400)),
           ]);
-          this.messages.push({ role: "bot", text: res.reply });
+          this.messages.push({ role: "bot", text: res.reply, actions: res.actions || [],
+                               sources: res.sources || [], mode: res.mode });
+          this.$nextTick(() => icons());
         } catch (e) {
           this.messages.push({ role: "bot", text: UI.chat.error });
         }
