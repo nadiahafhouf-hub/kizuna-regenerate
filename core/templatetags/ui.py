@@ -75,3 +75,8 @@ def fill(texte, valeur):
     """Remplit le seul champ {…} d'un texte de core/strings.py : {{ F.water.tank_full|fill:62 }}."""
     import re
     return re.sub(r"\{[a-z0-9_]+\}", str(valeur), str(texte), count=1)
+
+
+@register.filter
+def split(texte, sep=","):
+    return [x.strip() for x in str(texte).split(sep) if x.strip()]

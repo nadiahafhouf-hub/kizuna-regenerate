@@ -922,6 +922,16 @@ STRINGS["en"]["farmer"] = {
         "food": "{m2} m² safe for food",
     },
 }
+STRINGS["en"]["data_sources"] = {
+    "title": "Open data behind these numbers",
+    "items": {
+        "nrel": {"label": "NREL PVDAQ", "hint": "real solar output, 4 years", "icon": "activity"},
+        "pvgis": {"label": "PVGIS v5.3", "hint": "sunlight by month (EU JRC)", "icon": "sun"},
+        "meteo": {"label": "Open-Meteo ERA5", "hint": "weather and evaporation", "icon": "cloud-sun"},
+        "s2": {"label": "Sentinel-2 L2A", "hint": "satellite, 10 m (ESA)", "icon": "satellite"},
+        "lucas": {"label": "LUCAS soils", "hint": "European soil survey (JRC)", "icon": "flask-conical"},
+    },
+}
 STRINGS["en"]["farmer"]["sun"]["action"] = STRINGS["en"]["solar"]["action"]
 
 # Valeurs du contrat LandProfile (françaises, en MAJUSCULES ou non) → libellé affiché.

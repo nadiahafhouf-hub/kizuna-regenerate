@@ -62,6 +62,7 @@
   </div>
 </section>
 {{ map_data|json_script:"map-data" }}
+{% include "components/data_sources.html" with keys="lucas,s2,meteo,pvgis,nrel" %}
 {% endblock %}
 
 {% block scripts %}

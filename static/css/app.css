@@ -39,3 +39,19 @@ body { font-feature-settings: "ss01", "cv11"; }
 @media (prefers-reduced-motion: reduce) {
   .reveal, .bar-grow, .pulse-ring, .wave { animation: none !important; }
 }
+
+/* ── UI v2 (design-system/kizuna) : règles communes aux deux vues ── */
+/* Focus clavier toujours visible (skill ui-ux-pro-max : « Focus States », sévérité High) */
+:where(a, button, summary, [role="button"], input, select, textarea):focus-visible {
+  outline: 3px solid #F5CB5C; outline-offset: 2px; border-radius: 10px;
+}
+/* Chiffres alignés dans les tableaux (Data-Dense Dashboard) */
+table td, table th, .num { font-variant-numeric: tabular-nums; }
+/* Lisibilité : jamais de texte sous 11 px, lignes d'au moins 1.5 pour le texte courant */
+p { line-height: 1.55; }
+.leaflet-container :where(a, button):focus-visible { outline-offset: 0; }
+/* Squelette de chargement (remplace les spinners) */
+@keyframes shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
+.skeleton { border-radius: 12px; background: linear-gradient(90deg, #F3EDE1 25%, #FAF7F0 50%, #F3EDE1 75%); background-size: 800px 100%; animation: shimmer 1.4s linear infinite; }
+@media (prefers-color-scheme: dark) { .dark-skel .skeleton { background: #21261A; } }
+@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }

@@ -8,6 +8,36 @@ window.icons = function () {
   if (window.lucide) lucide.createIcons({ attrs: { "stroke-width": 1.9 } });
 };
 document.addEventListener("DOMContentLoaded", icons);
+
+/* Graphiques Chart.js : réglages communs (lisibilité jury) — police DM Sans, légende à pastilles,
+   info-bulles sobres, grille discrète, animations coupées si prefers-reduced-motion.
+   Chart.js est chargé plus bas par chaque page : on applique les réglages dès qu'il s'enregistre. */
+function chartDefaults(C) {
+  const d = C.defaults;
+  d.font.family = '"DM Sans", system-ui, sans-serif';
+  d.font.size = 12;
+  d.color = "#5A5E4E";
+  d.borderColor = "rgba(30,35,22,.08)";
+  d.plugins.legend.labels.usePointStyle = true;
+  d.plugins.legend.labels.boxHeight = 8;
+  d.plugins.legend.labels.padding = 14;
+  d.plugins.tooltip.backgroundColor = "#1E2316";
+  d.plugins.tooltip.padding = 10;
+  d.plugins.tooltip.cornerRadius = 10;
+  d.plugins.tooltip.titleFont = { weight: "600" };
+  d.plugins.tooltip.bodyFont = { family: '"DM Mono", ui-monospace, monospace' };
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) d.animation = false;
+}
+(function () {
+  let C;
+  try {
+    Object.defineProperty(window, "Chart", {
+      configurable: true,
+      get() { return C; },
+      set(v) { C = v; try { chartDefaults(v); } catch (e) { /* réglages facultatifs */ } },
+    });
+  } catch (e) { /* navigateur ancien : graphiques avec les réglages par défaut */ }
+})();
 document.body.addEventListener("htmx:afterSwap", icons);
 
 function getCookie(name) {
