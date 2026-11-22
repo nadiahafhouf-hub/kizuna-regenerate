@@ -771,7 +771,7 @@ STRINGS = {
             "placeholder": "Ask a question or type ‘open irrigation’…",
             "send": "Send",
             "suggestions": "Jarreb tes2el",
-            "welcome": "عسلامة! أنا مساعدك. نعرف التربة متاعك، الزراعات، البلان متاع السقي، البومبة الشمسية و الباسبور. شنوة تحب تعرف؟",
+            "welcome": "Aslema! Ana mosa3dek. Na3ref el trab mte3ek, el zraye3, el plan mta3 el sa9i, el pompe solaire w el passeport. Chnowa t7eb ta3ref?",
             "error": "Sam7ni, ma njemtech njaweb. 3awed jarreb.",
             "suggestions_list": [
                 "Kifech ns9i lyoum?",

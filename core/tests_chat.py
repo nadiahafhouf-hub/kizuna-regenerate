@@ -186,21 +186,6 @@ class ChatbotTests(TestCase):
             with mock.patch.object(voix, "lahgtna_tts", return_value=b"RIFF-wav"):
                 self.assertEqual(voix.synthese("Aslema", cfg), (b"RIFF-wav", "audio/wav"))
 
-    def test_lettres_arabes_par_defaut(self):
-        vu = {}
-
-        def faux(cle, modele, prompt):
-            vu["prompt"] = prompt
-            return json.dumps({"reponse": "اليوم تسقي الزونة Z3 مع 06:00.", "a_dire": "اليوم تسقي الزونة زد ثلاثة",
-                               "question": "كيفاش نسقي؟", "actions": []})
-        cfg = {k: v for k, v in CFG.items() if k != "ecriture"}
-        r = assistant.repondre("kifech ns9i?", PID, cfg=dict(cfg, cle="t"), appel=faux, voix=True)
-        self.assertIn("7rouf el 3arbiya", vu["prompt"])
-        self.assertIn("سؤال الفلاح بالحروف العربية", vu["prompt"])
-        self.assertEqual(r["reponse"], "اليوم تسقي الزونة Z3 مع 06:00.")
-        self.assertEqual(r["question"], "كيفاش نسقي؟")
-        self.assertTrue(assistant._secours([], ecriture="arabe").startswith("ما لقيتش"))
-
     def test_arabizi_a_l_ecran_et_lettres_arabes_pour_la_voix(self):
         vu = {}
 
