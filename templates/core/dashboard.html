@@ -75,20 +75,20 @@
     const bounds = L.latLngBounds([]);
 
     data.sources.forEach((s) => {
-      const c = L.circle([s.lat, s.lon], { radius: s.radius_km * 1000, color: "#FFFFFF", weight: 2, dashArray: "6 6", fillColor: "#1E2316", fillOpacity: 0.18 }).addTo(map);
-      c.bindPopup(`<b>${s.name}</b><br><span style="color:#6B6F5E">${s.pollutants.join(", ")} · ${s.radius_km} km</span>`);
-      L.circleMarker([s.lat, s.lon], { radius: 4, color: "#fff", weight: 2, fillColor: "#1E2316", fillOpacity: 1 }).addTo(map);
+      const c = L.circle([s.lat, s.lon], { radius: s.radius_km * 1000, color: "#FFFFFF", weight: 2, dashArray: "6 6", fillColor: "#172812", fillOpacity: 0.18 }).addTo(map);
+      c.bindPopup(`<b>${s.name}</b><br><span style="color:#55684A">${s.pollutants.join(", ")} · ${s.radius_km} km</span>`);
+      L.circleMarker([s.lat, s.lon], { radius: 4, color: "#fff", weight: 2, fillColor: "#172812", fillOpacity: 1 }).addTo(map);
       bounds.extend(L.latLng(s.lat, s.lon).toBounds(s.radius_km * 2000));
     });
 
     data.parcels.forEach((p) => {
       const icon = L.divIcon({
         className: "",
-        html: `<div style="display:flex;align-items:center;gap:6px;background:#fff;border-radius:999px;padding:4px 10px 4px 6px;box-shadow:0 6px 16px -4px rgba(30,35,22,.35);border:2px solid ${ZONE_HEX[p.worst]};white-space:nowrap;font:600 12px 'DM Sans',sans-serif;color:#1E2316">${ZONE_ICON_SVG[p.worst]}${p.id}</div>`,
+        html: `<div style="display:flex;align-items:center;gap:6px;background:#fff;border-radius:999px;padding:4px 10px 4px 6px;box-shadow:0 6px 16px -4px rgba(30,35,22,.35);border:2px solid ${ZONE_HEX[p.worst]};white-space:nowrap;font:600 12px 'DM Sans',sans-serif;color:#172812">${ZONE_ICON_SVG[p.worst]}${p.id}</div>`,
         iconSize: null, iconAnchor: [40, 14],
       });
       L.marker(p.center, { icon }).addTo(map)
-        .bindPopup(`<b>${p.name}</b><br><a href="${p.url}" style="color:#4A5A2A;font-weight:600">${UI.dashboard.open_parcel} →</a>`);
+        .bindPopup(`<b>${p.name}</b><br><a href="${p.url}" style="color:#2A4A1F;font-weight:600">${UI.dashboard.open_parcel} →</a>`);
       bounds.extend(p.center);
     });
     map.fitBounds(bounds.pad(0.05));

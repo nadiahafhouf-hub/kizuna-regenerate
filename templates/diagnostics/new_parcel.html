@@ -158,7 +158,7 @@
             setTimeout(() => map.invalidateSize(), 250);
             layer = L.layerGroup().addTo(map);
             JSON.parse(document.getElementById("sources-data").textContent).forEach((s) =>
-              L.circle([s.lat, s.lon], { radius: s.radius_km * 1000, color: "#fff", weight: 1.5, dashArray: "6 6", fillColor: "#1E2316", fillOpacity: 0.12, interactive: false }).addTo(map));
+              L.circle([s.lat, s.lon], { radius: s.radius_km * 1000, color: "#fff", weight: 1.5, dashArray: "6 6", fillColor: "#172812", fillOpacity: 0.12, interactive: false }).addTo(map));
             map.on("click", (e) => { this.msg = ""; this.lieu = ""; this.place(e.latlng.lat, e.latlng.lng, true); });
             if (this.lat) this.draw(true);   // plus de GPS automatique : on choisit dans Gabès
           });

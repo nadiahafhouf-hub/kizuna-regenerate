@@ -181,7 +181,7 @@
   // ---------------------------------------------------------------- carte du résultat (réseau en GPS)
   const STYLE = { parcelle: { color: "#fff", weight: 3, fill: false }, zone: { weight: 1, fillOpacity: 0.15 },
     rampe: { color: "#4FA3D9", weight: 1.5 }, porte_rampe: { color: "#F5CB5C", weight: 3 },
-    conduite_principale: { color: "#1E2316", weight: 5 } };
+    conduite_principale: { color: "#172812", weight: 5 } };
   const ZC = { ROUGE: "#B83227", ORANGE: "#B85C0E", VERT: "#23774A", JAUNE: "#E8A916" };
   const POINTS = { plante_existante: ["#3cdc3c", 4], plante_a_planter: ["#ff8c00", 4], vanne: ["#000", 5], source: ["#1F6FA8", 7] };
   const el = document.getElementById("net-map");
@@ -192,7 +192,7 @@
       map.data.setStyle((f) => {
         const c = f.getProperty("couche"), s = STYLE[c] || {}, p = POINTS[c];
         if (p) return { icon: { path: g.maps.SymbolPath.CIRCLE, scale: p[1], fillColor: p[0], fillOpacity: 0.95, strokeColor: "#000", strokeWeight: 1 } };
-        const col = c === "zone" ? (ZC[String(f.getProperty("couleur") || "").toUpperCase()] || "#6B6F5E") : (s.color || "#fff");
+        const col = c === "zone" ? (ZC[String(f.getProperty("couleur") || "").toUpperCase()] || "#55684A") : (s.color || "#fff");
         return { strokeColor: col, strokeWeight: s.weight || 1, fillColor: col, fillOpacity: s.fill === false ? 0 : (s.fillOpacity || 0) };
       });
       const b = new g.maps.LatLngBounds();
@@ -207,12 +207,12 @@
     L.tileLayer(cfg.tiles, { maxZoom: 21, maxNativeZoom: cfg.zoom || 18, attribution: cfg.attribution }).addTo(map);
     const style = { parcelle: { color: "#fff", weight: 3, fill: false }, zone: { weight: 1, fillOpacity: 0.15 },
       rampe: { color: "#4FA3D9", weight: 1.5 }, porte_rampe: { color: "#F5CB5C", weight: 3 },
-      conduite_principale: { color: "#1E2316", weight: 5 } };
+      conduite_principale: { color: "#172812", weight: 5 } };
     const zc = { ROUGE: "#B83227", ORANGE: "#B85C0E", VERT: "#23774A", JAUNE: "#E8A916" };
     fetch(cfg.geojsonUrl).then((r) => r.json()).then((g) => {
       const layer = L.geoJSON(g, {
         style: (f) => { const c = f.properties.couche, s = Object.assign({}, style[c] || { color: "#fff", weight: 1 });
-          if (c === "zone") s.color = zc[String(f.properties.couleur || "").toUpperCase()] || "#6B6F5E"; return s; },
+          if (c === "zone") s.color = zc[String(f.properties.couleur || "").toUpperCase()] || "#55684A"; return s; },
         pointToLayer: (f, ll) => { const o = { plante_existante: ["#3cdc3c", 4], plante_a_planter: ["#ff8c00", 4],
             vanne: ["#000", 5], source: ["#1F6FA8", 7] }[f.properties.couche] || ["#fff", 3];
           return L.circleMarker(ll, { radius: o[1], color: "#000", weight: 1, fillColor: o[0], fillOpacity: 0.95 }); },

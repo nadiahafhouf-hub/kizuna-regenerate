@@ -1,4 +1,4 @@
-"""Chatbot Kizuna (bloc 4) : RAG sur Qdrant + Gemini, en derja tounsi.
+"""Chatbot Verdix (bloc 4) : RAG sur Qdrant + Gemini, en derja tounsi.
 
 repondre(question, pid, historique) -> {"reponse", "actions", "sources", "mode"}
   1. indexe (si besoin) la base de connaissances et les données de la parcelle dans Qdrant ;
@@ -25,7 +25,7 @@ wa9tech = quand ; 9addech = combien ; kifech = comment ; chnowa / chniya = quoi 
 lyoum = aujourd'hui ; ghodwa = demain ; jem3a = semaine ; zone = zone (Z1, Z2...) ; passeport = passeport du sol.
 Chiffres du 3arbizi : 3 = ع, 7 = ح, 9 = ق, 5 = خ, 8 = غ, 2 = ء."""
 
-GUIDE_APPLI = """GUIDE DE L'APPLICATION KIZUNA REGENERATE :
+GUIDE_APPLI = """GUIDE DE L'APPLICATION VERDIX :
 1. Diagnostic : mesures du sol par case de 10 m (CE, pH, cadmium, plomb), zones ROUGE / ORANGE / VERT et traitement.
 2. Crops : terre nue -> cultures conseillées par zone ; déjà plantée -> score, analyse du champ, réseau goutte-à-goutte.
 3. Irrigation : l'agent prépare le plan de 7 jours (météo, plantes, réservoir + bassin, pompe solaire). L'agriculteur
@@ -34,7 +34,7 @@ GUIDE_APPLI = """GUIDE DE L'APPLICATION KIZUNA REGENERATE :
 4. Passport : passeport du sol scellé par empreintes (hash), QR code vérifiable par l'acheteur.
 Solar : dimensionnement des panneaux, alertes de nettoyage."""
 
-PROMPT = """Inti mosa3ed fella7i (assistant agricole) mta3 Kizuna Regenerate f Gabes, Tounes.
+PROMPT = """Inti mosa3ed fella7i (assistant agricole) mta3 Verdix f Gabes, Tounes.
 
 LANGUE : jaweb DIMA bel derja tounsiya (dialecte tunisien), mouch bel 3arbiya el fos7a.
 {consigne_ecriture}

@@ -218,15 +218,15 @@
 (function () {
   const d = JSON.parse(document.getElementById("solar-chart").textContent);
   Chart.defaults.font.family = "'DM Sans', system-ui, sans-serif";
-  Chart.defaults.color = "#6B6F5E";
-  const tip = { backgroundColor: "#1E2316", padding: 10, cornerRadius: 10 };
+  Chart.defaults.color = "#55684A";
+  const tip = { backgroundColor: "#172812", padding: 10, cornerRadius: 10 };
   new Chart(document.getElementById("sizing-chart"), {
     data: { labels: d.mensuel.map((m) => m.mois), datasets: [
       { type: "bar", label: UI.solar.chart_need, data: d.mensuel.map((m) => m.energie_kwh_jour), backgroundColor: "rgba(31,111,168,.75)", borderRadius: 6 },
       { type: "line", label: UI.solar.chart_prod, data: d.mensuel.map((m) => m.production_kwh_jour), borderColor: "#E8A916", backgroundColor: "#E8A916", tension: .35, pointRadius: 3, borderWidth: 2.5 },
     ] },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" }, tooltip: tip },
-               scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "#F3EDE1" } } } },
+               scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "#E7EFDD" } } } },
   });
   const el = document.getElementById("health-chart");
   if (el && d.jours.length) {
@@ -234,13 +234,13 @@
     const iClean = d.jours.findIndex((j) => j.date === d.nettoyage);
     new Chart(el, {
       data: { labels, datasets: [
-        { type: "line", label: UI.solar.chart2_expected, data: d.jours.map((j) => j.attendu_kwh), borderColor: "#4A5A2A", borderDash: [5, 4], pointRadius: 0, borderWidth: 2, tension: .2 },
+        { type: "line", label: UI.solar.chart2_expected, data: d.jours.map((j) => j.attendu_kwh), borderColor: "#2A4A1F", borderDash: [5, 4], pointRadius: 0, borderWidth: 2, tension: .2 },
         { type: "line", label: UI.solar.chart2_measured, data: d.jours.map((j) => j.mesure_kwh), borderColor: "#E8A916", backgroundColor: "rgba(232,169,22,.15)", fill: true, pointRadius: 0, borderWidth: 2.5, tension: .2 },
         { type: "bar", label: UI.solar.rain + " (mm)", data: d.jours.map((j) => j.pluie_mm || null), backgroundColor: "rgba(31,111,168,.5)", yAxisID: "y2", barPercentage: .6 },
       ] },
       options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
                  plugins: { legend: { position: "bottom" }, tooltip: tip },
-                 scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 12 } }, y: { beginAtZero: true, grid: { color: "#F3EDE1" }, title: { display: true, text: "kWh" } },
+                 scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 12 } }, y: { beginAtZero: true, grid: { color: "#E7EFDD" }, title: { display: true, text: "kWh" } },
                            y2: { position: "right", beginAtZero: true, grid: { display: false }, title: { display: true, text: "mm" } } } },
       plugins: [{ id: "clean", afterDraw(c) { if (iClean < 0) return; const x = c.scales.x.getPixelForValue(iClean), { top, bottom } = c.chartArea, g = c.ctx;
         g.save(); g.strokeStyle = "#1F6FA8"; g.setLineDash([4, 4]); g.beginPath(); g.moveTo(x, top); g.lineTo(x, bottom); g.stroke(); g.fillStyle = "#1F6FA8"; g.font = "11px DM Sans"; g.fillText("🧽", x + 3, top + 12); g.restore(); } }],

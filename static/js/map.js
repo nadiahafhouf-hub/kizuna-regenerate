@@ -25,7 +25,7 @@ function zoneLegend(map, labels, position = "bottomleft") {
     div.innerHTML = ["ROUGE", "ORANGE", "VERT"].map((c) =>
       `<div style="display:flex;align-items:center;gap:6px">
          <span style="width:12px;height:12px;border-radius:3px;background:${ZONE_HEX[c]}"></span>
-         ${ZONE_ICON_SVG[c]}<b>${labels[c].label}</b><span style="color:#6B6F5E">· ${labels[c].long}</span>
+         ${ZONE_ICON_SVG[c]}<b>${labels[c].label}</b><span style="color:#55684A">· ${labels[c].long}</span>
        </div>`).join("");
     return div;
   };

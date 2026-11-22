@@ -3,21 +3,22 @@
 {% block content %}
 <div class="mb-8">
   <p class="f-label">{{ parcel.name }}</p>
-  <h1 class="text-3xl font-semibold tracking-tight lg:text-4xl">{{ F.plants.title }}</h1>
+  <h1 class="f-h1">{{ F.plants.title }}</h1>
 </div>
 
 <div class="grid gap-6 lg:grid-cols-3">
   {# HÉRO : satellite #}
-  <section class="reveal relative overflow-hidden rounded-tile bg-olive-700 p-7 text-white shadow-tile lg:col-span-2">
+  <section class="f-dark reveal relative isolate overflow-hidden lg:col-span-2">
+    {% if tile %}<div class="absolute inset-0 -z-10 bg-cover opacity-40" style="background-image:url('{{ tile.url }}'); background-position: {{ tile.pos }}" aria-hidden="true"></div><div class="absolute inset-0 -z-10 bg-gradient-to-r from-forest-900 via-forest-900/85 to-forest-900/40"></div>{% endif %}
     <i data-lucide="sprout" class="pointer-events-none absolute -right-8 -top-8 h-52 w-52 text-white/10" aria-hidden="true"></i>
     {% if det.etat %}
-    <p class="flex items-center gap-2 text-base font-medium text-olive-100"><i data-lucide="satellite" class="h-5 w-5"></i>{% if det_date %}{{ F.plants.seen_from|fill:det_date }}{% endif %}</p>
+    <p class="flex items-center gap-2 text-base font-medium text-mint-200"><i data-lucide="satellite" class="h-5 w-5"></i>{% if det_date %}{{ F.plants.seen_from|fill:det_date }}{% endif %}</p>
     <p class="mt-5 font-mono text-6xl font-medium leading-none tabular-nums lg:text-7xl" x-data="countUp({{ det.couvert_pct|default:0 }})">
       <span x-text="display">{{ det.couvert_pct|default:0 }}</span><span class="font-sans text-3xl">%</span></p>
     <p class="mt-3 text-2xl font-semibold">{% if det.etat == "PLANTEE" %}{{ F.plants.planted|fill:det.couvert_pct }}{% else %}{{ F.plants.bare }}{% endif %}</p>
-    {% if sante %}<p class="mt-2 flex items-center gap-2 text-lg text-olive-100"><i data-lucide="{% if sante == 'good' %}heart-pulse{% elif sante == 'weak' %}activity{% else %}mountain{% endif %}" class="h-5 w-5"></i>{{ F.plants.health|get:sante }}</p>{% endif %}
+    {% if sante %}<p class="mt-2 flex items-center gap-2 text-lg text-mint-200"><i data-lucide="{% if sante == 'good' %}heart-pulse{% elif sante == 'weak' %}activity{% else %}mountain{% endif %}" class="h-5 w-5"></i>{{ F.plants.health|get:sante }}</p>{% endif %}
     <div class="mt-6 h-3 max-w-md overflow-hidden rounded-full bg-white/20" role="progressbar" aria-valuenow="{{ det.couvert_pct|default:0 }}" aria-valuemin="0" aria-valuemax="100">
-      <div class="bar-grow h-full rounded-full bg-sun-300" style="width: {{ det.couvert_pct|default:0 }}%"></div>
+      <div class="bar-grow h-full rounded-full bg-lime-400" style="width: {{ det.couvert_pct|default:0 }}%"></div>
     </div>
     {% else %}
     <p class="mt-2 flex items-center gap-3 text-xl"><i data-lucide="cloud-off" class="h-6 w-6"></i>{{ F.plants.sat_off }}</p>
@@ -28,9 +29,9 @@
   {% if vision %}
   <div class="grid gap-6">
     <section class="f-tile reveal">
-      <p class="f-label flex items-center gap-2"><i data-lucide="scan-eye" class="h-5 w-5 text-olive-700 dark:text-sun-300"></i>{{ F.plants.counted }}</p>
+      <p class="f-label flex items-center gap-2"><i data-lucide="scan-eye" class="h-5 w-5 text-forest-600 dark:text-lime-300"></i>{{ F.plants.counted }}</p>
       <p class="mt-3 text-3xl font-semibold"><span class="font-mono tabular-nums">{{ vision.n }}</span></p>
-      {% if vision.culture %}<p class="mt-1 text-base text-muted dark:text-sand-300">{{ F.plants.likely|fill:vision.culture }}</p>{% endif %}
+      {% if vision.culture %}<p class="mt-1 text-base text-forest-600/80 dark:text-mint-200">{{ F.plants.likely|fill:vision.culture }}</p>{% endif %}
     </section>
     <section class="f-tile reveal">
       <p class="f-label flex items-center gap-2"><i data-lucide="shovel" class="h-5 w-5 text-zorange"></i>{{ F.plants.replant }}</p>
@@ -39,9 +40,9 @@
   </div>
   {% else %}
   <section class="f-tile reveal flex flex-col">
-    <span class="grid h-12 w-12 place-items-center rounded-2xl bg-olive-50 text-olive-700 dark:bg-night-700 dark:text-sun-300"><i data-lucide="camera" class="h-6 w-6"></i></span>
+    <span class="grid h-12 w-12 place-items-center rounded-2xl bg-mint-100 text-forest-700 dark:bg-forest-800 dark:text-lime-300"><i data-lucide="camera" class="h-6 w-6"></i></span>
     <h2 class="mt-4 text-xl font-semibold">{{ F.plants.photo_title }}</h2>
-    <p class="mt-1 text-base text-muted dark:text-sand-300">{{ F.plants.photo_body }}</p>
+    <p class="mt-1 text-base text-forest-600/80 dark:text-mint-200">{{ F.plants.photo_body }}</p>
     <a href="{{ network_url }}" class="f-btn-light mt-auto w-full"><i data-lucide="image-up" class="h-5 w-5"></i>{{ F.plants.photo_btn }}</a>
   </section>
   {% endif %}
@@ -53,13 +54,13 @@
     </div>
     <ul class="mt-5 grid gap-4 md:grid-cols-3">
       {% for q in quoi %}
-      <li class="flex items-start gap-4 rounded-2xl bg-sand-50 p-4 ring-1 ring-sand-200 dark:bg-night-700 dark:ring-night-600">
+      <li class="flex items-start gap-4 rounded-2xl bg-mint-50 p-4 ring-1 ring-mint-200 dark:bg-forest-800 dark:ring-forest-700">
         <span class="grid h-11 w-11 shrink-0 place-items-center rounded-2xl {% if q.couleur == 'ROUGE' %}bg-zred-bg text-zred{% elif q.couleur == 'ORANGE' %}bg-zorange-bg text-zorange{% else %}bg-zgreen-bg text-zgreen{% endif %}">
           <i data-lucide="{{ q.icon }}" class="h-5 w-5"></i></span>
         <div class="min-w-0">
-          <p class="text-sm font-semibold text-muted dark:text-sand-300">{{ q.zone }} · {{ F.soil.zone|get:q.couleur }}</p>
+          <p class="text-sm font-semibold text-forest-600/80 dark:text-mint-200">{{ q.zone }} · {{ F.soil.zone|get:q.couleur }}</p>
           <p class="text-lg font-semibold">{{ q.plante }}</p>
-          {% if q.role %}<p class="mt-1 text-sm text-muted dark:text-sand-300">{{ q.role }}</p>{% endif %}
+          {% if q.role %}<p class="mt-1 text-sm text-forest-600/80 dark:text-mint-200">{{ q.role }}</p>{% endif %}
         </div>
       </li>
       {% endfor %}

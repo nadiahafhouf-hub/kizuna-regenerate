@@ -21,7 +21,7 @@ body { font-feature-settings: "ss01", "cv11"; }
 .wave { animation: wave 6s linear infinite; }
 
 /* Indicateur « en train d'écrire » du chatbot */
-.typing-dot { width: 6px; height: 6px; border-radius: 9999px; background: #6B6F5E; animation: typing 1.2s infinite ease-in-out; }
+.typing-dot { width: 6px; height: 6px; border-radius: 9999px; background: #55684A; animation: typing 1.2s infinite ease-in-out; }
 .typing-dot:nth-child(2) { animation-delay: .15s; }
 .typing-dot:nth-child(3) { animation-delay: .3s; }
 @keyframes typing { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
@@ -48,7 +48,7 @@ body { font-feature-settings: "ss01", "cv11"; }
   padding: .65rem 3rem .65rem 1.25rem;
   background: #fff;
 }
-.chat-voice-button[aria-pressed="true"] { background: #e9eddc; }
+.chat-voice-button[aria-pressed="true"] { background: #E7EFDD; }
 .chat-close { position: absolute; top: .65rem; right: .65rem; }
 .chat-log {
   overscroll-behavior: contain;
@@ -57,7 +57,7 @@ body { font-feature-settings: "ss01", "cv11"; }
 }
 .chat-message { overflow-wrap: anywhere; }
 .chat-composer { padding-bottom: max(.75rem, env(safe-area-inset-bottom)); }
-.chat-compose-field:focus-within { box-shadow: 0 0 0 2px #d3dbb8; }
+.chat-compose-field:focus-within { box-shadow: 0 0 0 2px #D2E3BF; }
 .chat-fennec-launcher, .chat-fennec-floating {
   --fennec-size: clamp(6rem, 11vw, 8.5rem);
   position: fixed;
@@ -97,12 +97,12 @@ body { font-feature-settings: "ss01", "cv11"; }
 .chat-fennec-ready canvas { opacity: 1; }
 
 /* Leaflet aux couleurs du projet */
-.leaflet-container { font-family: "DM Sans", system-ui, sans-serif; background: #E6DCC8; }
+.leaflet-container { font-family: "DM Sans", system-ui, sans-serif; background: #D5E3C6; }
 .leaflet-control-attribution { font-size: 10px; }
 .leaflet-popup-content-wrapper { border-radius: 14px; box-shadow: 0 16px 32px -12px rgba(30, 35, 22, .3); }
 .leaflet-popup-content { margin: 12px 14px; font-size: 13px; line-height: 1.45; }
 .map-legend { background: rgba(255, 255, 255, .95); border-radius: 12px; padding: 10px 12px; box-shadow: 0 6px 20px -6px rgba(30, 35, 22, .25); font-size: 12px; line-height: 1.6; }
-.sensor-pin { width: 18px; height: 18px; border-radius: 9999px; background: #fff; border: 3px solid #1E2316; box-shadow: 0 0 0 3px rgba(255, 255, 255, .6); }
+.sensor-pin { width: 18px; height: 18px; border-radius: 9999px; background: #fff; border: 3px solid #172812; box-shadow: 0 0 0 3px rgba(255, 255, 255, .6); }
 .sensor-pin.new { border-color: #E8A916; }
 
 /* Réduction des animations si demandé */
@@ -114,7 +114,7 @@ body { font-feature-settings: "ss01", "cv11"; }
 /* ── UI v2 (design-system/kizuna) : règles communes aux deux vues ── */
 /* Focus clavier toujours visible (skill ui-ux-pro-max : « Focus States », sévérité High) */
 :where(a, button, summary, [role="button"], input, select, textarea):focus-visible {
-  outline: 3px solid #F5CB5C; outline-offset: 2px; border-radius: 10px;
+  outline: 3px solid #5F8E22; outline-offset: 2px; border-radius: 10px;
 }
 /* Chiffres alignés dans les tableaux (Data-Dense Dashboard) */
 table td, table th, .num { font-variant-numeric: tabular-nums; }
@@ -123,6 +123,27 @@ p { line-height: 1.55; }
 .leaflet-container :where(a, button):focus-visible { outline-offset: 0; }
 /* Squelette de chargement (remplace les spinners) */
 @keyframes shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
-.skeleton { border-radius: 12px; background: linear-gradient(90deg, #F3EDE1 25%, #FAF7F0 50%, #F3EDE1 75%); background-size: 800px 100%; animation: shimmer 1.4s linear infinite; }
+.skeleton { border-radius: 12px; background: linear-gradient(90deg, #E7EFDD 25%, #F3F7EE 50%, #E7EFDD 75%); background-size: 800px 100%; animation: shimmer 1.4s linear infinite; }
 @media (prefers-color-scheme: dark) { .dark-skel .skeleton { background: #21261A; } }
 @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
+
+/* Fennec (chatbot) sur grand écran, dans les deux vues : petit, flottant à droite de la ligne
+   « Farm Assistant » (.assistant-row) de la barre latérale, sans étiquette ni fond.
+   --fennec-bottom = distance entre le bas de l'écran et le bas du fennec (centré sur la ligne).
+   Sur mobile, il reste au-dessus de la barre de navigation flottante de la vue Farmer. */
+:root { --side-w: 18rem; --fennec-bottom: 5.4rem; }
+.farmer-view { --fennec-bottom: 3.6rem; }
+@media (min-width: 1024px) {
+  .chat-fennec-launcher, .chat-fennec-floating {
+    --fennec-size: 4.75rem;
+    left: calc(var(--side-w) - 4.75rem - 1rem); right: auto;
+    bottom: var(--fennec-bottom);
+  }
+  .chat-fennec-launcher { height: var(--fennec-size); background: transparent; }
+  .chat-fennec-launcher > span:last-child { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .chat-fennec-hitbox { inset: 0; }
+}
+@media (max-width: 1023px) {
+  .farmer-view .chat-fennec-launcher { bottom: 5.75rem; }
+  .farmer-view .chat-fennec-floating { bottom: 7.75rem; }
+}

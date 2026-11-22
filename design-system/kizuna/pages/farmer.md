@@ -1,6 +1,6 @@
 # Farmer Page Overrides
 
-> **PROJECT:** Kizuna
+> **PROJECT:** Verdix
 > **Generated:** 2026-11-22 05:27:52
 > **Page Type:** Dashboard / Data View
 

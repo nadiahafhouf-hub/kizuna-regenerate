@@ -16,16 +16,20 @@
       theme: {
         extend: {
           colors: {
-            sand:   {50: "#FAF7F0", 100: "#F3EDE1", 200: "#E6DCC8", 300: "#D6C8AC"},
-            ink:    "#1E2316",
-            muted:  "#6B6F5E",
-            olive:  {50: "#F4F6EC", 100: "#E9EDDC", 200: "#D3DBB8", 600: "#5B6E33", 700: "#4A5A2A", 800: "#3C4A22", 900: "#2F3A1D"},
+            sand:   {50: "#F3F7EE", 100: "#E7EFDD", 200: "#D5E3C6", 300: "#BFD3AC"},
+            ink:    "#172812",
+            muted:  "#55684A",
+            olive:  {50: "#F3F7EE", 100: "#E7EFDD", 200: "#D2E3BF", 600: "#3A6129", 700: "#2A4A1F", 800: "#1F3618", 900: "#172812"},
             water:  {50: "#E8F3FA", 100: "#D2E7F5", 400: "#4FA3D9", 600: "#1F6FA8", 700: "#185A89"},
             sun:    {50: "#FDF5DE", 100: "#FBEBC0", 300: "#F5CB5C", 500: "#E8A916", 700: "#8A5A00"},
             zred:    {DEFAULT: "#B83227", bg: "#FBE9E7"},
             zorange: {DEFAULT: "#B85C0E", bg: "#FDF0E3"},
             zgreen:  {DEFAULT: "#23774A", bg: "#E6F4EC"},
             night:   {950: "#12150D", 900: "#181C12", 800: "#21261A", 700: "#2C3223", 600: "#3A4130"},
+            // vue Farmer « nature » (forêt + citron vert + menthe), inspirée d'une maquette agritech
+            forest:  {950: "#0F1A0B", 900: "#172812", 800: "#1F3618", 700: "#2A4A1F", 600: "#3A6129", 500: "#4E7A37"},
+            lime:    {100: "#EAF6D6", 200: "#D2ECA8", 300: "#B5DE74", 400: "#9BCF4E", 500: "#7FB635", 600: "#5F8E22"},
+            mint:    {50: "#F3F7EE", 100: "#E7EFDD", 200: "#D5E3C6"},
           },
           borderRadius: { tile: "1.5rem" },
           fontFamily: {
@@ -52,7 +56,7 @@
   {% block layout %}
   <div x-data>
     {% include "partials/sidebar.html" %}
-    <div class="lg:pl-64">
+    <div class="lg:pl-72">
       {% include "partials/navbar.html" %}
       {% block stepper %}{% if steps %}{% include "partials/stepper.html" %}{% endif %}{% endblock %}
 

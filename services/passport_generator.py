@@ -82,7 +82,7 @@ def generate_passport_pdf(zone_id: str, passport_data: dict, farmer_name: str, q
     section_style = ParagraphStyle("CustomSection", parent=styles["Heading2"], fontSize=12, textColor="#2E7D32", spaceAfter=8, spaceBefore=12)
 
     # ── Header ───────────────────────────────────────────────────────────────
-    elements.append(Paragraph("SOIL PASSPORT — KIZUNA REGENERATE", title_style))
+    elements.append(Paragraph("SOIL PASSPORT — VERDIX", title_style))
     elements.append(Paragraph(f"Zone ID: {zone_id} | Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", subtitle_style))
 
     # ── Zone Status Badge ────────────────────────────────────────────────────
@@ -209,7 +209,7 @@ def generate_passport_pdf(zone_id: str, passport_data: dict, farmer_name: str, q
     # ── Footer ───────────────────────────────────────────────────────────────
     footer_text = f"""
     <para alignment="center">
-    <b>Kizuna Regenerate · Soil Passport</b><br/>
+    <b>Verdix · Soil Passport</b><br/>
     This passport is verifiable via QR code. Valid for market access certification.<br/>
     Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
     </para>

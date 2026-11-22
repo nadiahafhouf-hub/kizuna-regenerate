@@ -1,4 +1,4 @@
-﻿"""Paramètres Django — Kizuna Regenerate.
+﻿"""Paramètres Django — Verdix.
 
 Les secrets (clé Django, clés API) sont lus depuis le fichier .env à la racine,
 qui n'est JAMAIS commité. Voir .env.example.

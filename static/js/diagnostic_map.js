@@ -11,7 +11,7 @@
   const SCALES = {
     ndvi: { min: -0.05, max: 0.6, colors: ["#B98B5E", "#EDE3B4", "#2F7D32"], legend: UI.satellite.legend_ndvi },
     ndmi: { min: -0.25, max: 0.35, colors: ["#C0712B", "#F1E7C8", "#1F6FA8"], legend: UI.satellite.legend_ndmi },
-    si: { min: 0.08, max: 0.3, colors: ["#F3EDE1", "#E3A6BE", "#8E2A63"], legend: UI.satellite.legend_si },
+    si: { min: 0.08, max: 0.3, colors: ["#E7EFDD", "#E3A6BE", "#8E2A63"], legend: UI.satellite.legend_si },
   };
   const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
   function ramp(colors, t) {
@@ -61,7 +61,7 @@
       const z = UI.zone[p.couleur];
       const conf = p.niveau_confiance ? `<br>${UI.diagnostic.confidence}: ${UI.diagnostic.confidence_levels[p.niveau_confiance]} (${Math.round(p.confiance * 100)}%)` : "";
       const s = p.satellite;
-      const sat = s && s.valide ? `<br><span style="color:#6B6F5E">NDVI ${s.ndvi} · NDMI ${s.ndmi} · SI ${s.si}</span>` : "";
+      const sat = s && s.valide ? `<br><span style="color:#55684A">NDVI ${s.ndvi} · NDMI ${s.ndmi} · SI ${s.si}</span>` : "";
       layer.bindTooltip(`${ZONE_ICON_SVG[p.couleur]} <b>${z.label}</b> · ${UI.diagnostic.row} ${p.ligne}, ${UI.diagnostic.col} ${p.col}${p.zone ? " · " + p.zone : ""}${conf}${sat}`,
                         { sticky: true, direction: "top", opacity: 0.95 });
       layer.on({
@@ -154,7 +154,7 @@
   const ctx = satelliteMap("context-map", { zoomControl: false, attributionControl: false, dragging: true });
   const b = L.latLngBounds([data.center]);
   data.sources.forEach((s) => {
-    L.circle([s.lat, s.lon], { radius: s.radius_km * 1000, color: "#FFFFFF", weight: 1.5, dashArray: "5 5", fillColor: "#1E2316", fillOpacity: 0.2 })
+    L.circle([s.lat, s.lon], { radius: s.radius_km * 1000, color: "#FFFFFF", weight: 1.5, dashArray: "5 5", fillColor: "#172812", fillOpacity: 0.2 })
       .addTo(ctx).bindTooltip(`<b>${s.name}</b><br>${s.pollutants.join(", ")}`);
     b.extend(L.latLng(s.lat, s.lon).toBounds(s.radius_km * 2000));
   });

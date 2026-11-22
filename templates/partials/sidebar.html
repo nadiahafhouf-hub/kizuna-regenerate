@@ -3,38 +3,37 @@
 <div x-show="$store.nav.open" x-transition.opacity x-cloak @click="$store.nav.open = false"
      class="fixed inset-0 z-[1240] bg-ink/30 lg:hidden"></div>
 <aside id="sidebar"
-       class="fixed inset-y-0 left-0 z-[1250] flex w-64 -translate-x-full flex-col bg-olive-900 text-white transition-transform duration-200 lg:translate-x-0"
+       class="fixed inset-y-0 left-0 z-[1250] flex w-72 -translate-x-full flex-col bg-forest-900 text-white transition-transform duration-200 lg:translate-x-0"
        :class="$store.nav.open && 'translate-x-0'"
        @keydown.escape.window="$store.nav.open = false"
        aria-label="{{ T.nav.menu }}">
-  <div class="flex h-16 items-center gap-2.5 px-5">
-    <a href="{% url 'core:home' %}" class="flex items-center gap-2.5 rounded-lg font-semibold tracking-tight focus:outline-none focus-visible:ring-2 focus-visible:ring-sun-300">
-      <span class="grid h-9 w-9 place-items-center rounded-xl bg-olive-700 ring-1 ring-white/10">
-        <i data-lucide="sprout" class="h-5 w-5 text-sun-300"></i>
-      </span>
-      <span>{{ T.app.name }}</span>
+  <div class="flex h-20 items-center gap-3 px-6">
+    <a href="{% url 'core:home' %}" class="flex items-center gap-3 rounded-2xl focus:outline-none focus-visible:ring-4 focus-visible:ring-lime-300">
+      <span class="grid h-11 w-11 place-items-center rounded-2xl bg-lime-400 text-forest-900"><i data-lucide="sprout" class="h-6 w-6"></i></span>
+      <span class="leading-tight"><span class="block text-lg font-bold">{{ T.app.name }}</span>
+        <span class="block text-sm text-mint-200">{{ T.nav.expert_view }}</span></span>
     </a>
-    <button type="button" class="ml-auto rounded-lg p-2 text-white/70 hover:bg-white/10 hover:text-white lg:hidden"
+    <button type="button" class="ml-auto grid h-11 w-11 place-items-center rounded-xl hover:bg-white/10 lg:hidden"
             @click="$store.nav.open = false" aria-label="{{ T.nav.close_menu }}">
       <i data-lucide="x" class="h-5 w-5"></i>
     </button>
   </div>
 
-  <nav class="flex-1 space-y-6 overflow-y-auto px-3 pb-4 text-sm">
+  <nav class="flex-1 space-y-5 overflow-y-auto px-4 pb-4 text-base">
     {% if parcel %}
     <div x-data="{ open: false }" @click.outside="open = false" class="relative">
-      <p class="mb-1.5 px-2 text-[11px] font-semibold uppercase tracking-wider text-white/60">{{ T.nav.parcel }}</p>
+      <p class="mb-1.5 px-4 text-xs font-semibold uppercase tracking-wider text-mint-200/80">{{ T.nav.parcel }}</p>
       <button type="button" @click="open = !open" :aria-expanded="open"
-              class="flex w-full items-center gap-2 rounded-xl bg-white/10 px-3 py-2.5 text-left hover:bg-white/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-sun-300">
-        <i data-lucide="map-pin" class="h-4 w-4 shrink-0 text-sun-300"></i>
+              class="flex w-full items-center gap-3 rounded-2xl bg-forest-800 px-4 py-3 text-left ring-1 ring-white/10 transition hover:bg-forest-700 focus:outline-none focus-visible:ring-4 focus-visible:ring-lime-300">
+        <i data-lucide="map-pin" class="h-5 w-5 shrink-0 text-lime-300"></i>
         <span class="min-w-0 flex-1">
           <span class="block font-semibold">{{ parcel.id }}</span>
-          <span class="block truncate text-xs text-white/70">{{ parcel.name }}</span>
+          <span class="block truncate text-sm text-mint-200">{{ parcel.name }}</span>
         </span>
         <i data-lucide="chevrons-up-down" class="h-4 w-4 text-white/60"></i>
       </button>
       <div x-show="open" x-transition.origin.top x-cloak
-           class="absolute inset-x-0 z-10 mt-2 max-h-80 overflow-y-auto rounded-xl bg-white py-1 text-ink shadow-lift ring-1 ring-sand-200">
+           class="absolute inset-x-0 z-10 mt-2 max-h-80 overflow-y-auto rounded-2xl bg-white py-2 text-ink shadow-lift">
         {% for p in all_parcels %}
         <a href="{% url step_url_name p.id %}"
            class="flex items-center justify-between gap-3 px-3 py-2.5 hover:bg-sand-50 {% if p.id == parcel.id %}bg-olive-50{% endif %}">
@@ -46,27 +45,27 @@
     </div>
     {% endif %}
 
-    <ul class="space-y-0.5">
+    <ul class="space-y-1">
       <li><a href="{% url 'core:home' %}" {% if not parcel and request.resolver_match.url_name == 'home' %}aria-current="page"{% endif %}
-             class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-white/80 transition hover:bg-white/10 hover:text-white {% if not parcel and request.resolver_match.url_name == 'home' %}bg-white/10 font-semibold text-white{% endif %}">
-        <i data-lucide="layout-dashboard" class="h-[18px] w-[18px]"></i>{{ T.app.dashboard }}</a></li>
+             class="flex min-h-[48px] items-center gap-3 rounded-full px-4 font-medium transition focus:outline-none focus-visible:ring-4 focus-visible:ring-lime-300 {% if not parcel and request.resolver_match.url_name == 'home' %}bg-lime-400 font-semibold text-forest-900{% else %}text-mint-100 hover:bg-white/10{% endif %}">
+        <i data-lucide="layout-dashboard" class="h-5 w-5"></i>{{ T.app.dashboard }}</a></li>
       <li><a href="{% url 'new_parcel' %}" {% if request.resolver_match.url_name == 'new_parcel' %}aria-current="page"{% endif %}
-             class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-white/80 transition hover:bg-white/10 hover:text-white {% if request.resolver_match.url_name == 'new_parcel' %}bg-white/10 font-semibold text-white{% endif %}">
-        <i data-lucide="square-plus" class="h-[18px] w-[18px]"></i>{{ T.nav.new_parcel }}</a></li>
+             class="flex min-h-[48px] items-center gap-3 rounded-full px-4 font-medium transition focus:outline-none focus-visible:ring-4 focus-visible:ring-lime-300 {% if request.resolver_match.url_name == 'new_parcel' %}bg-lime-400 font-semibold text-forest-900{% else %}text-mint-100 hover:bg-white/10{% endif %}">
+        <i data-lucide="square-plus" class="h-5 w-5"></i>{{ T.nav.new_parcel }}</a></li>
     </ul>
 
     {% if steps %}
     <div>
-      <p class="mb-1.5 px-2 text-[11px] font-semibold uppercase tracking-wider text-white/60">{{ T.nav.journey }}</p>
-      <ol class="space-y-0.5">
+      <p class="mb-1.5 px-4 text-xs font-semibold uppercase tracking-wider text-mint-200/80">{{ T.nav.journey }}</p>
+      <ol class="space-y-1">
         {% for s in steps %}
         <li><a href="{{ s.url }}" {% if s.state == "current" %}aria-current="step"{% endif %}
-               class="flex items-center gap-3 rounded-xl px-3 py-2.5 transition hover:bg-white/10 {% if s.state == 'current' %}bg-white/10 font-semibold text-white{% else %}text-white/80 hover:text-white{% endif %}">
+               class="flex min-h-[48px] items-center gap-3 rounded-full px-4 font-medium transition focus:outline-none focus-visible:ring-4 focus-visible:ring-lime-300 {% if s.state == 'current' %}bg-lime-400 font-semibold text-forest-900{% else %}text-mint-100 hover:bg-white/10{% endif %}">
           <span class="grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] font-semibold
-            {% if s.state == 'current' %}bg-sun-300 text-olive-900{% elif s.state == 'done' %}bg-olive-600 text-white{% else %}ring-1 ring-white/30 text-white/70{% endif %}">
+            {% if s.state == 'current' %}bg-forest-900 text-lime-300{% elif s.state == 'done' %}bg-forest-600 text-lime-200{% else %}ring-1 ring-white/30 text-mint-200{% endif %}">
             {% if s.state == "done" %}<i data-lucide="check" class="h-3.5 w-3.5"></i>{% else %}{{ forloop.counter }}{% endif %}
           </span>
-          <i data-lucide="{{ s.icon }}" class="h-4 w-4 opacity-80"></i>{{ s.label }}
+          <i data-lucide="{{ s.icon }}" class="h-5 w-5"></i>{{ s.label }}
         </a></li>
         {% endfor %}
       </ol>
@@ -74,16 +73,17 @@
     {% endif %}
   </nav>
 
-  <div class="space-y-1 border-t border-white/10 p-3 text-sm">
+  <div class="space-y-2 p-4 text-base">
+    {# le fennec du chatbot flotte à droite de cette ligne (static/css/app.css, .assistant-row) #}
     <button type="button" @click="$dispatch('open-chat'); $store.nav.open = false"
-            class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-white/85 transition hover:bg-white/10 hover:text-white">
-      <i data-lucide="message-circle-more" class="h-[18px] w-[18px] text-sun-300"></i>{{ T.nav.assistant }}
+            class="assistant-row flex min-h-[48px] w-full items-center gap-3 whitespace-nowrap rounded-full px-4 font-medium text-mint-100 transition hover:bg-white/10 focus:outline-none focus-visible:ring-4 focus-visible:ring-lime-300 lg:pr-20">
+      <i data-lucide="message-circle-more" class="h-5 w-5 text-lime-300"></i>{{ T.nav.assistant }}
     </button>
     <a href="{{ FARMER_URL }}"
-       class="flex items-center gap-3 rounded-xl bg-sun-300 px-3 py-2.5 font-semibold text-olive-900 transition hover:bg-sun-100">
-      <i data-lucide="tractor" class="h-[18px] w-[18px]"></i>{{ T.nav.farmer_view }}
+       class="flex min-h-[48px] items-center gap-3 rounded-full px-4 font-medium ring-1 ring-white/20 transition hover:bg-white/10 focus:outline-none focus-visible:ring-4 focus-visible:ring-lime-300">
+      <i data-lucide="tractor" class="h-5 w-5"></i>{{ T.nav.farmer_view }}
       <i data-lucide="arrow-up-right" class="ml-auto h-4 w-4"></i>
     </a>
-    <p class="flex items-center gap-1.5 px-3 pt-2 text-[11px] text-white/60"><i data-lucide="flask-conical" class="h-3.5 w-3.5"></i>{{ T.app.demo_data }}</p>
+    <p class="flex items-center gap-1.5 px-4 pt-1 text-xs text-mint-200/80"><i data-lucide="flask-conical" class="h-3.5 w-3.5"></i>{{ T.app.demo_data }}</p>
   </div>
 </aside>
