@@ -110,3 +110,11 @@ class SansModeleTests(SimpleTestCase):
             w = ia_production.attendu_w_par_kwc([800, 0], [25, 10], [60, -5])
             self.assertGreater(w[0], 500)
             self.assertEqual(w[1], 0)
+
+
+class SansDiagnosticTests(TestCase):
+    def test_redirige_vers_le_plan(self):
+        from core.models import Parcel
+        Parcel.objects.create(parcelle_id="KZ-TMP", origine_lat=33.88, origine_lon=10.07, largeur_m=30, longueur_m=30)
+        r = self.client.get("/p/KZ-TMP/solar/")
+        self.assertRedirects(r, "/p/KZ-TMP/diagnostic/plan/", fetch_redirect_response=False)

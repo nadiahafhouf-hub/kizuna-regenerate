@@ -10,7 +10,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from core.strings import get_strings
-from core.views import journey_context
+from core.views import journey_context, sans_diagnostic
 
 from .models import Alerte, ConfigSolaire, MesurePV, Nettoyage
 from .services.projet import analyse
@@ -24,6 +24,8 @@ def _metriques(nom):
 
 
 def index(request, pid):
+    if (r := sans_diagnostic(request, pid)):
+        return r
     ctx = journey_context(pid, "solar")
     cfg, _ = ConfigSolaire.objects.get_or_create(parcelle_id=pid)
     if request.method == "POST":
