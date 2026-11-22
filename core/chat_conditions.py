@@ -16,7 +16,10 @@ def conditions_du_jour(question, pid):
     normalized = unicodedata.normalize("NFKD", question.casefold())
     text = "".join(c for c in normalized if not unicodedata.combining(c))
     today = re.search(r"\b(l[yi]oum|el youm|aujourd.hui|today)\b", text)
-    temperature = today and re.search(r"\b(temperature|thermometre|degres)\b", text)
+    # météo : « ta9es », « skhana », « mtar », طقس… valent pour aujourd'hui ; « température » demande « lyoum »
+    temperature = re.search(r"\b(ta9es|ta9s|taqs|tqs|el ta9s|meteo|weather|skhana|s5ana|sokhana|7arara|7rara|"
+                            r"mtar|chta|berd|bard)\b|طقس|سخانة|حرارة|مطر|شتاء|برد", text) or (
+        today and re.search(r"\b(temperature|thermometre|degres)\b", text))
     pompe = re.search(r"\b(pompe|pmpe?|pompage|pump)\b", text) and (
         today or re.search(r"\b(quand|heures?|horaires?|creneaux?|wa9tech|wakteh|wa9teh|waktach|when)\b", text))
     zone_rouge = re.search(r"\bzones? rouges?\b", text) and re.search(r"\b(ou|montre|affiche|localise|where|show)\b", text)
@@ -64,6 +67,8 @@ def conditions_du_jour(question, pid):
             lignes.append("La température prévue aujourd’hui est indisponible.")
         else:
             lignes.append(f"Température prévue aujourd’hui : de {minimum} à {maximum} °C (Open-Meteo).")
+        if prevision.get("pluie_mm") is not None:
+            lignes.append(f"Pluie prévue : {prevision['pluie_mm']} mm.")
 
     if pompe:
         jours_plan = plan.planning.get("jours", []) if plan and isinstance(plan.planning, dict) else []

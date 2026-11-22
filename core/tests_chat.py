@@ -303,6 +303,14 @@ class ChatbotTests(TestCase):
         self.assertIn("11:00", reply["reply"])
         repondre.assert_not_called()
 
+        meteo.return_value = {"jours": [{"date": today.isoformat(), "tmin_c": 14, "tmax_c": 21, "pluie_mm": 2.5}]}
+        for q in ("chnowa ta9es", "شنوة الطقس؟", "fama mtar?"):   # météo en derja, sans « lyoum »
+            reply = self.client.post(reverse("core:chat"), {"q": q, "pid": PID}, content_type="application/json").json()
+            self.assertEqual(reply["mode"], "local", q)
+            self.assertIn("14 à 21 °C", reply["reply"], q)
+            self.assertIn("2.5 mm", reply["reply"], q)
+        repondre.assert_not_called()
+
         guide = self.client.post(reverse("core:chat"), {"q": "Montre-moi quand la pompe tourne", "pid": PID, "voice": True},
                                  content_type="application/json").json()
         self.assertEqual(guide["navigate"], f"{reverse('irrigation:index', args=[PID])}?chat_focus=pump&date={today}")

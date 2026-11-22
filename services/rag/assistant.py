@@ -119,27 +119,43 @@ def _lire_json(texte):
 SURCHARGE = ("503", "429", "UNAVAILABLE", "RESOURCE_EXHAUSTED", "404", "NOT_FOUND")
 
 
-def _appeler_gemini(cle, modele, prompt):
-    """`modele` : un nom ou une liste. Modèle surchargé / quota / retiré / plus de 12 s -> on passe AUSSITÔT
-    au suivant (l'offre gratuite est souvent saturée sur le plus récent)."""
+BUDGET_GEMINI_S = 10      # le navigateur abandonne à 18 s : il reste le temps de la recherche + réponse locale
+PAUSE_QUOTA_S = 300       # modèle à quota épuisé (429) : on ne le réessaie pas pendant 5 min
+_en_pause = {}            # modèle -> instant (time.monotonic) jusqu'auquel on le saute
+
+
+def _appeler_gemini(cle, modele, prompt, budget_s=BUDGET_GEMINI_S):
+    """`modele` : un nom ou une liste. Modèle surchargé / quota / retiré / trop lent -> on passe AUSSITÔT
+    au suivant (l'offre gratuite est souvent saturée sur le plus récent). Toute la chaîne tient en `budget_s`
+    secondes : au-delà, l'appelant répond avec les passages locaux au lieu de laisser le navigateur expirer."""
+    import time
+
     from google import genai
     from google.genai import types
     modeles = [m for m in ([modele] if isinstance(modele, str) else list(modele)) if m]
-    # main : échec rapide (12 s max par appel, pas de nouvel essai interne) ; bloc-3.4 : modèle suivant
+    maintenant = time.monotonic()
+    disponibles = [m for m in modeles if _en_pause.get(m, 0) <= maintenant] or modeles[-1:]
+    fin = maintenant + budget_s
     client = genai.Client(api_key=cle, http_options=types.HttpOptions(
-        timeout=12000, retry_options=types.HttpRetryOptions(attempts=1)))
+        retry_options=types.HttpRetryOptions(attempts=1)))
     try:
-        derniere = None
-        for m in modeles:
+        derniere = TimeoutError("budget Gemini épuisé")
+        for m in disponibles:
+            reste = fin - time.monotonic()
+            if reste < 2:
+                break
             try:
                 rep = client.models.generate_content(
                     model=m, contents=prompt,
-                    config=types.GenerateContentConfig(temperature=0.4, response_mime_type="application/json"))
+                    config=types.GenerateContentConfig(temperature=0.4, response_mime_type="application/json",
+                                                       http_options=types.HttpOptions(timeout=int(reste * 1000))))
                 return rep.text or ""
             except Exception as e:
                 # modèle saturé, quota, retiré ou trop lent : on passe AUSSITÔT au suivant
                 if not any(c in str(e) for c in SURCHARGE + ("timeout", "Timeout", "timed out", "DEADLINE")):
                     raise
+                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                    _en_pause[m] = time.monotonic() + PAUSE_QUOTA_S
                 derniere = e
         raise derniere
     finally:
