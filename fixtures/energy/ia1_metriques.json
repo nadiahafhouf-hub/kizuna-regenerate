@@ -1,0 +1,20 @@
+{
+ "donnees": {
+  "source": "NREL PVDAQ, système 4 (1 kWc, Golden CO), données réelles horaires",
+  "heures_entrainement_2010_2012": 7749,
+  "heures_test_2013": 3136
+ },
+ "modele_ia": {
+  "r2": 0.99,
+  "mae_w_par_kwc": 12.7,
+  "nrmse_pct": 6.4,
+  "erreur_energie_jour_pct": 1.1
+ },
+ "formule_physique_pvwatts": {
+  "r2": 0.984,
+  "mae_w_par_kwc": 22.2,
+  "nrmse_pct": 7.9,
+  "erreur_energie_jour_pct": 1.6,
+  "rendement_systeme_ajuste": 0.849
+ }
+}

@@ -1,0 +1,53 @@
+{
+ "donnees": {
+  "base": "vraies journées NREL PVDAQ (IP journalier), défauts ajoutés connus",
+  "fenetres_entrainement_2011_2012": 6000,
+  "fenetres_test_2013": 2000,
+  "jours_reels": {
+   "2011": 314,
+   "2012": 334,
+   "2013": 286
+  },
+  "bruit_reel_ip_pct": 2.84
+ },
+ "exactitude_pct": 97.2,
+ "par_classe": {
+  "PROPRE": {
+   "precision_pct": 99.6,
+   "rappel_pct": 97.5
+  },
+  "POUSSIERE": {
+   "precision_pct": 96.7,
+   "rappel_pct": 95.9
+  },
+  "PANNE": {
+   "precision_pct": 94.5,
+   "rappel_pct": 98.5
+  }
+ },
+ "matrice_confusion": {
+  "lignes_verite_colonnes_prediction": [
+   "PROPRE",
+   "POUSSIERE",
+   "PANNE"
+  ],
+  "valeurs": [
+   [
+    744,
+    15,
+    4
+   ],
+   [
+    3,
+    683,
+    26
+   ],
+   [
+    0,
+    8,
+    517
+   ]
+  ]
+ },
+ "fausses_alertes_pct": 2.5
+}
