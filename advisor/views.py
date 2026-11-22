@@ -5,7 +5,7 @@ from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_http_methods, require_POST
 
-from core.views import journey_context
+from core.views import journey_context, sans_diagnostic
 from services import demo_data
 from .logic import CULTURES_ARBRES, champ_parcelle, crop_recommendations_ui, plan_png, recommandation
 from .services.etat_terre import etat_terre
@@ -15,6 +15,8 @@ PHOTO_TYPES = {"image/jpeg", "image/png"}
 
 
 def index(request, pid):
+    if (r := sans_diagnostic(request, pid)):
+        return r
     ctx = journey_context(pid, "crops")
     zones = demo_data.zones(pid)
     try:   # bloc 2 : vraies règles ; secours = version démo

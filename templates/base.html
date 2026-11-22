@@ -48,6 +48,9 @@
   {% block stepper %}{% if steps %}{% include "partials/stepper.html" %}{% endif %}{% endblock %}
 
   <main class="mx-auto max-w-7xl px-4 pb-28 pt-6 sm:px-6 lg:px-8">
+    {% for m in messages %}{% if "diagnostic" in m.extra_tags %}
+    <p class="mb-4 flex items-center gap-2 rounded-xl bg-sun-50 px-4 py-3 text-sm font-medium text-sun-700 ring-1 ring-sun-300/60"><i data-lucide="info" class="h-4 w-4 shrink-0"></i>{{ m }}</p>
+    {% endif %}{% endfor %}
     {% block content %}{% endblock %}
   </main>
 

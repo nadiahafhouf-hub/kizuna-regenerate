@@ -8,6 +8,7 @@ Pour ajouter une langue : copier STRINGS["en"] dans STRINGS["fr"] / STRINGS["ar"
 STRINGS = {
     "en": {
         "app": {
+            "need_diagnostic": "{pid} has no soil diagnostic yet. Place the sensors and enter the readings (or press Simulate), then save the campaign: Crops, Irrigation and Passport open after that.",
             "name": "Kizuna Regenerate",
             "tagline": "Clean soil, smart water, solar energy",
             "dashboard": "Dashboard",
@@ -133,7 +134,7 @@ STRINGS = {
         },
         "newparcel": {
             "title": "New parcel",
-            "subtitle": "Stand on your land and share your position, then tell us how big it is. We cover the whole land with a 10 m grid and tell you where to place each sensor.",
+            "subtitle": "Choose where your land is in Gabès (a place from the list, coordinates or a click on the map), then tell us how big it is. We cover the whole land with a 10 m grid and tell you where to place each sensor.",
             "name": "Parcel name",
             "farmer": "Farmer",
             "region": "Region",
@@ -147,8 +148,16 @@ STRINGS = {
             "texture": "Soil texture",
             "texture_auto": "I don't know",
             "location": "Where is your land?",
-            "location_hint": "Your position is used as the centre of your land. Drag the marker or click the map to adjust.",
-            "use_gps": "Use my position",
+            "location_hint": "Pick a place in Gabès, type coordinates, or click your land on the map. That point is the centre of your land; drag the marker to adjust.",
+            "place": "A place in Gabès",
+            "place_pick": "Choose a place…",
+            "place_kind": {"planted": "planted", "bare": "bare land", "mixed": "trees + bare field"},
+            "go": "Go",
+            "no_place": "No place chosen yet: click the map",
+            "coords_bad": "Type the coordinates as: latitude, longitude (for example 33.8827, 10.0685).",
+            "outside": "These coordinates are outside the Gabès governorate. Pick a place in Gabès.",
+            "gps_outside": "Your current position is outside Gabès, so it was not used. Pick a place in the list or click your land on the map.",
+            "use_gps": "Use my GPS position",
             "locating": "Locating…",
             "gps_denied": "Position not available (permission refused, or the page is not opened on this computer / over HTTPS). Click on the map instead.",
             "preview": "Preview",
