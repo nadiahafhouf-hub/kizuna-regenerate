@@ -126,3 +126,13 @@ p { line-height: 1.55; }
 .skeleton { border-radius: 12px; background: linear-gradient(90deg, #F3EDE1 25%, #FAF7F0 50%, #F3EDE1 75%); background-size: 800px 100%; animation: shimmer 1.4s linear infinite; }
 @media (prefers-color-scheme: dark) { .dark-skel .skeleton { background: #21261A; } }
 @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
+
+/* Fennec (chatbot) : à droite sur grand écran pour ne pas couvrir la barre latérale des deux vues ;
+   au-dessus de la barre de navigation flottante de la vue Farmer sur mobile. */
+@media (min-width: 1024px) {
+  .chat-fennec-launcher, .chat-fennec-floating { left: auto; right: 1.5rem; }
+}
+@media (max-width: 1023px) {
+  .farmer-view .chat-fennec-launcher { bottom: 5.75rem; }
+  .farmer-view .chat-fennec-floating { bottom: 7.75rem; }
+}

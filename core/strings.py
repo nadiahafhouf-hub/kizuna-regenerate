@@ -949,6 +949,18 @@ STRINGS["en"]["data_sources"] = {
         "lucas": {"label": "LUCAS soils", "hint": "European soil survey (JRC)", "icon": "flask-conical"},
     },
 }
+STRINGS["en"]["farmer"].update({
+    "hero": {"title": "Your farm, smarter.", "lead": "Healthy soil, the right water, free sun power. All in one place.",
+             "cta": "Open my fields"},
+    "fields": "My fields",
+    "see_all": "See all",
+    "chips": {"all": "All", "ROUGE": "Polluted", "ORANGE": "Needs care", "VERT": "Healthy", "none": "Not checked"},
+    "weather": {"title": "Weather today", "rain": "Rain", "evap": "Evaporation", "night": "Night",
+                "mm": "mm", "updated": "Forecast for {d}"},
+    "stats": {"area": "Total area", "zones": "Zones", "healthy": "Healthy land", "soil": "Soil quality",
+              "plants": "Plant cover", "salt": "Salt risk", "tank": "Water in tank", "checked": "Checked on"},
+    "nav_new": "New field",
+})
 STRINGS["en"]["farmer"]["sun"]["action"] = STRINGS["en"]["solar"]["action"]
 
 # Valeurs du contrat LandProfile (françaises, en MAJUSCULES ou non) → libellé affiché.

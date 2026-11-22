@@ -33,6 +33,49 @@ def _jour(d):
     return d.strftime("%a %d %b").replace(" 0", " ")
 
 
+ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+
+
+def _tuile(center, z=17):
+    """Vue du ciel de la parcelle (une tuile Esri World Imagery, sans clé) + position du centre dans la tuile,
+    pour les cartes « photo » de la vue Farmer. None si la parcelle n'a pas encore de position."""
+    import math
+    try:
+        lat, lon = float(center[0]), float(center[1])
+    except (TypeError, ValueError, IndexError):
+        return None
+    n = 2 ** z
+    fx = (lon + 180) / 360 * n
+    fy = (1 - math.asinh(math.tan(math.radians(lat))) / math.pi) / 2 * n
+    return {"url": ESRI.format(z=z, x=int(fx), y=int(fy)),
+            "pos": f"{round((fx % 1) * 100)}% {round((fy % 1) * 100)}%"}
+
+
+def _centre(pid):
+    try:
+        return demo_data.parcel(pid).get("center")
+    except Exception:
+        return None
+
+
+def _meteo(pid, plan_ui=None):
+    """Météo du jour déjà chargée par le planning d'irrigation (Open-Meteo) : aucun appel en plus."""
+    try:
+        if plan_ui is None:
+            from irrigation.logic import plan_actif
+            if plan_actif(pid, creer=False) is None:   # on ne crée pas de planning juste pour la météo
+                return None
+            plan_ui = demo_data.irrigation_plan(pid)
+        d = (plan_ui.get("days") or [None])[0]
+        if not d:
+            return None
+        return {"tmax": d.get("tmax"), "tmin": d.get("tmin"), "condition": d.get("condition"),
+                "icon": d.get("icon") or "sun", "rain": d.get("rain"), "et0": d.get("et0"),
+                "date": f"{d.get('weekday', '')} {d.get('day', '')} {d.get('month', '')}".strip()}
+    except Exception:
+        return None
+
+
 def _ctx(page, pid=None, **extra):
     """Contexte commun : onglets, parcelle, lien vers la page experte équivalente."""
     F = _F()
@@ -47,6 +90,7 @@ def _ctx(page, pid=None, **extra):
         except Http404:
             parcel = {**demo_data._record(pid), "worst": None}
     return {"page": page, "tabs": tabs, "parcel": parcel, "pid": pid,
+            "tile": _tuile(_centre(pid)) if pid else None,
             "page_url_name": f"farmer:{page}" if page != "home" else "farmer:water",
             "all_parcels": demo_data._parcel_records(with_profile_only=False),
             "expert_url": reverse(EXPERT[page], args=[pid]) if pid and page != "home" else reverse("core:home"),
@@ -66,13 +110,15 @@ def home(request):
     cards = []
     for r in demo_data._parcel_records(with_profile_only=False):
         pid = r["id"]
-        c = {"id": pid, "name": r.get("name", pid), "worst": None, "area_ha": r.get("area_ha")}
+        c = {"id": pid, "name": r.get("name", pid), "worst": None, "area_ha": r.get("area_ha"),
+             "tile": _tuile(_centre(pid)), "healthy_pct": None}
         if not demo_data.has_profile(pid):
             c.update(state=F["no_diag"], todo=F["todo"]["diagnose"], url=reverse("farmer:soil", args=[pid]),
                      icon="scan-search")
         else:
             p = demo_data.parcel(pid)
             c.update(worst=p["worst"], area_ha=p.get("area_ha"), state=F["state"][p["worst"]],
+                     healthy_pct=p.get("healthy_pct"), zones_count=p.get("zones_count"),
                      todo=F["todo"]["ok"], url=reverse("farmer:water", args=[pid]), icon="circle-check")
             try:
                 plan_db = plan_actif(pid, creer=False)
@@ -83,7 +129,15 @@ def home(request):
             elif Alerte.objects.filter(parcelle_id=pid, lue=False, type__in=["NETTOYER", "PREVOIR"]).exists():
                 c.update(todo=F["todo"]["clean"], url=reverse("farmer:sun", args=[pid]), icon="sun")
         cards.append(c)
-    return render(request, "farmer/home.html", _ctx("home", cards=cards))
+    avec = [c for c in cards if c["worst"]]
+    hero = next((c for c in avec if c["tile"]), None)
+    meteo = next((m for m in (_meteo(c["id"]) for c in avec[:3]) if m), None)
+    chips = [k for k in ("ROUGE", "ORANGE", "VERT") if any(c["worst"] == k for c in cards)]
+    if any(c["worst"] is None for c in cards):
+        chips.append("none")
+    return render(request, "farmer/home.html", _ctx("home", cards=cards, chips=chips, meteo=meteo,
+                  hero_tile=_tuile(_centre(hero["id"]), z=16) if hero else None,
+                  hero_name=hero["name"] if hero else None))
 
 
 # ───────────────────────────── a. Water ─────────────────────────────
@@ -137,7 +191,7 @@ def water(request, pid):
                today=_arrosages(plan_db, aujourdhui, plan_ui), tomorrow=_arrosages(plan_db, demain, plan_ui),
                tank=st["reservoir"], economie=st["economie"],
                pluie=_jour(pluie["date"]) if pluie else None, semaine=semaine,
-               horloge=st["horloge"], semaine_finie=st["semaine_finie"],
+               horloge=st["horloge"], semaine_finie=st["semaine_finie"], meteo=_meteo(pid, plan_ui),
                action=action, action_url=reverse("irrigation:action", args=[pid, action[0]]) if action else None,
                sim_url=reverse("irrigation:simuler", args=[pid]) if statut != "BROUILLON" else None,
                here=request.path)
@@ -177,9 +231,18 @@ def soil(request, pid):
                       "mois": (z.get("traitement") or {}).get("mois_avant_sain")})
     ordre = {"ROUGE": 0, "ORANGE": 1, "VERT": 2}
     zones.sort(key=lambda z: ordre.get(z["couleur"], 3))
-    date = profile.get("date_mesure") or demo_data.parcel(pid).get("last_reading")
+    p = demo_data.parcel(pid)
+    date = profile.get("date_mesure") or p.get("last_reading")
+    try:
+        from advisor.services.etat_terre import etat_terre
+        couvert = etat_terre(profile).get("couvert_pct")
+    except Exception:
+        couvert = None
+    stats = {"area_ha": p.get("area_ha"), "zones": p.get("zones_count"), "healthy": round(p.get("healthy_pct") or 0),
+             "salt": round((p.get("shares") or {}).get("ORANGE", 0)), "polluted": round((p.get("shares") or {}).get("ROUGE", 0)),
+             "cover": couvert}
     return render(request, "farmer/soil.html", _ctx(
-        "soil", pid, zones=zones, date=_jour(date) if date else "",
+        "soil", pid, zones=zones, date=_jour(date) if date else "", stats=stats,
         map_data={"geojson": land_profile_to_geojson(profile), "bounds": demo_data.parcel_bounds(profile)},
         plan_url=reverse("diagnostics:plan", args=[pid]), readings_url=reverse("diagnostics:readings", args=[pid])))
 
