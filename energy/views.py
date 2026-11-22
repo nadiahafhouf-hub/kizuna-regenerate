@@ -10,7 +10,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from core.strings import get_strings
-from core.views import journey_context, sans_diagnostic
+from core.views import retour_farmer, journey_context, sans_diagnostic
 
 from .models import Alerte, ConfigSolaire, MesurePV, Nettoyage
 from .services.projet import analyse
@@ -69,7 +69,7 @@ def index(request, pid):
 def nettoye(request, pid):
     Nettoyage.objects.get_or_create(parcelle_id=pid, date=date.today())
     Alerte.objects.filter(parcelle_id=pid, type__in=["NETTOYER", "PREVOIR"], lue=False).update(lue=True)
-    return redirect(f"{request.path.rsplit('clean/', 1)[0]}?cleaned=1")
+    return retour_farmer(request, "?cleaned=1") or redirect(f"{request.path.rsplit('clean/', 1)[0]}?cleaned=1")
 
 
 @require_POST

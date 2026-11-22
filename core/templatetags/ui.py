@@ -68,3 +68,15 @@ def zone_badge(color, variant="soft", size="md", long=False):
     z = get_strings()["zone"].get(color, {})
     return {"color": color, "ui": ZONE_UI.get(color, ZONE_UI["VERT"]), "variant": variant,
             "size": size, "label": z.get("label", color), "long": z.get("long", "") if long else ""}
+
+
+@register.filter
+def fill(texte, valeur):
+    """Remplit le seul champ {…} d'un texte de core/strings.py : {{ F.water.tank_full|fill:62 }}."""
+    import re
+    return re.sub(r"\{[a-z0-9_]+\}", str(valeur), str(texte), count=1)
+
+
+@register.filter
+def split(texte, sep=","):
+    return [x.strip() for x in str(texte).split(sep) if x.strip()]

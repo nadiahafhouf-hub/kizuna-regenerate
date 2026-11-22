@@ -191,6 +191,7 @@
 
 {% include "components/modal.html" with name="reading" title=T.diagnostic.form.title icon="radio-tower" body="diagnostics/_sensor_form_loader.html" %}
 <template id="case-empty-tpl">{% include "diagnostics/_case_empty.html" %}</template>
+{% include "components/data_sources.html" with keys="s2,lucas" %}
 {% endblock %}
 
 {% block scripts %}

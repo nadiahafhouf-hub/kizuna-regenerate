@@ -12,7 +12,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_http_methods, require_POST
 
 from core.strings import get_strings
-from core.views import journey_context, sans_diagnostic
+from core.views import journey_context, retour_farmer, sans_diagnostic
 from services import demo_data
 from .logic import (consignes_agent, creer_plan, etat, evenements_pour_passeport, plan_actif, plan_complet,
                     plan_db_vers_dict, rediger_agent, regenerer, simuler_jour_suivant, texte_agent)
@@ -81,7 +81,7 @@ def action(request, pid, nom):
         if nom == "valider":
             plan_db.valide_le = datetime.datetime.now(datetime.timezone.utc)
         plan_db.save(update_fields=["statut", "valide_le"])
-    return redirect("irrigation:index", pid=pid)
+    return retour_farmer(request) or redirect("irrigation:index", pid=pid)
 
 
 @require_POST

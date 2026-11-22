@@ -20,6 +20,15 @@ def sans_diagnostic(request, pid):
     messages.info(request, get_strings()["app"]["need_diagnostic"].format(pid=pid), extra_tags="diagnostic")
     return redirect("diagnostics:plan", pid)
 
+def retour_farmer(request, suffixe=""):
+    """Après une action postée depuis la vue Farmer (champ « next »), on y revient au lieu de la page experte."""
+    from django.utils.http import url_has_allowed_host_and_scheme
+    nxt = request.POST.get("next", "")
+    if nxt.startswith("/farm/") and url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}):
+        return redirect(nxt + suffixe)
+    return None
+
+
 STEP_URLS = {
     "diagnostic": "diagnostics:index",
     "crops": "advisor:index",

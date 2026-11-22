@@ -1,0 +1,72 @@
+{% extends "farmer/base_farmer.html" %}
+{% load ui %}
+{% block content %}
+<div class="mb-8">
+  <p class="f-label">{{ parcel.name }}</p>
+  <h1 class="text-3xl font-semibold tracking-tight lg:text-4xl">{{ F.soil.title }}</h1>
+  {% if not vide %}<p class="mt-2 text-lg text-muted dark:text-sand-300">{{ F.soil.updated|fill:date }}</p>{% endif %}
+</div>
+
+{% if vide %}
+<section class="f-tile reveal flex flex-col items-start gap-5 p-8 lg:flex-row lg:items-center">
+  <span class="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-olive-50 text-olive-700 dark:bg-night-700 dark:text-sun-300"><i data-lucide="scan-search" class="h-8 w-8"></i></span>
+  <div class="flex-1">
+    <h2 class="text-2xl font-semibold">{{ F.soil.empty_title }}</h2>
+    <p class="mt-1 text-lg text-muted dark:text-sand-300">{{ F.soil.empty_body }}</p>
+  </div>
+  <a href="{{ plan_url }}" class="f-btn-primary"><i data-lucide="map-pinned" class="h-5 w-5"></i>{{ F.soil.get }}</a>
+</section>
+{% else %}
+
+<div class="grid gap-6 lg:grid-cols-5">
+  <section class="reveal self-start overflow-hidden rounded-tile shadow-tile ring-1 ring-sand-200/70 dark:ring-night-600 lg:col-span-3">
+    <div id="soil-map" class="h-[340px] w-full lg:h-[460px]" role="img" aria-label="{{ F.soil.title }}"></div>
+  </section>
+
+  <div class="space-y-4 lg:col-span-2">
+    {% for z in zones %}
+    <article class="reveal rounded-tile p-5 ring-1 {% if z.couleur == 'ROUGE' %}bg-zred-bg ring-zred/20{% elif z.couleur == 'ORANGE' %}bg-zorange-bg ring-zorange/20{% else %}bg-zgreen-bg ring-zgreen/20{% endif %} dark:bg-night-800 dark:ring-night-600" style="animation-delay: {{ forloop.counter }}0ms">
+      <div class="flex items-start gap-4">
+        <span class="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white/80 dark:bg-night-700 {% if z.couleur == 'ROUGE' %}text-zred{% elif z.couleur == 'ORANGE' %}text-zorange{% else %}text-zgreen{% endif %}">
+          <i data-lucide="{% if z.couleur == 'ROUGE' %}triangle-alert{% elif z.couleur == 'ORANGE' %}circle-alert{% else %}circle-check{% endif %}" class="h-6 w-6"></i>
+        </span>
+        <div class="min-w-0">
+          <p class="text-sm font-semibold text-ink/70 dark:text-sand-300">{{ z.id }} · {{ F.soil.share|fill:z.share_pct }}</p>
+          <h2 class="text-xl font-semibold">{{ F.soil.zone|get:z.couleur }}</h2>
+          {% if z.plante %}<p class="mt-1 text-lg">{{ F.soil.grow|fill:z.plante }}</p>{% endif %}
+          <p class="mt-1 text-base text-ink/70 dark:text-sand-300">
+            {% if z.culture_alimentaire_autorisee %}{{ F.soil.food_ok }}{% elif z.mois %}{{ F.soil.ready|fill:z.mois }}{% else %}{{ F.soil.no_food }}{% endif %}
+          </p>
+        </div>
+      </div>
+    </article>
+    {% endfor %}
+    <div class="flex flex-wrap gap-3 pt-2">
+      <a href="{{ readings_url }}" class="f-btn-primary"><i data-lucide="flask-conical" class="h-5 w-5"></i>{{ F.soil.readings }}</a>
+      <a href="{{ plan_url }}" class="f-btn-light"><i data-lucide="map-pinned" class="h-5 w-5"></i>{{ F.soil.plan }}</a>
+    </div>
+  </div>
+</div>
+{{ map_data|json_script:"soil-data" }}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if not vide %}
+<script>
+  (function () {
+    const d = JSON.parse(document.getElementById("soil-data").textContent);
+    const css = getComputedStyle(document.documentElement);
+    const COL = { ROUGE: "#B83227", ORANGE: "#B85C0E", VERT: "#23774A" };
+    const map = L.map("soil-map", { zoomControl: true, scrollWheelZoom: false, attributionControl: true });
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      { maxZoom: 20, maxNativeZoom: 18, attribution: "Esri World Imagery" }).addTo(map);
+    L.geoJSON(d.geojson, {
+      style: (f) => ({ color: "#fff", weight: 1, fillColor: COL[f.properties.couleur] || "#888", fillOpacity: 0.55 }),
+      onEachFeature: (f, layer) => layer.bindTooltip(f.properties.zone || "", { direction: "center", className: "font-semibold" }),
+    }).addTo(map);
+    map.fitBounds(d.bounds, { padding: [24, 24] });
+  })();
+</script>
+{% endif %}
+{% endblock %}
