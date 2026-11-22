@@ -145,12 +145,13 @@ def _appeler_gemini(cle, modele, prompt, budget_s=BUDGET_GEMINI_S):
         timeout=15000, retry_options=types.HttpRetryOptions(attempts=1)))
     from concurrent.futures import FIRST_COMPLETED, wait
 
-    pool = ThreadPoolExecutor(max_workers=len(disponibles) or 1)
+    pool = ThreadPoolExecutor(max_workers=len(disponibles) + 1)
     config = types.GenerateContentConfig(temperature=0.4, response_mime_type="application/json")
     try:
         derniere = TimeoutError("budget Gemini épuisé")
         file = list(disponibles)
         en_cours = {}   # appel -> modèle
+        relance = True  # UNE copie de plus de la dernière demande, si elle reste bloquée ou est refusée (503)
         while file or en_cours:
             reste = fin - time.monotonic()
             if reste < 0.5:
@@ -160,8 +161,14 @@ def _appeler_gemini(cle, modele, prompt, budget_s=BUDGET_GEMINI_S):
                 en_cours[pool.submit(client.models.generate_content, model=m, contents=prompt, config=config)] = m
             # Le modèle lent n'est pas abandonné : s'il n'a pas répondu après RELAIS_S, le suivant part EN PARALLÈLE
             # et le premier qui répond gagne (le plus récent est souvent saturé sur l'offre gratuite).
-            attente = min(reste, RELAIS_S) if file else reste
+            attente = min(reste, RELAIS_S) if (file or relance) else reste
             finis, _ = wait(en_cours, timeout=attente, return_when=FIRST_COMPLETED)
+            if not finis and not file and relance and en_cours and reste >= 1.5:
+                # dernier modèle sans réponse : une demande parfois reste bloquée chez Google, une copie
+                # envoyée maintenant revient souvent en 2-3 s
+                relance = False
+                m = next(iter(en_cours.values()))
+                en_cours[pool.submit(client.models.generate_content, model=m, contents=prompt, config=config)] = m
             for appel in finis:
                 m = en_cours.pop(appel)
                 try:
@@ -172,6 +179,9 @@ def _appeler_gemini(cle, modele, prompt, budget_s=BUDGET_GEMINI_S):
                         raise
                     if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
                         _en_pause[m] = time.monotonic() + PAUSE_QUOTA_S
+                    elif relance and not file and not en_cours:
+                        relance = False   # refus passager (503) du dernier modèle : un nouvel essai
+                        file.append(m)
                     derniere = e
         if en_cours:
             derniere = Delai(f"{', '.join(en_cours.values())} : plus de {budget_s} s")

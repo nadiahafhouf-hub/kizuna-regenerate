@@ -401,6 +401,8 @@ class GeminiRelaisTests(TestCase):
         class Modeles:
             def generate_content(self, model, contents, config):
                 d = delais[model]
+                if isinstance(d, list):   # appels successifs du même modèle
+                    d = d.pop(0)
                 if isinstance(d, Exception):
                     raise d
                 _t.sleep(d)
@@ -434,3 +436,17 @@ class GeminiRelaisTests(TestCase):
         with self._client({"a": 3.0, "b": 3.0}), patch.object(assistant, "RELAIS_S", 0.2):
             with self.assertRaises(Exception):
                 assistant._appeler_gemini("k", ["a", "b"], "p", budget_s=0.8)
+
+
+    def test_dernier_modele_bloque_une_copie_repond(self):
+        import time as _t
+        assistant._en_pause.clear()
+        with self._client({"seul": [3.0, 0.1]}), patch.object(assistant, "RELAIS_S", 0.3):
+            t = _t.monotonic()
+            self.assertEqual(assistant._appeler_gemini("k", ["seul"], "p", budget_s=5), "seul")
+        self.assertLess(_t.monotonic() - t, 1.5)
+
+    def test_refus_503_du_dernier_modele_un_nouvel_essai(self):
+        assistant._en_pause.clear()
+        with self._client({"seul": [RuntimeError("503 UNAVAILABLE"), 0.05]}):
+            self.assertEqual(assistant._appeler_gemini("k", ["seul"], "p", budget_s=5), "seul")

@@ -1,4 +1,5 @@
 import json
+import logging
 
 from django.http import Http404, JsonResponse
 from django.shortcuts import redirect, render
@@ -10,6 +11,8 @@ from services import demo_data
 from .chat_conditions import conditions_du_jour
 from .chat_controls import STEP_URLS, command
 from .strings import get_strings
+
+logger = logging.getLogger(__name__)
 
 
 def sans_diagnostic(request, pid):
@@ -113,6 +116,8 @@ def chat(request):
     except Exception as e:   # noqa: BLE001 - dernier recours : réponses de démonstration
         return JsonResponse({"reply": demo_data.chatbot_reply(q), "actions": [], "sources": [], "mode": "demo",
                              "error": type(e).__name__})
+    if r.get("erreur"):   # réponse locale de secours : la vraie cause (quota, délai…) dans le journal du serveur
+        logger.warning("Chatbot : Gemini indisponible (%s)", r["erreur"])
     return JsonResponse({"reply": r["reponse"], "actions": r["actions"], "sources": r["sources"], "mode": r["mode"]},
                         json_dumps_params={"ensure_ascii": False})
 
