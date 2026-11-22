@@ -1,46 +1,19 @@
-{% load ui %}
-<header class="sticky top-0 z-[1200] bg-olive-900 text-white shadow-sm">
-  <div class="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 sm:px-6 lg:px-8">
+{# Vue Expert : barre du haut sur mobile/tablette uniquement (la barre latérale prend le relais ≥1024 px). #}
+<header class="sticky top-0 z-[1200] bg-olive-900 text-white shadow-sm lg:hidden">
+  <div class="flex h-14 items-center gap-2 px-3 sm:px-6">
+    <button type="button" @click="$store.nav.open = true" aria-controls="sidebar" :aria-expanded="$store.nav.open"
+            class="grid h-11 w-11 place-items-center rounded-lg hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-sun-300"
+            aria-label="{{ T.nav.menu }}">
+      <i data-lucide="menu" class="h-5 w-5"></i>
+    </button>
     <a href="{% url 'core:home' %}" class="flex items-center gap-2 font-semibold tracking-tight">
-      <span class="grid h-8 w-8 place-items-center rounded-lg bg-olive-700 ring-1 ring-white/10">
-        <i data-lucide="sprout" class="h-[18px] w-[18px] text-sun-300"></i>
-      </span>
-      <span class="hidden sm:inline">{{ T.app.name }}</span>
+      <i data-lucide="sprout" class="h-5 w-5 text-sun-300"></i>{{ T.app.name }}
     </a>
-
-    <nav class="ml-2 flex items-center gap-1 text-sm">
-      <a href="{% url 'core:home' %}"
-         class="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-white/80 hover:bg-white/10 hover:text-white {% if not parcel %}bg-white/10 text-white{% endif %}">
-        <i data-lucide="layout-dashboard" class="h-4 w-4"></i><span class="hidden md:inline">{{ T.app.dashboard }}</span>
-      </a>
-      {% if parcel %}
-      <div class="relative" x-data="{ open: false }" @click.outside="open = false">
-        <button type="button" @click="open = !open"
-                class="flex items-center gap-1.5 rounded-lg bg-white/10 px-2.5 py-1.5 text-white hover:bg-white/15">
-          <i data-lucide="map-pin" class="h-4 w-4 text-sun-300"></i>
-          <span class="font-medium">{{ parcel.id }}</span>
-          <span class="hidden text-white/70 lg:inline">· {{ parcel.name }}</span>
-          <i data-lucide="chevron-down" class="h-3.5 w-3.5 text-white/60"></i>
-        </button>
-        <div x-show="open" x-transition.origin.top.left x-cloak
-             class="absolute left-0 mt-2 w-72 overflow-hidden rounded-xl bg-white text-ink shadow-lift ring-1 ring-sand-200">
-          {% for p in all_parcels %}
-          <a href="{% url step_url_name p.id %}"
-             class="flex items-center justify-between gap-3 px-4 py-3 text-sm hover:bg-sand-50 {% if p.id == parcel.id %}bg-olive-50{% endif %}">
-            <span><span class="font-semibold">{{ p.id }}</span> <span class="text-muted">{{ p.name }}</span></span>
-            {% zone_badge p.worst size="sm" %}
-          </a>
-          {% endfor %}
-        </div>
-      </div>
-      {% endif %}
-    </nav>
-
-    <div class="ml-auto flex items-center gap-2 text-xs">
-      <span class="hidden items-center gap-1 rounded-full bg-sun-500/15 px-2.5 py-1 font-medium text-sun-300 sm:flex">
-        <i data-lucide="flask-conical" class="h-3.5 w-3.5"></i>{{ T.app.demo_data }}
-      </span>
-      <span class="rounded-md bg-white/10 px-2 py-1 font-semibold uppercase tracking-wide text-white/80">{{ LANG }}</span>
-    </div>
+    {% if parcel %}
+    <span class="ml-auto truncate rounded-lg bg-white/10 px-2.5 py-1 text-sm font-medium"><i data-lucide="map-pin" class="mr-1 inline h-3.5 w-3.5 text-sun-300"></i>{{ parcel.id }}</span>
+    {% endif %}
+    <a href="{{ FARMER_URL }}" class="{% if not parcel %}ml-auto{% endif %} grid h-11 w-11 place-items-center rounded-lg text-sun-300 hover:bg-white/10" aria-label="{{ T.nav.farmer_view }}">
+      <i data-lucide="tractor" class="h-5 w-5"></i>
+    </a>
   </div>
 </header>

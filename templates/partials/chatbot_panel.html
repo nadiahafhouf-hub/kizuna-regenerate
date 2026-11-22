@@ -1,5 +1,5 @@
 {{ chat_config|json_script:"chat-config" }}
-<div x-data="chatbot('{% url 'core:chat' %}')" @keydown.escape.window="open = false">
+<div x-data="chatbot('{% url 'core:chat' %}')" @keydown.escape.window="open = false" @open-chat.window="if (!open) toggle()">
   <!-- Bouton flottant -->
   <button type="button" @click="toggle()" x-show="!open" x-transition
           class="fixed bottom-5 right-5 z-[1300] flex items-center gap-2 rounded-full bg-olive-700 py-3 pl-3.5 pr-4 font-semibold text-white shadow-lift ring-4 ring-white/70 transition hover:bg-olive-800 focus:outline-none focus-visible:ring-sun-300"

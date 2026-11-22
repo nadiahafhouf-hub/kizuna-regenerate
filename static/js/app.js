@@ -28,6 +28,9 @@ window.toast = function (message, kind = "success") {
 document.body.addEventListener("toast", (e) => toast(e.detail.message, e.detail.kind));
 
 document.addEventListener("alpine:init", () => {
+  /* Barre latérale (vue Expert) ou menu (vue Farmer) en tiroir sur petit écran */
+  Alpine.store("nav", { open: false });
+
   Alpine.store("toasts", {
     items: [],
     push(message, kind) {
