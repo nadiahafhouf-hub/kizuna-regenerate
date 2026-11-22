@@ -29,9 +29,19 @@ def parametres():
         return dict(PARAMETRES_DEFAUT, debit_goutte_m3_h=3.0)
 
 
+def reco_pour_planning(pid):
+    """Recommandation corrigée par l'agent (zones déjà plantées, réseau, irrigation actuelle) ;
+    en cas de souci, la recommandation « terre nue » du bloc 2 telle quelle."""
+    from .agent import reco_agent
+    try:
+        return reco_agent(pid)
+    except Exception:
+        return recommandation(pid)
+
+
 def plan_complet(pid, date_debut=None, meteo=None, params=None, volumes_forces=None):
     """(reco, meteo, plan) : sortie brute de generer_planning."""
-    reco = recommandation(pid)
+    reco = reco_pour_planning(pid)
     if meteo is None:
         o = reco.get("origine") or {}
         meteo = prevision_7_jours(o.get("lat"), o.get("lon"), reco["climat"], date_debut, cache_dir=CACHE_DIR)
@@ -63,6 +73,9 @@ def _vers_ui(pid, reco, meteo, plan):
     lat = (reco.get("origine") or {}).get("lat")
     zones_reco = {z["id"]: z for z in reco["zones"]}
     debit_goutte = p.get("debit_goutte_m3_h", 3.0)
+    # débit réel de chaque zone quand le réseau goutte-à-goutte a été conçu (sinon débit par gravité)
+    debit_zone = {z["id"]: (z["debit_reseau_l_h"] / 1000 if z.get("debit_reseau_l_h") else debit_goutte)
+                  for z in plan.get("zones", [])}
     debit_pompe = p["debit_pompe_m3_h"]
     jours_meteo = {j["date"]: j for j in meteo["jours"]}
     trad_jour = plan["totaux"]["eau_traditionnelle_l"] / 1000 / max(1, len(plan["jours"]))
@@ -76,7 +89,7 @@ def _vers_ui(pid, reco, meteo, plan):
         slots, fin = [], 0
         for e in sorted([e for e in arrosages if e["statut"] != "ANNULE" and e["volume_l"] > 0], key=lambda e: e["heure"]):
             debut = max(int(e["heure"][:2]) * 60, fin)
-            minutes = max(1, round(e["volume_l"] / 1000 / debit_goutte * 60))
+            minutes = max(1, round(e["volume_l"] / 1000 / debit_zone.get(e["zone_id"], debit_goutte) * 60))
             z = zones_reco.get(e["zone_id"], {})
             slots.append({"zone": e["zone_id"], "color": e["couleur"], "plant": z.get("culture", ""),
                           "volume_m3": round(e["volume_l"] / 1000, 3), "leaching_pct": round(z.get("lr", 0) * 100),
@@ -119,6 +132,8 @@ def _vers_ui(pid, reco, meteo, plan):
             "hourly": {"solar": j["production_kw"], "pump": pompe_h},
             "reservoir_morning_m3": round(j["niveau_matin_l"] / 1000, 2),
             "reservoir_evening_m3": round(j["niveau_soir_l"] / 1000, 2),
+            "storages_evening_m3": {k.replace("_l", ""): round(v / 1000, 2)
+                                    for k, v in (j.get("stockages_soir") or {}).items()},
         })
 
     t = plan["totaux"]
@@ -128,9 +143,12 @@ def _vers_ui(pid, reco, meteo, plan):
     return {
         "system": {
             "solar_kwp": p["puissance_crete_kwc"], "pump_kw": p["puissance_pompe_kw"], "pump_flow_m3h": debit_pompe,
-            "drip_flow_m3h": debit_goutte, "reservoir_m3": p["capacite_reservoir_m3"],
-            "reservoir_start_pct": round(p["niveau_initial_m3"] / p["capacite_reservoir_m3"] * 100)
-            if p["capacite_reservoir_m3"] else 0,
+            "drip_flow_m3h": debit_goutte,
+            # stockage total (réservoir + bassin) : la jauge et l'automate suivent l'eau stockée
+            "reservoir_m3": round(p["capacite_reservoir_m3"] + (p.get("bassin_m3") or 0), 1),
+            "tank_m3": p["capacite_reservoir_m3"], "basin_m3": p.get("bassin_m3") or 0,
+            "reservoir_start_pct": round(t["niveau_initial_l"] / t["capacite_reservoir_l"] * 100)
+            if t.get("capacite_reservoir_l") else 0,
             "drip_efficiency": 0.9, "flood_efficiency": p["rendement_submersion"],
             "irrigation_start_h": p["heure_arrosage"],
             "pump_start_h": min(heures_pompe) if heures_pompe else 11,
@@ -286,7 +304,7 @@ def tick(plan_db):
         return []
     p = plan_db.planning["parametres"]
     texture = texture_info(plan_db.parcel.texture_sol)["nom"]
-    cap_l = p["capacite_reservoir_m3"] * 1000
+    cap_l = (p["capacite_reservoir_m3"] + (p.get("bassin_m3") or 0)) * 1000   # reservoir + bassin
     quota_l = p["quota_nappe_m3_semaine"] * 1000
     niveau, pompe_total, _ = niveau_reservoir_l(plan_db)
     traites = []
@@ -348,7 +366,7 @@ def etat(plan_db):
     from .models import SoilMoistureReading, ValveState
     p = plan_db.planning["parametres"]
     niveau, pompe, arrose = niveau_reservoir_l(plan_db)
-    cap_l = p["capacite_reservoir_m3"] * 1000
+    cap_l = (p["capacite_reservoir_m3"] + (p.get("bassin_m3") or 0)) * 1000   # reservoir + bassin
     quota_l = p["quota_nappe_m3_semaine"] * 1000
     jours_ecoules = max(0, min(7, (plan_db.horloge - _aware(plan_db.date_debut)).days))
     totaux = plan_db.planning["totaux"]
@@ -381,6 +399,50 @@ def etat(plan_db):
         "compteurs": {s: plan_db.programme.filter(statut=s).count() for s in ("PREVU", "FAIT", "ANNULE")},
         "derniers": derniers,
     }
+
+
+# ───────────────────────────── agent : consignes à l'agriculteur ─────────────────────────────
+
+def jour_courant(plan_db):
+    """Jour du planning à détailler : jour de l'horloge simulée (0 = premier jour)."""
+    if not plan_db.horloge:
+        return 0
+    return max(0, min(6, (plan_db.horloge.date() - plan_db.date_debut).days))
+
+
+def consignes_agent(plan_db):
+    """Consignes du jour et de la semaine (sans IA), avec les zones vues par l'agent."""
+    from .agent import zones_agent
+    from .services.consignes import consignes
+    pid = plan_db.parcel.parcelle_id
+    try:
+        za = zones_agent(pid)
+    except Exception:
+        za = []
+    return consignes(plan_db_vers_dict(plan_db), plan_db.meteo, za, jour_courant(plan_db))
+
+
+def _cle_agent(plan_db, c):
+    return f"{plan_db.pk}|{plan_db.statut}|{c['jour']['date']}|{c['semaine']['eau_m3']}|{len(c['alertes'])}"
+
+
+def texte_agent(plan_db, c=None):
+    """Texte rédigé par Gemini s'il est déjà en cache pour ce plan et ce jour, sinon None."""
+    c = c or consignes_agent(plan_db)
+    a = plan_db.agent or {}
+    return a.get("texte") if a.get("cle") == _cle_agent(plan_db, c) else None
+
+
+def rediger_agent(plan_db):
+    """Demande à Gemini de reformuler les consignes (gardé en cache dans plan_db.agent)."""
+    from django.conf import settings
+    from .services.agent_ia import rediger
+    c = consignes_agent(plan_db)
+    texte = rediger(c, getattr(settings, "GEMINI_API_KEY", ""), getattr(settings, "GEMINI_MODEL", "gemini-3.8-flash"))
+    plan_db.agent = {"cle": _cle_agent(plan_db, c), "texte": texte,
+                     "modele": getattr(settings, "GEMINI_MODEL", ""), "le": timezone.now().isoformat()}
+    plan_db.save(update_fields=["agent"])
+    return c, texte
 
 
 def evenements_pour_passeport(pid):

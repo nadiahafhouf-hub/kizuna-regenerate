@@ -25,6 +25,12 @@ PARAMETRES_DEFAUT = dict(
     heure_arrosage=6,
     rendement_submersion=0.6,      # arrosage traditionnel, pour la jauge "eau economisee"
     ce_eau_dS_m=None,              # None = valeur de la recommandation (LandProfile ou region)
+    # second stockage (bassin / petit barrage) rempli APRES le reservoir ; 0 = pas de bassin
+    bassin_m3=0.0,
+    bassin_initial_m3=0.0,
+    # jours d'arrosage mis en reserve quand il y a du soleil (le stockage sert de « batterie » d'eau :
+    # on pompe au soleil pour les jours suivants, sans pomper plus que les besoins dans la nappe)
+    jours_reserve=3,
 )
 PRIORITE = {"VERT": 1, "ORANGE": 2, "ROUGE": 3}
 NOM_PRIORITE = {1: "cultures (VERT)", 2: "depollution ORANGE", 3: "depollution ROUGE"}
@@ -57,10 +63,19 @@ def generer_planning(recommandation, parametres=None, meteo=None, date_debut=Non
     jours = meteo["jours"][:7]
     tex = reco["texture"]
     n_arr = max(1, min(3, tex["arrosages"]))
-    cap_l = p["capacite_reservoir_m3"] * 1000
+    cap_res_l = p["capacite_reservoir_m3"] * 1000
+    cap_bassin_l = max(0.0, float(p.get("bassin_m3") or 0)) * 1000
+    cap_l = cap_res_l + cap_bassin_l           # stockage total : reservoir + bassin
     quota_l = p["quota_nappe_m3_semaine"] * 1000
     debit_l_h = p["debit_pompe_m3_h"] * 1000
-    niveau_initial_l = min(cap_l, p["niveau_initial_m3"] * 1000)
+    niveau_initial_l = min(cap_res_l, p["niveau_initial_m3"] * 1000) + \
+        min(cap_bassin_l, max(0.0, float(p.get("bassin_initial_m3") or 0)) * 1000)
+
+    def repartition(niveau_l):
+        """Repartition affichee : le reservoir (pres des vannes) est servi en premier, le bassin garde le surplus
+        et re-remplit le reservoir par gravite."""
+        r = min(cap_res_l, niveau_l)
+        return {"reservoir_l": round(r), "bassin_l": round(max(0.0, niveau_l - r))}
     ce_eau = p.get("ce_eau_dS_m") or reco.get("ce_eau_dS_m") or 2.0
     zones = sorted(reco["zones"], key=lambda z: (PRIORITE.get(z["couleur"], 3), z["id"]))
 
@@ -152,14 +167,18 @@ def generer_planning(recommandation, parametres=None, meteo=None, date_debut=Non
         heures_ok = heures_soleil[d]
         if d < len(jours) - 1:
             demain = besoin_jour(d + 1)
-            cible = demain
-            pourquoi = "remplir pour l'arrosage de demain"
+            # soleil aujourd'hui : on met en reserve l'eau des prochains jours (stockage = « batterie »)
+            horizon = max(1, int(p.get("jours_reserve") or 1))
+            fin = min(len(jours) - 1, d + horizon)
+            cible = sum(besoin_jour(k) for k in range(d + 1, fin + 1))
+            pourquoi = ("remplir pour l'arrosage de demain" if fin == d + 1
+                        else f"stocker l'eau des {fin - d} prochains jours tant qu'il y a du soleil")
             # anticipation : si les jours suivants n'ont pas assez de soleil, on remplit aussi pour eux
-            k = d + 1
+            k = fin
             while k < len(jours) - 1 and not heures_soleil[k]:
                 cible += besoin_jour(k + 1)
                 k += 1
-                pourquoi = "remplir pour demain + jours sans soleil a venir"
+                pourquoi = "remplir avant des jours sans soleil"
             cible = min(cap_l, cible)
         else:
             cible = niveau_initial_l   # on reconstitue la reserve pour la semaine suivante
@@ -194,26 +213,43 @@ def generer_planning(recommandation, parametres=None, meteo=None, date_debut=Non
             rayonnement_w_m2=j["rayonnement_w_m2"], production_kw=prod, heures_pompage=heures_ok,
             besoin_l=round(sum(demandes[(d, z["id"])]["besoin_l"] for z in zones)),
             arrose_l=int(arrose_jour), pompe_l=int(pompe_jour),
-            niveau_matin_l=round(niveau_matin), niveau_soir_l=round(niveau)))
+            niveau_matin_l=round(niveau_matin), niveau_soir_l=round(niveau),
+            stockages_soir=repartition(niveau),
+            energie_solaire_kwh=round(sum(prod), 2),
+            energie_pompe_kwh=round(pompe_jour / debit_l_h * p["puissance_pompe_kw"], 2) if debit_l_h else 0))
 
     # ---- 4. totaux + comparaison avec l'arrosage traditionnel ----
     arrose = sum(e["volume_l"] for e in evenements if e["type"] == "ARROSAGE")
     energie = sum(e["energie_kwh"] for e in evenements)
     et0_moy = reco["climat"]["et0_mm_jour"]
-    # submersion : toute la surface, rendement 0,6, sans tenir compte de la meteo
-    traditionnel = sum(z["kc"] * et0_moy * z["surface_m2"] / p["rendement_submersion"] for z in zones) * len(jours)
+    # irrigation actuelle de chaque zone (agent) : toute la surface, sans tenir compte de la meteo ;
+    # zone sans information ou pas encore irriguee : submersion (rendement 0,6) comme reference
+    comparaison = []
+    for z in zones:
+        eff = z.get("efficience_actuelle") or p["rendement_submersion"]
+        actuel = z["kc"] * et0_moy * z["surface_m2"] / eff * len(jours)
+        plan_z = sum(e["volume_l"] for e in evenements if e["type"] == "ARROSAGE" and e["zone_id"] == z["id"])
+        comparaison.append(dict(zone_id=z["id"], irrigation_actuelle=z.get("irrigation_actuelle") or "gravitaire",
+                                efficience=eff, actuel_l=round(actuel), plan_l=int(plan_z),
+                                economie_l=round(max(0.0, actuel - plan_z))))
+    traditionnel = sum(c["actuel_l"] for c in comparaison)
     totaux = dict(
         besoin_l=round(sum(it["besoin_l"] for it in demandes.values())),
         arrosage_prevu_l=int(arrose), pompe_prevu_l=int(total_pompe), quota_l=int(quota_l),
         energie_kwh=round(energie, 2), eau_traditionnelle_l=round(traditionnel),
         eau_economisee_l=round(max(0, traditionnel - arrose)),
         niveau_initial_l=round(niveau_initial_l), niveau_final_l=round(niveau),
-        capacite_reservoir_l=round(cap_l))
+        capacite_reservoir_l=round(cap_l), capacite_bassin_l=round(cap_bassin_l),
+        solaire_kwh=round(sum(j["energie_solaire_kwh"] for j in resume_jours), 1))
     return dict(
         parcelle_id=reco["parcelle_id"], date_debut=jours[0]["date"] if jours else None,
         source_meteo=meteo["source"], parametres=p, ce_eau_dS_m=ce_eau, arrosages_par_jour=n_arr,
         zones=[dict(id=z["id"], couleur=z["couleur"], culture=z["culture"], priorite=PRIORITE.get(z["couleur"], 3),
-                    surface_m2=z["surface_m2"]) for z in zones],
+                    surface_m2=z["surface_m2"],
+                    **{k: z.get(k) for k in ("etat", "nb_plantes", "source", "irrigation_actuelle",
+                                             "debit_reseau_l_h", "note")})
+               for z in zones],
+        comparaison=comparaison,
         jours=resume_jours, evenements=evenements, trajectoire_reservoir=trajectoire, totaux=totaux,
         genere_le=datetime.datetime.now().isoformat(timespec="seconds"),
         mention="Estimations - donnees simulees - prototype")

@@ -1,0 +1,19 @@
+{% comment %}Consignes à l'agriculteur : texte rédigé par Gemini (si demandé) ou texte automatique.{% endcomment %}
+<div class="flex flex-wrap items-center justify-between gap-2">
+  <p class="flex items-center gap-2 text-sm font-semibold text-olive-900">
+    <i data-lucide="message-square-text" class="h-4 w-4 text-olive-700"></i>{{ T.agent.advice_title }}
+    <span class="rounded-full px-2 py-0.5 text-[11px] font-semibold {% if texte_ia %}bg-olive-50 text-olive-800 ring-1 ring-olive-200{% else %}bg-sand-100 text-muted{% endif %}">
+      {% if texte_ia %}{{ T.agent.by_ai }}{% else %}{{ T.agent.by_rules }}{% endif %}</span>
+  </p>
+  {% if agent_ia_dispo or texte_ia or erreur %}
+  <button type="button" hx-post="{% url 'irrigation:agent_rediger' parcel.id %}" hx-target="#agent-texte" hx-swap="innerHTML"
+          hx-indicator="#agent-chargement" hx-disabled-elt="this"
+          class="inline-flex items-center gap-1.5 rounded-xl bg-olive-700 px-3 py-2 text-xs font-semibold text-white transition hover:bg-olive-800 disabled:opacity-60">
+    <i data-lucide="sparkles" class="h-3.5 w-3.5"></i>{% if texte_ia %}{{ T.agent.rewrite }}{% else %}{{ T.agent.write_ai }}{% endif %}
+  </button>
+  {% endif %}
+</div>
+<p id="agent-chargement" class="htmx-indicator mt-2 flex items-center gap-2 text-sm text-muted"><i data-lucide="loader-circle" class="h-4 w-4 animate-spin"></i>{{ T.agent.writing }}</p>
+{% if erreur %}<p class="mt-2 rounded-lg bg-zorange-bg px-3 py-2 text-xs text-zorange">{{ T.agent.ai_error }} ({{ erreur|truncatechars:160 }})</p>{% endif %}
+<div class="mt-2 whitespace-pre-line rounded-xl bg-sand-50 p-4 text-sm leading-relaxed text-ink ring-1 ring-sand-200">{% if texte_ia %}{{ texte_ia }}{% else %}{{ agent.texte }}{% endif %}</div>
+<p class="mt-2 text-xs text-muted">{{ T.agent.confirm_hint }}</p>

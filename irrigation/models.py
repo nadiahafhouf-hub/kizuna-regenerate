@@ -27,6 +27,7 @@ class IrrigationPlan(models.Model):
     meteo = models.JSONField(default=dict, blank=True)          # gardée pour recalculer sans rappeler l'API
     volumes_forces = models.JSONField(default=dict, blank=True)  # {"Z3|2026-11-22": litres} modifiés à la main
     horloge = models.DateTimeField(null=True, blank=True)        # horloge simulée de la démo
+    agent = models.JSONField(default=dict, blank=True)           # consignes rédigées par Gemini (cache)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -132,6 +133,12 @@ class IrrigationSettings(models.Model):
     ratio_performance = models.FloatField(default=0.8)
     capacite_reservoir_m3 = models.FloatField(default=5.0)
     niveau_initial_m3 = models.FloatField(default=2.5, help_text="eau dans le reservoir au debut de la semaine")
+    bassin_m3 = models.FloatField(
+        default=20.0, verbose_name="Bassin / petit barrage (m3)",
+        help_text="Second stockage rempli au soleil apres le reservoir (0 = pas de bassin).")
+    bassin_initial_m3 = models.FloatField(default=0.0, help_text="eau dans le bassin au debut de la semaine")
+    jours_reserve = models.PositiveSmallIntegerField(
+        default=3, help_text="Quand il y a du soleil, on stocke l'eau d'arrosage de ce nombre de jours a venir.")
     quota_nappe_m3_semaine = models.FloatField(default=15.0)
     seuil_pluie_mm = models.FloatField(default=5.0, help_text="pluie prevue qui annule un arrosage")
     seuil_humidite_pct = models.FloatField(default=30.0, help_text="humidite du sol qui fait sauter un arrosage")
