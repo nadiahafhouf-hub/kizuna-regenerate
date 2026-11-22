@@ -36,5 +36,7 @@ def ui(request):
         "FARMER_URL": _farmer_url(request),
         "chat_config": {"suggestions": T["chat"].get("suggestions_list") or chatbot_config()["suggestions"],
                         "welcome": T["chat"]["welcome"],
-                        "pid": pid},
+                        "pid": pid,
+                        # chatbot vocal (tounsi) : parler / relire un message
+                        "voiceUrl": "/chat/voice/", "ttsUrl": "/chat/tts/"},
     }

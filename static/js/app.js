@@ -156,6 +156,28 @@ document.addEventListener("alpine:init", () => {
     },
   }));
 
+  /* WAV PCM 16 bits, mono, 16 kHz (format attendu par Azure Speech) à partir des échantillons du micro */
+  window.wav16k = function (morceaux, freq) {
+    const n = morceaux.reduce((s, m) => s + m.length, 0);
+    const tout = new Float32Array(n);
+    let o = 0;
+    for (const m of morceaux) { tout.set(m, o); o += m.length; }
+    const ratio = freq / 16000, len = Math.floor(n / ratio);
+    const pcm = new Int16Array(len);
+    for (let i = 0; i < len; i++) {
+      const v = Math.max(-1, Math.min(1, tout[Math.floor(i * ratio)] || 0));
+      pcm[i] = v < 0 ? v * 0x8000 : v * 0x7fff;
+    }
+    const buf = new ArrayBuffer(44 + pcm.length * 2), d = new DataView(buf);
+    const ecrire = (p, s) => { for (let i = 0; i < s.length; i++) d.setUint8(p + i, s.charCodeAt(i)); };
+    ecrire(0, "RIFF"); d.setUint32(4, 36 + pcm.length * 2, true); ecrire(8, "WAVE"); ecrire(12, "fmt ");
+    d.setUint32(16, 16, true); d.setUint16(20, 1, true); d.setUint16(22, 1, true); d.setUint32(24, 16000, true);
+    d.setUint32(28, 32000, true); d.setUint16(32, 2, true); d.setUint16(34, 16, true); ecrire(36, "data");
+    d.setUint32(40, pcm.length * 2, true);
+    new Int16Array(buf, 44).set(pcm);
+    return new Blob([buf], { type: "audio/wav" });
+  };
+
   /* Chatbot (bloc 4) : RAG Qdrant + Gemini en derja (services/rag/assistant.py), avec la parcelle de la page */
   Alpine.data("chatbot", (url) => {
     const cfg = JSON.parse(document.getElementById("chat-config").textContent);
@@ -164,6 +186,9 @@ document.addEventListener("alpine:init", () => {
     const handoffKey = "kizuna-chat-navigation";
     let utterance = null;
     let recognition = null;
+    let recording = null;   // micro -> WAV 16 kHz -> /chat/voice/ (écoute en tounsi)
+    let player = null;      // voix tunisienne (WAV Lahgtna ou MP3 edge-tts)
+    const tunisianMic = !!(cfg.voiceUrl && navigator.mediaDevices?.getUserMedia);
     let pendingSimulation;
     let parcelChoices = [];
     let reactionTimer;
@@ -177,10 +202,10 @@ document.addEventListener("alpine:init", () => {
       open: false,
       input: "",
       typing: false,
-      speechAvailable: !!(synth && window.SpeechSynthesisUtterance),
+      speechAvailable: !!(cfg.ttsUrl || (synth && window.SpeechSynthesisUtterance)),
       voiceEnabled: false,
       voiceError: false,
-      micAvailable: !!(window.isSecureContext && Recognition),
+      micAvailable: !!(window.isSecureContext && (tunisianMic || Recognition)),
       micActive: false,
       micStatus: "",
       guided: false,
@@ -342,6 +367,7 @@ document.addEventListener("alpine:init", () => {
         this.speak(message);
       },
       stopListening() {
+        this.stopRecording(false);
         const current = recognition;
         recognition = null;
         this.micActive = false;
@@ -349,6 +375,7 @@ document.addEventListener("alpine:init", () => {
       },
       toggleMicrophone() {
         if (!this.micAvailable || this.typing) return;
+        if (tunisianMic) return this.recordTunisian();
         if (recognition) {
           recognition.stop();
           return;
@@ -390,12 +417,133 @@ document.addEventListener("alpine:init", () => {
           current.onerror({ error: "unavailable" });
         }
       },
+      /* ── Voix en tounsi : enregistrement WAV 16 kHz mono -> /chat/voice/ (Whisper Derja + RAG + voix tunisienne) ── */
+      async recordTunisian() {
+        if (recording) return this.stopRecording();
+        this.stopSpeech();
+        this.voiceEnabled = this.speechAvailable;
+        this.voiceError = false;
+        this.micStatus = "";
+        try {
+          const flux = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          const source = ctx.createMediaStreamSource(flux);
+          const proc = ctx.createScriptProcessor(4096, 1, 1);
+          const morceaux = [];
+          proc.onaudioprocess = (e) => morceaux.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+          source.connect(proc);
+          proc.connect(ctx.destination);
+          recording = { flux, ctx, source, proc, morceaux, timer: setTimeout(() => this.stopRecording(), 30000) };
+          this.micActive = true;
+        } catch {
+          this.micActive = false;
+          this.micStatus = UI.chat.mic_error;
+        }
+      },
+      stopRecording(sendIt = true) {
+        const r = recording;
+        if (!r) return;
+        recording = null;
+        this.micActive = false;
+        clearTimeout(r.timer);
+        r.proc.disconnect();
+        r.source.disconnect();
+        r.flux.getTracks().forEach((t) => t.stop());
+        const wav = wav16k(r.morceaux, r.ctx.sampleRate);
+        r.ctx.close();
+        if (!sendIt || !this.open) return;
+        if (wav.size > 2000) this.sendAudio(wav);
+        else this.micStatus = UI.chat.voice_error;
+      },
+      async sendAudio(wav) {
+        const currentConversation = conversation;
+        parcelChoices = [];
+        pendingSimulation = null;
+        this.messages.push({ role: "user", text: "🎤 …" });
+        const user = this.messages.at(-1);   // objet réactif : la transcription s'affichera
+        this.typing = true;
+        this.scroll();
+        const fd = new FormData();
+        fd.append("audio", wav, "voix.wav");
+        fd.append("pid", cfg.pid || "");
+        fd.append("historique", JSON.stringify(this.messages.slice(1, -1).filter((m) => m.mode !== "control")
+          .slice(-6).map((m) => ({ role: m.role, text: m.text }))));
+        try {
+          const r = await fetch(cfg.voiceUrl, { method: "POST", headers: { "X-CSRFToken": csrfToken() }, body: fd });
+          const res = await r.json();
+          if (!r.ok) throw new Error(res.detail || res.error);
+          user.text = "🎤 " + res.transcription;
+          if (currentConversation !== conversation) return;
+          this.addReply({ text: res.reply, a_dire: res.a_dire, actions: res.actions || [], sources: res.sources || [],
+            mode: res.mode, reaction: res.reaction }, res.audio ? { audio: res.audio, mime: res.audio_mime } : null);
+          this.$nextTick(() => icons());
+        } catch {
+          user.text = "🎤 (…)";
+          this.addReply({ text: UI.chat.voice_error });
+        } finally {
+          this.typing = false;
+          this.scroll();
+        }
+      },
+      playAudio(current, audio, mime, text) {
+        const { frames } = speechFrames(text || "");
+        player = new Audio(`data:${mime || "audio/mpeg"};base64,${audio}`);
+        const playFrame = (index) => {
+          if (utterance !== current) return;
+          clearTimeout(mouthTimer);
+          const frame = frames.length ? frames[index % frames.length] : null;
+          this.mouth = frame?.shape || "rest";
+          if (frame) mouthTimer = setTimeout(() => playFrame(index + 1), frame.ms);
+        };
+        const finish = () => {
+          if (utterance !== current) return;
+          utterance = player = null;
+          clearTimeout(mouthTimer);
+          this.mouth = "rest";
+        };
+        player.onplay = () => playFrame(0);
+        player.onended = finish;
+        player.onerror = finish;
+        player.play().catch(finish);
+      },
+      async speakTunisian(message, voice) {
+        const current = {};
+        utterance = current;
+        let audio = voice?.audio;
+        let mime = voice?.mime;
+        if (!audio) {
+          try {   // la voix tunisienne (Lahgtna) peut prendre ~15 s
+            const r = await fetch(cfg.ttsUrl, { method: "POST",
+              headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken() },
+              body: JSON.stringify({ text: message.text, a_dire: message.a_dire || "" }) });
+            if (r.ok) {
+              const res = await r.json();
+              audio = res.audio;
+              mime = res.audio_mime;
+            }
+          } catch {
+            // secours : voix du navigateur
+          }
+        }
+        if (utterance !== current) return;
+        utterance = null;
+        if (audio) {
+          utterance = current;
+          this.playAudio(current, audio, mime, message.a_dire || message.text);
+        } else {
+          this.speak(message, null, true);
+        }
+      },
       stopSpeech() {
         clearTimeout(mouthTimer);
         this.mouth = "rest";
+        if (player) {
+          player.pause();
+          player = null;
+        }
         if (!utterance) return;
         utterance = null;
-        synth.cancel();
+        synth?.cancel();
       },
       toggleVoice() {
         if (!this.speechAvailable) return;
@@ -407,10 +555,16 @@ document.addEventListener("alpine:init", () => {
           this.stopSpeech();
         }
       },
-      speak(message) {
+      speak(message, recorded = null, browserOnly = false) {
         if (!this.open || !this.voiceEnabled || !message?.text) return;
         this.stopSpeech();
-        const voiceText = message.text.replace(/\[\d+\]/g, "").trim();
+        // Réponses en derja -> voix tunisienne (serveur) ; français / contrôle -> voix du navigateur
+        if (!browserOnly && cfg.ttsUrl && (recorded || (!message.lang && message.mode !== "control"))) {
+          this.speakTunisian(message, recorded);
+          return;
+        }
+        if (!synth || !window.SpeechSynthesisUtterance) return;
+        const voiceText = ((browserOnly && message.a_dire) || message.text).replace(/\[\d+\]/g, "").trim();
         if (!voiceText) return;
         const current = new window.SpeechSynthesisUtterance(voiceText);
         utterance = current;
@@ -452,14 +606,14 @@ document.addEventListener("alpine:init", () => {
           current.onerror();
         }
       },
-      addReply(reply) {
+      addReply(reply, voice = null) {
         const message = { role: "bot", ...reply };
         this.messages.push(message);
         const action = this.messages.at(-1).actions?.find((item) => item.kind === "simulate");
         parcelChoices = reply.actions?.filter((item) => item.kind === "parcel") || [];
         pendingSimulation = action ? { message: this.messages.at(-1), action } : null;
         if (reply.reaction) this.react(reply.reaction);
-        this.speak(message);
+        this.speak(this.messages.at(-1), voice);
       },
       followPage(path, question, reply) {
         const destination = new URL(path, location.href);

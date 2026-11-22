@@ -793,6 +793,12 @@ STRINGS = {
             "voice_start": "Enable voice",
             "voice_stop": "Mute voice",
             "voice_unavailable": "Voice playback is unavailable. The reply is still shown below.",
+            "mic": "E7ki (tounsi)",
+            "mic_stop": "Wa9ef w ab3ath",
+            "listening": "Nesma3 fik… e7ki, w ba3d enzel marra o5ra bech tab3ath",
+            "listen": "Esma3 el jaweb",
+            "mic_error": "Ma njemtech nesta3mel el micro. Ataini el idhn mta3 el micro f el navigateur.",
+            "voice_error": "Ma fhemtech el sot. 3awed e7ki b chwaya akthar wodho7, walla ekteb so2alek.",
         },
     },
 }

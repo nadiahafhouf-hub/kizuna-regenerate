@@ -115,3 +115,71 @@ def chat(request):
                              "error": type(e).__name__})
     return JsonResponse({"reply": r["reponse"], "actions": r["actions"], "sources": r["sources"], "mode": r["mode"]},
                         json_dumps_params={"ensure_ascii": False})
+
+
+def _pid_valide(pid):
+    if not pid:
+        return None
+    try:
+        demo_data.land_profile(pid)
+        return pid
+    except Exception:
+        return None
+
+
+def _audio(texte):
+    """{"audio": base64, "audio_mime"} lu par la voix tunisienne (Lahgtna, sinon edge-tts) ;
+    audio None si aucune voix n'est disponible (le navigateur lit alors le texte avec sa voix arabe)."""
+    import base64
+    from services.rag.voix import VoixErreur, synthese
+    try:
+        audio, mime = synthese(texte)
+        return {"audio": base64.b64encode(audio).decode("ascii"), "audio_mime": mime}
+    except VoixErreur:
+        return {"audio": None, "audio_mime": None}
+
+
+@require_POST
+def chat_voice(request):
+    """Chatbot vocal : audio WAV (16 kHz mono) -> transcription tounsi (Azure ar-TN, sinon Gemini) ->
+    réponse RAG en derja (écriture arabe, phrases courtes) -> voix tunisienne Azure (MP3 base64)."""
+    from services.rag.assistant import repondre
+    from services.rag.voix import VoixErreur, transcrire
+    audio = request.FILES.get("audio")
+    if audio is None or audio.size > 5 * 1024 * 1024:
+        return JsonResponse({"error": "audio"}, status=400)
+    try:
+        texte, moteur = transcrire(audio.read())
+    except VoixErreur as e:
+        return JsonResponse({"error": "transcription", "detail": str(e)[:200]}, status=422)
+    try:
+        historique = json.loads(request.POST.get("historique") or "[]")
+    except ValueError:
+        historique = []
+    try:
+        r = repondre(texte, _pid_valide(request.POST.get("pid")), historique if isinstance(historique, list) else None,
+                     voix=True)
+    except Exception as e:   # noqa: BLE001
+        r = {"reponse": demo_data.chatbot_reply(texte), "actions": [], "sources": [], "mode": "demo"}
+    # texte lu : version en lettres arabes (a_dire) ; sans réponse Gemini, phrase courte en derja
+    a_dire = (r.get("a_dire") or r["reponse"]) if r["mode"] == "gemini" else (
+        "سامحني، ما نجمتش نجاوبك بالتفصيل توا. حطيتلك في الشاشة المعلومات اللي لقيتها على البلاد متاعك.")
+    return JsonResponse({"transcription": r.get("question") or texte, "transcription_brute": texte, "stt": moteur,
+                         "reply": r["reponse"], "a_dire": a_dire, "actions": r["actions"], "sources": r["sources"],
+                         "mode": r["mode"], **_audio(a_dire)},
+                        json_dumps_params={"ensure_ascii": False})
+
+
+@require_POST
+def chat_tts(request):
+    """🔊 relire un message : {"text", "a_dire"?} -> {"audio": base64 | null, "audio_mime"}.
+    Un texte en 3arbizi (lettres latines) est d'abord réécrit en lettres arabes pour la voix tunisienne."""
+    try:
+        data = json.loads(request.body or b"{}")
+    except ValueError:
+        data = {}
+    texte = str(data.get("a_dire") or data.get("text") or "")[:2000]
+    if not texte.strip():
+        return JsonResponse({"audio": None, "audio_mime": None})
+    from services.rag.assistant import vers_lettres_arabes
+    return JsonResponse(_audio(vers_lettres_arabes(texte)))
