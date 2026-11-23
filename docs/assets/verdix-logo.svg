@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 88 88" width="88" height="88" role="img" aria-label="Logo Verdix : une pousse sur un sol, une goutte d'eau et un soleil">
+  <title>Verdix</title>
+  <rect x="2" y="2" width="84" height="84" rx="20" fill="#172812"/>
+  <circle cx="64" cy="24" r="9" fill="#F5CB5C"/>
+  <path d="M14 66 Q44 56 74 66 L74 74 Q44 68 14 74 Z" fill="#D5E3C6"/>
+  <path d="M44 64 C44 52 44 44 44 36" stroke="#D2ECA8" stroke-width="4" stroke-linecap="round" fill="none"/>
+  <path d="M44 46 C34 46 27 39 26 29 C36 29 43 35 44 46 Z" fill="#9BCF4E"/>
+  <path d="M44 40 C52 40 58 34 59 26 C51 26 45 31 44 40 Z" fill="#B5DE74"/>
+  <path d="M24 44 C24 44 18 51 18 55 A6 6 0 0 0 30 55 C30 51 24 44 24 44 Z" fill="#4FA3D9"/>
+</svg>

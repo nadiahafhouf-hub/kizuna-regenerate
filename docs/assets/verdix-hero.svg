@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300" width="1200" height="300" role="img" aria-label="Les cinq étapes d'une parcelle de Gabès : sol, cultures, irrigation, solaire, passeport, avec l'assistant en derja. Illustration.">
+  <title>Verdix · du sol pollué au passeport vérifiable</title>
+  <defs>
+    <linearGradient id="fond" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0F1A0B"/>
+      <stop offset="1" stop-color="#1F3618"/>
+    </linearGradient>
+    <marker id="fleche" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#8FA0B4"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="300" rx="18" fill="url(#fond)"/>
+  <g font-family="DM Sans, Segoe UI, Helvetica, Arial, sans-serif" text-anchor="middle">
+    <!-- I · Sol -->
+    <rect x="40" y="70" width="180" height="128" rx="14" fill="#362A20" stroke="#D6A35C" stroke-width="2"/>
+    <text x="130" y="100" fill="#D6A35C" font-size="14" font-weight="700" letter-spacing="2">I · SOL</text>
+    <g transform="translate(88 112)">
+      <rect width="28" height="28" fill="#B83227"/><rect x="28" width="28" height="28" fill="#B85C0E"/><rect x="56" width="28" height="28" fill="#23774A"/>
+    </g>
+    <text x="130" y="168" fill="#F3EDE1" font-size="13">CE · pH · Cd · Pb</text>
+    <text x="130" y="186" fill="#C9BBA0" font-size="12">zones ROUGE / ORANGE / VERT</text>
+    <!-- II · Cultures -->
+    <rect x="270" y="70" width="180" height="128" rx="14" fill="#1F3618" stroke="#9BCF4E" stroke-width="2"/>
+    <text x="360" y="100" fill="#9BCF4E" font-size="14" font-weight="700" letter-spacing="2">II · CULTURES</text>
+    <path d="M360 150 C360 136 360 128 360 120 M360 132 C350 132 344 126 343 117 C352 117 359 123 360 132 Z M360 126 C368 126 374 120 375 112 C367 112 361 117 360 126 Z" stroke="#D2ECA8" stroke-width="2.5" fill="#9BCF4E"/>
+    <text x="360" y="168" fill="#F4F6EC" font-size="13">une culture par zone</text>
+    <text x="360" y="186" fill="#B9C79A" font-size="12">dépollution ou production</text>
+    <!-- III · Irrigation -->
+    <rect x="500" y="70" width="180" height="128" rx="14" fill="#102F43" stroke="#4FA3D9" stroke-width="2"/>
+    <text x="590" y="100" fill="#4FA3D9" font-size="14" font-weight="700" letter-spacing="2">III · IRRIGATION</text>
+    <path d="M590 114 C590 114 578 129 578 137 A12 12 0 0 0 602 137 C602 129 590 114 590 114 Z" fill="#4FA3D9"/>
+    <text x="590" y="168" fill="#E8F3FA" font-size="13">planning 7 jours</text>
+    <text x="590" y="186" fill="#9CC7E6" font-size="12">réseau goutte-à-goutte</text>
+    <!-- IV · Solaire -->
+    <rect x="730" y="70" width="180" height="128" rx="14" fill="#3A3015" stroke="#F5CB5C" stroke-width="2"/>
+    <text x="820" y="100" fill="#F5CB5C" font-size="14" font-weight="700" letter-spacing="2">IV · SOLAIRE</text>
+    <circle cx="820" cy="132" r="13" fill="#F5CB5C"/>
+    <text x="820" y="168" fill="#FDF5DE" font-size="13">panneaux · pompe</text>
+    <text x="820" y="186" fill="#E3C77E" font-size="12">quand nettoyer</text>
+    <!-- V · Passeport -->
+    <rect x="960" y="70" width="200" height="128" rx="14" fill="#303238" stroke="#D8D2C4" stroke-width="2"/>
+    <text x="1060" y="100" fill="#D8D2C4" font-size="14" font-weight="700" letter-spacing="2">V · PASSEPORT</text>
+    <g transform="translate(1046 117)" fill="#D8D2C4">
+      <rect width="8" height="8"/><rect x="12" width="4" height="4"/><rect x="20" width="8" height="8"/><rect y="12" width="4" height="4"/><rect x="8" y="10" width="6" height="6"/><rect x="20" y="20" width="8" height="8"/><rect y="20" width="8" height="8"/><rect x="14" y="20" width="4" height="4"/>
+    </g>
+    <text x="1060" y="168" fill="#F7F4EB" font-size="13">PDF + QR + chaîne de hash</text>
+    <text x="1060" y="186" fill="#BDB7A9" font-size="12">vérifiable par un acheteur</text>
+    <!-- flèches -->
+    <g stroke="#8FA0B4" stroke-width="2" marker-end="url(#fleche)">
+      <line x1="224" y1="134" x2="264" y2="134"/><line x1="454" y1="134" x2="494" y2="134"/>
+      <line x1="684" y1="134" x2="724" y2="134"/><line x1="914" y1="134" x2="954" y2="134"/>
+    </g>
+    <!-- assistant -->
+    <rect x="390" y="226" width="420" height="40" rx="20" fill="#15362E" stroke="#B5DE74" stroke-width="2"/>
+    <text x="600" y="251" fill="#E9FFF6" font-size="14">Assistant en derja · texte et voix · sur toutes les pages</text>
+    <text x="600" y="44" fill="#CAD5E2" font-size="16" font-weight="700" letter-spacing="1">VERDIX · UNE PARCELLE POLLUÉE DE GABÈS, DU DIAGNOSTIC AU PASSEPORT</text>
+    <text x="1160" y="288" fill="#6F8197" font-size="11" text-anchor="end">Illustration</text>
+  </g>
+</svg>
